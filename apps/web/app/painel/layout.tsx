@@ -102,6 +102,12 @@ export default async function PainelLayout({
     // Colada no Canal oficial: as duas respondem "o sistema está indo bem?",
     // uma pela entrega e a outra pela qualidade do texto.
     ...(showManager ? [{ href: "/painel/correcoes", label: "O que a IA aprendeu" }] : []),
+    // ⚠ COLADA NAS DUAS ACIMA, e ela responde a pergunta que as outras nao
+    // respondem: "a IA pode responder SOZINHA?". "O que a IA aprendeu" depende
+    // de alguem corrigir; o banco de provas nao depende de ninguem alem de
+    // quem julga — e foi feito justamente porque a correcao do vendedor pode
+    // nunca chegar.
+    ...(showManager ? [{ href: "/painel/provas", label: "Banco de provas" }] : []),
     { href: "/painel/tutorial", label: "Tutorial" },
     ...(showManager ? [{ href: "/painel/sincronizar", label: "Sincronizar" }] : []),
     // Fica COLADA na Sincronizar de propósito: é ali que as contradições
