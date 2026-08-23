@@ -6,6 +6,7 @@ import { rodarMotor } from "@/lib/motor-db";
 import { ROTULO } from "@/lib/fila";
 import { lerModelos } from "@/lib/roteamento";
 import { primeiroNome } from "@/lib/modelo";
+import { paraE164BR } from "@/lib/phone";
 import { revalidatePath } from "next/cache";
 
 export type LinhaDaSimulacao = {
@@ -24,6 +25,22 @@ export type LinhaDaSimulacao = {
    * é sumir, não é resumir.
    */
   recorte: boolean;
+  /**
+   * O que foi INTERPRETADO no telefone desta pessoa, se foi.
+   *
+   * ⚠ ELE EXISTE PORQUE O AVISO SE PERDIA. `paraE164BR` devolve `ajuste`
+   * quando precisa acrescentar o nono dígito a um cadastro antigo — e esse
+   * aviso foi feito para uma tela em que alguém confere antes de mandar. No
+   * caminho automático não há esse alguém: o motor deriva, envia e ninguém
+   * nunca vê o que foi interpretado. São **221 contatos da Be Fitness (13% da
+   * base)** nessa situação.
+   *
+   * Aqui é o último lugar onde uma pessoa olha antes do lote sair. Se o aviso
+   * não aparecer nesta linha, ele não aparece em lugar nenhum.
+   */
+  telefoneAjustado: string;
+  /** Por que o telefone NÃO serve. Vazio quando serve. */
+  telefoneInvalido: string;
   /**
    * O que a Meta vai preencher nas variáveis DESTA pessoa.
    *
@@ -97,6 +114,7 @@ export async function simularMotor(): Promise<SimulacaoResult> {
       .filter((v) => v.enviar || !v.recorte)
       .map((v) => v.contactId);
     const nomes = new Map<string, string>();
+    const telefones = new Map<string, string | null>();
     if (ids.length) {
       const supabase = await createClient();
       for (let i = 0; i < ids.length; i += 500) {
@@ -105,11 +123,12 @@ export async function simularMotor(): Promise<SimulacaoResult> {
         // de ids, como no aprendizado de `responder/ai-actions.ts`.
         const { data } = await supabase
           .from("contacts")
-          .select("id, name")
+          .select("id, name, phone")
           .eq("tenant_id", tenant.id)
           .in("id", ids.slice(i, i + 500));
-        for (const c of ((data as { id: string; name: string }[] | null) ?? [])) {
+        for (const c of ((data as { id: string; name: string; phone: string | null }[] | null) ?? [])) {
           nomes.set(c.id, c.name);
+          telefones.set(c.id, c.phone);
         }
       }
     }
@@ -124,6 +143,7 @@ export async function simularMotor(): Promise<SimulacaoResult> {
       const nome = nomes.get(v.contactId) ?? "(contato sem nome)";
       const m = r.motivoPorContato[v.contactId];
       const pn = primeiroNome(nome);
+      const tel = paraE164BR(telefones.get(v.contactId));
       return {
         contactId: v.contactId,
         nome,
@@ -131,6 +151,8 @@ export async function simularMotor(): Promise<SimulacaoResult> {
         sai: v.enviar,
         motivoDaRecusa: v.enviar ? "" : v.motivo,
         recorte: v.enviar ? false : v.recorte === true,
+        telefoneAjustado: tel.ok ? (tel.ajuste ?? "") : "",
+        telefoneInvalido: tel.ok ? "" : tel.motivo,
         variaveis: [pn.ok ? pn.valor : "(sem nome — não sai)", tenant.name],
         modelo: modelos[m] ?? "(nenhum modelo cadastrado para este motivo)",
       };

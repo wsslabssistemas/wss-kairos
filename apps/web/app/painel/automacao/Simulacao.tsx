@@ -186,6 +186,24 @@ export function Simulacao({ modo }: { modo: "off" | "simulation" | "auto" }) {
                         </p>
                       )}
 
+                      {/* ⚠ O TELEFONE INTERPRETADO — o último lugar onde alguém
+                          olha antes do lote sair. `paraE164BR` avisa quando
+                          acrescenta o nono dígito a um cadastro antigo, e esse
+                          aviso foi feito para uma tela com gente na frente. No
+                          automático não há gente: o motor deriva e envia. São
+                          13% da base nessa situação. */}
+                      {!foraAgora && l.telefoneAjustado && (
+                        <p className="badge badge-warn" style={{ margin: "6px 0 0 72px", whiteSpace: "normal", textAlign: "left", fontSize: 11 }}>
+                          Telefone: {l.telefoneAjustado}
+                        </p>
+                      )}
+
+                      {!foraAgora && l.telefoneInvalido && (
+                        <p className="badge badge-danger" style={{ margin: "6px 0 0 72px", whiteSpace: "normal", textAlign: "left", fontSize: 11 }}>
+                          Não vai sair — {l.telefoneInvalido}
+                        </p>
+                      )}
+
                       {/* ⚠ O QUE VAI SER PREENCHIDO NESTA PESSOA.
                           O corpo do modelo é fixo, mora na Meta e foi aprovado
                           por ela — copiá-lo para cá criaria uma segunda fonte do
