@@ -113,7 +113,14 @@ export async function proximaProva(): Promise<ProximaResult> {
   // O MESMO motor da tela de responder, com o MESMO contato — se aqui rodasse
   // uma versão simplificada, a medição não diria nada sobre o que a operação
   // usa. É a regra da casa: um caminho só.
-  const r = await gerarResposta({ contactId: alvo.contact_id!, message: alvo.content! });
+  // ⚠ `ateISO` É O CONSERTO DA MEDIÇÃO. Sem ele o modelo recebe o histórico de
+  // HOJE para julgar uma mensagem de dias atrás — e responde continuando uma
+  // conversa que, naquele momento, ainda não tinha acontecido.
+  const r = await gerarResposta({
+    contactId: alvo.contact_id!,
+    message: alvo.content!,
+    ateISO: alvo.occurred_at,
+  });
   if (!r.ok) return { ok: false, erro: "limite" in r ? r.mensagem : r.error };
 
   return {
@@ -131,7 +138,7 @@ export async function proximaProva(): Promise<ProximaResult> {
   };
 }
 
-export type Veredito = "enviaria" | "ajustaria" | "erro_grave";
+export type Veredito = "enviaria" | "ajustaria" | "erro_grave" | "descartada";
 
 export async function julgar(entrada: {
   prova: Prova;

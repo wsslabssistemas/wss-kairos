@@ -116,6 +116,14 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   índice parcial sem repetir o predicado, o PostgREST não sabe expressar isso,
   e **toda gravação falhava em silêncio**. O contato do cliente era criado e a
   frase dele sumia, com 200 devolvido à Meta e tudo verde por fora.
+- **⚠ EDITOU MANIFESTO? O BANCO NÃO SABE.** O manifesto que o sistema LÊ mora
+  na tabela `skills`; o YAML é a fonte, e quem leva um ao outro é
+  `node scripts/seed-skills.mjs <segmento>`, **rodado à mão**. Em 20/ago a
+  correção do "horário que não existe" foi escrita, commitada, o CI passou e a
+  Vercel publicou — **e o erro aconteceu de novo em 21/ago, com outra lead**,
+  porque o banco seguiu com a versão velha por quatro dias. "Está no
+  repositório" não é "está valendo". Guardado por
+  `manifesto_no_banco_check.mjs` (roda local, precisa de `.env.local`).
 - **Mover a fonte de verdade é fácil; achar todos os LEITORES é o trabalho.**
   O `phone_number_id` foi para `tenant_secrets` e a busca do tenant no webhook
   continuou lendo `tenants.settings`: a mensagem chegava, a assinatura passava,

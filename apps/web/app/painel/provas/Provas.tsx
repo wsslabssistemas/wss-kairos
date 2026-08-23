@@ -21,14 +21,14 @@ import { proximaProva, julgar, type Prova, type Veredito } from "./actions";
 export function Provas({
   placar,
 }: {
-  placar: { enviaria: number; ajustaria: number; erro_grave: number; escalou: number };
+  placar: { enviaria: number; ajustaria: number; erro_grave: number; escalou: number; descartadas: number };
 }) {
   const [prova, setProva] = useState<Prova | null>(null);
   const [nota, setNota] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [acabou, setAcabou] = useState<string | null>(null);
-  const [sessao, setSessao] = useState({ enviaria: 0, ajustaria: 0, erro_grave: 0 });
+  const [sessao, setSessao] = useState({ enviaria: 0, ajustaria: 0, erro_grave: 0, descartada: 0 });
 
   const total = placar.enviaria + placar.ajustaria + placar.erro_grave;
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
@@ -87,7 +87,10 @@ export function Provas({
               <span className={placar.erro_grave ? "badge badge-danger" : "badge"}>
                 {placar.erro_grave} erro grave ({pct(placar.erro_grave)}%)
               </span>
-              <span className="text-faint" style={{ fontSize: 13 }}>de {total} mensagens reais</span>
+              <span className="text-faint" style={{ fontSize: 13 }}>
+                de {total} mensagens reais
+                {placar.descartadas > 0 && <> · {placar.descartadas} descartadas</>}
+              </span>
             </div>
             <p className="text-dim" style={{ fontSize: 13, marginTop: 10, marginBottom: 0 }}>
               {placar.escalou > 0 && (
@@ -109,10 +112,11 @@ export function Provas({
         )}
       </div>
 
-      {(sessao.enviaria + sessao.ajustaria + sessao.erro_grave) > 0 && (
+      {(sessao.enviaria + sessao.ajustaria + sessao.erro_grave + sessao.descartada) > 0 && (
         <p className="text-faint" style={{ fontSize: 12, marginTop: 8 }}>
           Nesta sessão: {sessao.enviaria} enviaria · {sessao.ajustaria} ajustaria ·{" "}
-          {sessao.erro_grave} erro grave.
+          {sessao.erro_grave} erro grave
+          {sessao.descartada > 0 && <> · {sessao.descartada} descartadas</>}.
         </p>
       )}
 
@@ -200,6 +204,22 @@ export function Provas({
               ✕ Erro grave
             </button>
           </div>
+
+          {/* ⚠ A SAÍDA PARA O QUE NUNCA FOI PERGUNTA.
+              A base do piloto grava anotação da equipe como mensagem de
+              entrada — "renovou semestral" é uma delas — e nenhum campo separa
+              as duas: as 1.180 entradas são todas `customer_message`. Como o
+              dado não distingue, quem distingue é quem julga. Fica fora do
+              placar: julgar a IA contra uma anotação é medir a resposta para
+              uma pergunta que ninguém fez. */}
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost mt-16"
+            disabled={carregando}
+            onClick={() => decidir("descartada")}
+          >
+            ↷ Isso não é mensagem de cliente — descartar
+          </button>
 
           <p className="text-faint" style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>
             Nada é enviado. A mensagem já foi respondida no passado — aqui só se mede o que a

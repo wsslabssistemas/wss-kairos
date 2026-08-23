@@ -69,6 +69,26 @@ function fatos(sections: Record<string, unknown>): string {
 export async function gerarResposta(input: {
   contactId?: string;
   message: string;
+  /**
+   * ⚠ O CORTE DO HISTÓRICO — só existe para o BANCO DE PROVAS, e sem ele a
+   * medição inteira mente.
+   *
+   * A tela de responder é o caso normal: a mensagem é a última, e "todo o
+   * histórico" e "o histórico até esta mensagem" são a mesma coisa.
+   *
+   * No banco de provas não são. Julgar uma mensagem do dia 21 às 14h com o
+   * histórico de HOJE entrega ao modelo tudo o que aconteceu DEPOIS — e ele
+   * responde continuando uma conversa que ainda não tinha acontecido. Foi
+   * exatamente o que o fundador pegou: para *"gostaria de mais informações"*,
+   * a sugestão veio *"só reforçando as opções que tinha comentado"*, porque as
+   * opções foram comentadas duas horas mais tarde.
+   *
+   * Ele disse a frase que fecha o assunto: *"não faz sentido fazer a
+   * simulação, porque ela não mostra o que realmente aconteceu"*. Estava
+   * certo. Medição com vazamento do futuro é pior que nenhuma medição — ela
+   * produz um número com aparência de rigor.
+   */
+  ateISO?: string;
 }): Promise<GerarResult> {
   if (!hasAIKey()) return { ok: false, error: "Chave de IA não configurada (AI_API_KEY)." };
   const message = (input.message ?? "").trim();
@@ -167,13 +187,22 @@ export async function gerarResposta(input: {
   if (input.contactId) {
     const [{ data: c }, { data: h }] = await Promise.all([
       supabase.from("contacts").select("name, journey_stage, owner_id, custom, source").eq("id", input.contactId).eq("tenant_id", tenant.id).maybeSingle(),
-      supabase
-        .from("interactions")
-        .select("direction, content, occurred_at")
-        .eq("tenant_id", tenant.id)
-        .eq("contact_id", input.contactId)
-        .order("occurred_at", { ascending: false })
-        .limit(10),
+      (() => {
+        // paginacao-ok: sao "os 10 da tela" — decisao de produto, nao leitura
+        // de tabela inteira. O `.limit(10)` esta no fim da cadeia; a trava nao
+        // o enxerga porque o encadeamento foi quebrado para caber o corte de
+        // data. O limite continua ali, e continua sendo dez.
+        let q = supabase
+          .from("interactions")
+          .select("direction, content, occurred_at")
+          .eq("tenant_id", tenant.id)
+          .eq("contact_id", input.contactId);
+        // Estritamente ANTES da mensagem julgada. `lt`, nunca `lte`: a própria
+        // mensagem já vai no prompt como "MENSAGEM DO CLIENTE", e repeti-la no
+        // histórico faria o modelo achar que ela foi dita duas vezes.
+        if (input.ateISO) q = q.lt("occurred_at", input.ateISO);
+        return q.order("occurred_at", { ascending: false }).limit(10);
+      })(),
     ]);
     const contact = c as {
       name: string;

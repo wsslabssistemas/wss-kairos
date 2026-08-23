@@ -46,7 +46,14 @@ create table if not exists public.provas (
   escalou        boolean not null default false,
   faltam_fatos   text[],
 
-  veredito       text not null check (veredito in ('enviaria','ajustaria','erro_grave')),
+  -- ⚠ `descartada` NAO E UM QUARTO VEREDITO, e sim a saida para a entrada que
+  -- nao era pergunta. A base do piloto grava anotacao da equipe como
+  -- `inbound` ("renovou semestral"), e nenhum `input_kind` separa as duas: as
+  -- 1.180 entradas sao todas `customer_message`. Como o dado nao distingue,
+  -- quem distingue e quem julga — e o descarte fica FORA do placar, porque
+  -- somar opiniao sobre uma pergunta que nunca foi feita e o mesmo erro de
+  -- medir a IA com o futuro da conversa na mao.
+  veredito       text not null check (veredito in ('enviaria','ajustaria','erro_grave','descartada')),
   nota           text,
 
   julgado_por    uuid references public.memberships(id) on delete set null,

@@ -62,7 +62,11 @@ export default async function ProvasPage() {
     enviaria: linhas.filter((l) => l.veredito === "enviaria").length,
     ajustaria: linhas.filter((l) => l.veredito === "ajustaria").length,
     erro_grave: linhas.filter((l) => l.veredito === "erro_grave").length,
-    escalou: linhas.filter((l) => l.escalou).length,
+    // ⚠ Descartadas ficam FORA do placar de propósito: são entradas que nunca
+    // foram pergunta de cliente. Contá-las mediria a IA contra uma anotação da
+    // equipe — e diluiria justamente o número que autoriza o automático.
+    escalou: linhas.filter((l) => l.escalou && l.veredito !== "descartada").length,
+    descartadas: linhas.filter((l) => l.veredito === "descartada").length,
   };
 
   return (
