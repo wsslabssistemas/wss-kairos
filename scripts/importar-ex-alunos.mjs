@@ -97,15 +97,54 @@ for (const a of time) {
 }
 
 // ---------------------------------------------------------------- A MONTAGEM
+/**
+ * ⚠ QUEM PAGOU MENOS QUE UMA MENSALIDADE, POUCAS VEZES, NAO E EX-ALUNO.
+ *
+ * Achado em 24/ago/2026, com a campanha prestes a sair: o fundador olhou a
+ * lista e disse *"esta aparecendo gente que fez o avulso, e normalmente quem
+ * paga avulso e quem nao mora perto ou na cidade"*.
+ *
+ * Ele estava certo, e a causa e a fonte: esta base foi montada a partir do
+ * arquivo de RECEBIMENTOS — quem PAGOU alguma coisa —, nao do de matriculas.
+ * O arquivo de matriculas tem a coluna `Plano` e permite separar avulso de
+ * contrato; o de recebimentos nao tem nada disso. Resultado: **todo turista
+ * que treinou um dia entrou como ex-aluno.** Eram 91 de 1.088.
+ *
+ * ⚠ E O CORTE NAO PODE SER PELA MEDIA POR PAGAMENTO, que foi a primeira ideia
+ * e estava errada: o anual parcelado e **12x R$ 99**, entao "media abaixo de
+ * R$ 100" excluiria 93 dos MELHORES ex-alunos. E ha gente pagando R$ 8 doze
+ * vezes — copagamento de convenio, que e aluno de verdade.
+ *
+ * O corte que funciona usa as DUAS dimensoes: **total abaixo de uma
+ * mensalidade E no maximo duas visitas**. Quem veio 12 vezes nao esta de
+ * passagem, por menos que pague; quem pagou R$ 35 uma vez, esta.
+ */
+const MENSALIDADE_CENTS = 9900;   // a menor parcela de plano que existe hoje
+const MAXIMO_DE_VISITAS = 2;
+const eVisitaDePassagem = (p) =>
+  Number.isFinite(p.totalCents) &&
+  Number.isFinite(p.pagamentos) &&
+  p.pagamentos > 0 &&
+  p.pagamentos <= MAXIMO_DE_VISITAS &&
+  p.totalCents < MENSALIDADE_CENTS;
+
 const hoje = new Date().toISOString().slice(0, 10);
 const linhas = [];
-let jaExiste = 0, semNome = 0, telefoneRepetido = 0;
+let jaExiste = 0, semNome = 0, telefoneRepetido = 0, visitas = 0;
 const vistos = new Set();
 
 for (const p of rec.pagantes) {
   if (conhecidos.has(p.chave)) { jaExiste++; continue; }
   const nome = (p.nome ?? "").trim();
   if (!nome) { semNome++; continue; }
+
+  // ⚠ A VISITA NAO ENTRA NA REATIVACAO. Ela vai para `perdido` — o mesmo
+  // lugar onde a importacao das matriculas ja coloca o "Treino Avulso" —,
+  // porque mandar "volte a treinar" para quem nunca treinou aqui e a classe do
+  // Gympass: mensagem plausivel chegando em quem nao deveria receber, no nome
+  // da academia. E infla o denominador da retencao.
+  const etapa = eVisitaDePassagem(p) ? "perdido" : ETAPA;
+  if (etapa !== ETAPA) visitas++;
 
   const fone = p.telefone ? normalizePhone(p.telefone) : null;
   // Telefone que já existe na base é a MESMA PESSOA com outro código — criar
@@ -124,7 +163,7 @@ for (const p of rec.pagantes) {
     name: nome,
     phone: fone,
     source: "ex-aluno (recebimentos)",
-    journey_stage: ETAPA,
+    journey_stage: etapa,
     stage_entered_at: `${saiuEm}T12:00:00Z`,
     // ⚠ HISTÓRICO. Ver a nota 1 no topo: sem isto a conversão da empresa
     // inteira desaba por 30 dias.
@@ -161,6 +200,10 @@ console.log(`\n${tenant.name} · etapa de destino: "${ETAPA}"`);
 console.log(`${"=".repeat(58)}`);
 console.log(`  a criar como ex-aluno:            ${String(linhas.length).padStart(6)}`);
 console.log(`  já cadastrados (pulados):         ${String(jaExiste).padStart(6)}`);
+// ⚠ APARECE NO RESUMO, e não em silêncio: quem lê precisa saber que N pessoas
+// entraram FORA da reativação, senão a diferença entre o total do arquivo e o
+// total da fila vira mistério.
+console.log(`  visitas de passagem (→ perdido):  ${String(visitas).padStart(6)}`);
 console.log(`  telefone já na base (pulados):    ${String(telefoneRepetido).padStart(6)}`);
 console.log(`  sem nome (pulados):               ${String(semNome).padStart(6)}`);
 console.log(`  sem telefone (entram mudos):      ${String(linhas.filter((l) => !l.phone).length).padStart(6)}`);
