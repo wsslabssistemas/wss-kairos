@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { proximaProva, julgar, type Prova, type Veredito } from "./actions";
 
 /**
@@ -29,6 +30,7 @@ export function Provas({
   const [erro, setErro] = useState<string | null>(null);
   const [acabou, setAcabou] = useState<string | null>(null);
   const [sessao, setSessao] = useState({ enviaria: 0, ajustaria: 0, erro_grave: 0, descartada: 0 });
+  const router = useRouter();
 
   const total = placar.enviaria + placar.ajustaria + placar.erro_grave;
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
@@ -60,6 +62,12 @@ export function Provas({
       setSessao((s) => ({ ...s, [veredito]: s[veredito] + 1 }));
       setProva(null);
       setNota("");
+      // ⚠ SEM ISTO O PLACAR DE CIMA NUNCA MUDAVA. Ele vem do servidor como
+      // propriedade, e `revalidatePath` sozinho não redesenha um componente de
+      // cliente já montado. O fundador julgou 73 mensagens vendo o contador
+      // parado — e concluiu, com razão, que talvez nada estivesse salvando.
+      // Trabalho que não aparece na tela é indistinguível de trabalho perdido.
+      router.refresh();
       await puxar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));

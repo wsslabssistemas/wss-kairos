@@ -14,6 +14,7 @@ import { lerQualificacao, blocoParaPrompt } from "@/lib/qualificacao";
 import { aiModel, AI_MODEL, hasAIKey, keyHint, estimateCostCents, tokensOf } from "@/lib/ai";
 import { TEXTO_DE_FORA_E_DADO } from "@/lib/prompt";
 import { verificarCota } from "@/lib/cota-db";
+import { reparosRecentes, blocoDeReparos } from "@/lib/correcoes";
 import { revalidatePath } from "next/cache";
 import { opcoesDeHorario, marcarCompromisso } from "../agenda/horarios-actions";
 import { lerTudo } from "@/lib/paginado";
@@ -388,6 +389,11 @@ export async function gerarResposta(input: {
     // derrubar a resposta ao cliente por causa de uma estatística.
   }
 
+  // ⚠ O QUE O DONO JÁ APONTOU COMO FALTANDO. Em duas horas de banco de provas
+  // saíram 30 notas dizendo o que cada resposta deixou de dizer — e elas
+  // estavam numa tabela que o prompt não lia. Ver `lib/correcoes.ts`.
+  const reparos = blocoDeReparos(await reparosRecentes(tenant.id));
+
   const stageList = stages.map((s) => `${s.key} = ${s.label}${s.won ? " (ganho)" : ""}${s.terminal ? " (final)" : ""}`).join("; ");
   const hardRules = Array.isArray(manifest.hard_rules) ? (manifest.hard_rules as string[]).join("; ") : "";
 
@@ -420,6 +426,8 @@ ${trava.travou ? "→ Falta fato EXIGIDO por uma entrada que manda escalar. Marq
 
 BIBLIOTECA COMERCIAL (estratégia e técnicas — a base das respostas):
 ${library || "(biblioteca vazia)"}
+${reparos ? `
+${reparos}` : ""}
 ${notaDoAprendizado ? `
 ${notaDoAprendizado}` : ""}
 

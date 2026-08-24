@@ -49,6 +49,38 @@ export default async function CorrecoesPage() {
     id: string; contexto: string; sugerido: string; enviado: string; occurred_at: string;
   }[] | null) ?? [];
 
+  // ⚠ O BANCO DE PROVAS TAMBEM ENSINA, E ESTAVA INVISIVEL AQUI.
+  //
+  // O fundador julgou 73 mensagens em duas horas, abriu esta tela e viu
+  // "nenhuma correção ainda" — e perguntou se o trabalho dele tinha se
+  // perdido. Não tinha: ele estava em `provas`, e esta tela só lia `ai_edits`.
+  //
+  // Duas tabelas alimentando o MESMO prompt, com a tela chamada "o que a IA
+  // aprendeu" mostrando só metade. Trabalho que não aparece é indistinguível
+  // de trabalho perdido — a mesma regra do campo que some.
+  //
+  // paginacao-ok: `.limit(50)` com ORDER BY explícito, mesmo motivo do de cima.
+  const { data: dadosProvas } = await supabase
+    .from("provas")
+    .select("id, mensagem, sugestao, nota, veredito, created_at")
+    .eq("tenant_id", tenant.id)
+    .neq("veredito", "descartada")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const provas = (dadosProvas as {
+    id: string; mensagem: string; sugestao: string; nota: string | null;
+    veredito: string; created_at: string;
+  }[] | null) ?? [];
+
+  const placar = {
+    enviaria: provas.filter((p) => p.veredito === "enviaria").length,
+    ajustaria: provas.filter((p) => p.veredito === "ajustaria").length,
+    erro_grave: provas.filter((p) => p.veredito === "erro_grave").length,
+  };
+  const julgadas = placar.enviaria + placar.ajustaria + placar.erro_grave;
+  const comNota = provas.filter((p) => p.nota?.trim());
+
   const quando = (iso: string) =>
     new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
@@ -63,6 +95,45 @@ export default async function CorrecoesPage() {
         versões. As <strong>seis mais recentes</strong> voltam para dentro do motor como
         exemplo — ele passa a escrever no jeito da casa em vez do jeito genérico.
       </p>
+
+      {/* O RESULTADO DO BANCO DE PROVAS — porque é aqui que a pessoa vem
+          procurar o que a IA aprendeu, e era aqui que ele não estava. */}
+      {julgadas > 0 && (
+        <div className="card mt-24" style={{ borderColor: "var(--border-brand)" }}>
+          <div className="between">
+            <p className="eyebrow" style={{ margin: 0 }}>Do banco de provas</p>
+            <Link href="/painel/provas" className="btn btn-sm btn-ghost">Julgar mais →</Link>
+          </div>
+          <div className="row wrap mt-16" style={{ gap: 10, alignItems: "baseline" }}>
+            <span className="badge badge-success">{placar.enviaria} enviaria</span>
+            <span className="badge badge-warn">{placar.ajustaria} ajustaria</span>
+            <span className={placar.erro_grave ? "badge badge-danger" : "badge"}>
+              {placar.erro_grave} erro grave
+            </span>
+            <span className="text-faint" style={{ fontSize: 13 }}>
+              de {julgadas} mensagens reais julgadas
+            </span>
+          </div>
+          <p className="text-dim" style={{ fontSize: 13, marginTop: 10, marginBottom: 0 }}>
+            As <strong>seis notas mais recentes</strong> entram no motor junto com as
+            correções — é o dono da empresa dizendo o que faltou, e vale como regra.
+          </p>
+
+          {comNota.length > 0 && (
+            <ul style={{ listStyle: "none", padding: 0, margin: "16px 0 0" }}>
+              {comNota.slice(0, 12).map((p, i) => (
+                <li key={p.id} style={{ padding: "10px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
+                  <p className="text-faint" style={{ fontSize: 12, margin: 0 }}>
+                    {quando(p.created_at)} · o cliente disse: &ldquo;{p.mensagem.slice(0, 90)}
+                    {p.mensagem.length > 90 ? "…" : ""}&rdquo;
+                  </p>
+                  <p style={{ fontSize: 14, margin: "4px 0 0" }}>{p.nota}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {linhas.length === 0 ? (
         <div className="card mt-24">

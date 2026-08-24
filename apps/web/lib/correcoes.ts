@@ -116,6 +116,75 @@ export async function correcoesRecentes(tenantId: string, quantas = 6): Promise<
   }
 }
 
+/** O que faltou numa sugestão, escrito por quem julgou no banco de provas. */
+export type Reparo = {
+  mensagem: string;
+  sugestao: string;
+  nota: string;
+};
+
+/**
+ * O QUE O BANCO DE PROVAS ENSINOU — e por que ele entra aqui, no mesmo lugar.
+ *
+ * ⚠ ELE EXISTE PORQUE A PREMISSA DO `ai_edits` PODE NÃO SE REALIZAR. Aquela
+ * tabela captura a correção de quem edita antes de ENVIAR, e o fundador disse
+ * que não confia na equipe para isso. Em duas horas de banco de provas ele
+ * escreveu **30 notas** dizendo o que faltava em cada resposta; `ai_edits`
+ * continuava com zero linhas. O sinal existia e estava numa tabela que o
+ * prompt não lia.
+ *
+ * ⚠ E A NOTA É DIFERENTE DO PAR SUGERIDO×ENVIADO, de um jeito que ajuda: ela
+ * não é o texto final, é **o motivo**. "Faltou oferecer a semana experimental
+ * com o brinde" ensina a regra; um texto reescrito ensina uma frase. Por isso
+ * o rótulo abaixo diz REPARO e não "resposta certa".
+ *
+ * paginacao-ok: `.limit(6)` é decisão de produto, com ORDER BY explícito.
+ */
+export async function reparosRecentes(tenantId: string, quantas = 6): Promise<Reparo[]> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("provas")
+      .select("mensagem, sugestao, nota")
+      .eq("tenant_id", tenantId)
+      .eq("veredito", "ajustaria")
+      .not("nota", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(quantas);
+    if (error) {
+      console.error(`[reparos] nao leu: ${error.message}`);
+      return [];
+    }
+    return (data as Reparo[] | null) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * O bloco dos reparos, para o prompt.
+ *
+ * ⚠ Vem com a MENSAGEM DO CLIENTE junto, e isso não é enfeite: "faltou o
+ * brinde" é regra certa quando alguém pergunta preço e ruído quando alguém
+ * está cancelando. Sem a situação, o exemplo ensina a regra errada — que é
+ * pior que não ensinar. Mesma lição do `contexto` obrigatório do `ai_edits`.
+ */
+export function blocoDeReparos(rs: Reparo[]): string {
+  if (!rs.length) return "";
+  const linhas = rs
+    .map(
+      (r, i) =>
+        `${i + 1}. O CLIENTE DISSE: ${r.mensagem.slice(0, 300)}\n` +
+        `   Você respondeu: ${r.sugestao.slice(0, 400)}\n` +
+        `   O DONO DA EMPRESA APONTOU O QUE FALTOU: ${r.nota}`,
+    )
+    .join("\n\n");
+
+  return `O QUE O DONO DESTA EMPRESA JÁ APONTOU COMO FALTANDO NAS SUAS RESPOSTAS (ele leu mensagens reais e disse o que você deixou de dizer — aplique o MESMO padrão quando a situação for parecida, sem copiar a frase):
+
+${linhas}`;
+}
+
 /**
  * O bloco de texto que entra no prompt.
  *

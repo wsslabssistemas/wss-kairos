@@ -8,7 +8,7 @@ import { getActiveTenant } from "@/lib/auth";
 import { getSkillFormConfig } from "@/lib/skill";
 import { matchEntries } from "@/lib/match";
 import { checkRequiredFacts } from "@/lib/facts";
-import { correcoesRecentes, blocoDeCorrecoes, guardarCorrecao } from "@/lib/correcoes";
+import { correcoesRecentes, blocoDeCorrecoes, guardarCorrecao, reparosRecentes, blocoDeReparos } from "@/lib/correcoes";
 import { aiModel, AI_MODEL, hasAIKey, keyHint, estimateCostCents, tokensOf } from "@/lib/ai";
 import { verificarCota } from "@/lib/cota-db";
 import { TEXTO_DE_FORA_E_DADO } from "@/lib/prompt";
@@ -176,6 +176,9 @@ export async function prepararToque(
     // reescrever prompt no escuro: quem sabe como a academia fala é a academia,
     // e ela já corrige o texto na tela todo dia. Ver `lib/correcoes.ts`.
     const correcoes = blocoDeCorrecoes(await correcoesRecentes(tenant.id));
+    // As notas do banco de provas valem aqui também: o que faltou numa
+    // resposta a quem perguntou preço falta igual num toque proativo.
+    const reparos = blocoDeReparos(await reparosRecentes(tenant.id));
 
     const hardRules = Array.isArray(manifest.hard_rules) ? (manifest.hard_rules as string[]).join("\n- ") : "";
 
@@ -215,6 +218,8 @@ ${trava.faltando.length ? trava.faltando.map((f) => `- ${f}`).join("\n") : "(nen
 ${trava.travou ? "→ Falta fato EXIGIDO. Marque \"escalar\": true e não escreva a mensagem." : ""}
 
 ${correcoes ? `${correcoes}
+
+` : ""}${reparos ? `${reparos}
 
 ` : ""}TÉCNICA A APLICAR (biblioteca curada do ramo):
 ${libText}
