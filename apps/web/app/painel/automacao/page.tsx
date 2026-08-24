@@ -9,6 +9,7 @@ import { Guia } from "./Guia";
 import { Roteamento } from "./Roteamento";
 import { Simulacao } from "./Simulacao";
 import { DisparoDeTeste } from "./DisparoDeTeste";
+import { RodarAgora } from "./RodarAgora";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 
@@ -205,7 +206,12 @@ export default async function AutomacaoPage({
         />
       )}
 
+      {/* A ORDEM É A DA CABEÇA DE QUEM VAI DISPARAR: quem sairia (simulação),
+          quem sai de verdade agora (rodar), e um número escolhido a dedo
+          (teste). As três perguntas, na sequência em que se fazem. */}
       {canEdit && <Simulacao modo={a.mode} />}
+
+      {canEdit && <RodarAgora modo={a.mode} />}
 
       {/* COLADO NA SIMULAÇÃO de propósito: uma mostra quem sairia sem mandar
           nada, o outro manda de verdade para um número escolhido. As duas
