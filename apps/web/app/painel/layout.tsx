@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { AvisoDeMensagem } from "./AvisoDeMensagem";
 import Link from "next/link";
 import { requireUser, getActiveTenant, listMemberships } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -181,6 +182,12 @@ export default async function PainelLayout({
           por quem vê o dado e por quem conserta quando quebra. Esconder isso
           não é personalização: é confundir o cliente do cliente sobre com quem
           ele está falando. */}
+      {/* ⚠ NO LAYOUT, e não numa tela: quem está no Funil também precisa saber
+          que alguém respondeu. Ele nunca navega sozinho — só aparece num canto
+          com um link, porque recarregar a tela de quem está preenchendo um
+          cadastro apaga o trabalho dela. */}
+      <AvisoDeMensagem />
+
       <footer className="container" style={{ padding: "0 1.25rem 32px", fontSize: 12, opacity: 0.5 }}>
         {BRAND_NAME} — feito por <Link href="/painel/sobre">{MAKER}</Link>
       </footer>

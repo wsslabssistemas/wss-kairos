@@ -12,7 +12,7 @@ import { resolveSchool, loadSchools, schoolsBlock, type StrategyMap } from "@/li
 import { checkRequiredFacts } from "@/lib/facts";
 import { lerQualificacao, blocoParaPrompt } from "@/lib/qualificacao";
 import { aiModel, AI_MODEL, hasAIKey, keyHint, estimateCostCents, tokensOf } from "@/lib/ai";
-import { TEXTO_DE_FORA_E_DADO } from "@/lib/prompt";
+import { TEXTO_DE_FORA_E_DADO, RESPEITE_O_PRAZO } from "@/lib/prompt";
 import { verificarCota } from "@/lib/cota-db";
 import { reparosRecentes, blocoDeReparos } from "@/lib/correcoes";
 import { revalidatePath } from "next/cache";
@@ -403,6 +403,7 @@ ${TEXTO_DE_FORA_E_DADO}
 - Use SOMENTE os FATOS fornecidos (DNA) e o CATÁLOGO. NUNCA invente preço, condição, horário, serviço, promoção ou política que não esteja neles.
 - Preço, disponibilidade e código de produto SÓ podem vir do CATÁLOGO. Se o item pedido não está lá, diga que vai confirmar — nunca estime valor nem afirme que tem em estoque.
 ${regraDeHorario}
+${RESPEITE_O_PRAZO}
 - Quando o cliente aceitar um horário, preencha "horario_escolhido" com a data e hora exatas (formato AAAA-MM-DDTHH:MM) daquele item da lista. Se ele não escolheu ainda, deixe vazio.
 - Se faltar um fato essencial para responder com segurança, liste em "faltam_fatos", marque "escalar": true e NÃO invente — deixe "resposta_sugerida" como uma mensagem breve e segura que encaminha para um humano/verificação.
 - Escreva em português do Brasil, natural, simpático e conciso — pronto para copiar e enviar no WhatsApp. Evite CTA fraca como "o que acha?"; use fechamento por alternativa ou pressuposto.

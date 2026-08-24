@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { responderPeloCanal, gerarSugestaoDaConversa } from "./actions";
 
 /**
@@ -40,6 +41,20 @@ export function Responder({
    */
   const [sugerido, setSugerido] = useState<string | null>(null);
   const [recusa, setRecusa] = useState<string | null>(null);
+  const router = useRouter();
+
+  /**
+   * ⚠ O FREIO DE MÃO DO RELÓGIO. Enquanto esta caixa gera ou envia, o aviso
+   * de mensagem nova não pode recarregar a página por baixo — recarregar no
+   * meio de uma geração joga fora o texto que a pessoa está prestes a mandar.
+   * Ver `AvisoDeMensagem`.
+   */
+  useEffect(() => {
+    const trabalhando = gerando || enviando;
+    if (trabalhando) document.body.dataset.ocupado = "1";
+    else delete document.body.dataset.ocupado;
+    return () => { delete document.body.dataset.ocupado; };
+  }, [gerando, enviando]);
 
   const gerar = async () => {
     setGerando(true);
@@ -82,6 +97,12 @@ export function Responder({
         setTexto("");
         setSugerido(null);
         setRecusa(null);
+        // ⚠ SEM ISTO A TELA FICA VELHA DEPOIS DE RESPONDER. O fundador
+        // respondeu a Jacqueline e a lista continuou dizendo "1 aguardando
+        // resposta" — o dado estava certo no banco, a página é que não voltou
+        // a buscá-lo. `revalidatePath` no servidor não redesenha componente de
+        // cliente já montado. É a terceira vez que isto morde aqui.
+        router.refresh();
       } else setErro(r.motivo);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
