@@ -328,73 +328,14 @@ export default async function ConversasPage({
         de cada pessoa continua na ficha dela.
       </p>
 
-      {/* ---------------------------------------------------- O PLACAR */}
-      <div
-        className="mt-24"
-        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}
-      >
-        {[
-          { rotulo: "Saíram", valor: enviadas, hint: "pelo número do sistema" },
-          { rotulo: "Chegaram ao aparelho", valor: entregues, hint: "entregues ou lidas" },
-          { rotulo: "Lidas", valor: lidas, hint: "confirmação de leitura" },
-          { rotulo: "Recebidas", valor: recebidas, hint: "mensagens dos clientes" },
-        ].map((k) => (
-          <div key={k.rotulo} className="card" style={{ padding: 14 }}>
-            <p className="text-faint" style={{ fontSize: 12, margin: 0 }}>{k.rotulo}</p>
-            <p style={{ fontSize: 26, fontWeight: 600, margin: "2px 0 0" }}>{k.valor}</p>
-            <p className="text-faint" style={{ fontSize: 11, margin: 0 }}>{k.hint}</p>
-          </div>
-        ))}
-        <div
-          className="card"
-          style={{ padding: 14, borderColor: falhas > 0 ? "var(--danger)" : undefined }}
-        >
-          <p className="text-faint" style={{ fontSize: 12, margin: 0 }}>Falharam</p>
-          <p style={{ fontSize: 26, fontWeight: 600, margin: "2px 0 0", color: falhas > 0 ? "var(--danger)" : undefined }}>
-            {falhas}
-          </p>
-          <p className="text-faint" style={{ fontSize: 11, margin: 0 }}>não chegaram</p>
-        </div>
-      </div>
+      {/* ⚠ AS CONVERSAS VÊM PRIMEIRO, e isto foi reordenado em 24/ago a pedido
+          do fundador: *"faz uma ação no topo da tela, depois desce lá para
+          baixo e faz outra, depois sobe"*.
 
-      <p className="text-faint mt-8" style={{ fontSize: 12 }}>
-        Custo estimado do mês: <strong>{reais(gasto.gastoCents)}</strong> em{" "}
-        {gasto.totalMensagens} mensagem(ns). A tarifa em reais ainda é conversão do
-        dólar, não o rate card da conta — ver <Link href="/painel/admin/cotas">Cota de IA</Link>.
-      </p>
-
-      {/* ---------------------------------------------------- AS FALHAS
-          ⚠ PRIMEIRO NA TELA E COM MOTIVO JUNTO. A Meta devolve um texto que
-          diz POR QUE não chegou, e cada motivo tem conserto diferente: número
-          que não tem WhatsApp, modelo não aprovado, limite da pessoa. Trocar
-          isso por "falha no envio" economizaria uma linha e custaria a única
-          informação que resolve o problema. */}
-      {falhas > 0 && (
-        <div className="card mt-24" style={{ borderColor: "var(--danger)" }}>
-          <div className="between" style={{ alignItems: "baseline" }}>
-            <strong>Não chegaram — e cada uma custou</strong>
-            <span className="text-faint" style={{ fontSize: 12 }}>
-              {fs.length >= 50 ? "as 50 mais recentes" : `${fs.length} no mês`}
-            </span>
-          </div>
-          <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0" }}>
-            {fs.map((f) => (
-              <li key={f.id} style={{ padding: "10px 0", borderTop: "1px solid var(--border)" }}>
-                <div className="row wrap" style={{ gap: 8, alignItems: "baseline" }}>
-                  <Link href={`/painel/contatos/${f.contact_id}`} style={{ fontSize: 14 }}>
-                    {nomeDe(f)}
-                  </Link>
-                  <span className="text-faint" style={{ fontSize: 12 }}>{quando(f.delivery_at)}</span>
-                </div>
-                <p className="text-dim" style={{ fontSize: 13, margin: "4px 0 0" }}>
-                  {f.delivery_error ?? "A Meta não disse o motivo."}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+          O placar e o log de entrega estavam ANTES da lista, e eles são
+          leitura de gestão — olhados uma vez por dia. A lista é TRABALHO,
+          aberta o dia inteiro. Quem trabalha não pode rolar por cima de
+          números para chegar no que faz. */}
       {/* ---------------------------------------------------- AS CONVERSAS
           ⚠ ESTA É A METADE QUE FALTAVA DO CANAL.
 
@@ -408,7 +349,7 @@ export default async function ConversasPage({
           O relógio da janela aparece em cada linha porque passadas 24h a Meta
           não entrega texto livre, e quem vai responder precisa saber disso
           ANTES de escrever. */}
-      <div className="card mt-24">
+      <div className="card mt-16">
         <div className="between" style={{ alignItems: "baseline" }}>
           <strong>Conversas no número do sistema</strong>
           <span className="text-faint" style={{ fontSize: 12 }}>
@@ -540,6 +481,74 @@ export default async function ConversasPage({
           </ul>
         )}
       </div>
+
+      {/* ---------------------------------------------------- O PLACAR */}
+      <div
+        className="mt-24"
+        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}
+      >
+        {[
+          { rotulo: "Saíram", valor: enviadas, hint: "pelo número do sistema" },
+          { rotulo: "Chegaram ao aparelho", valor: entregues, hint: "entregues ou lidas" },
+          { rotulo: "Lidas", valor: lidas, hint: "confirmação de leitura" },
+          { rotulo: "Recebidas", valor: recebidas, hint: "mensagens dos clientes" },
+        ].map((k) => (
+          <div key={k.rotulo} className="card" style={{ padding: 14 }}>
+            <p className="text-faint" style={{ fontSize: 12, margin: 0 }}>{k.rotulo}</p>
+            <p style={{ fontSize: 26, fontWeight: 600, margin: "2px 0 0" }}>{k.valor}</p>
+            <p className="text-faint" style={{ fontSize: 11, margin: 0 }}>{k.hint}</p>
+          </div>
+        ))}
+        <div
+          className="card"
+          style={{ padding: 14, borderColor: falhas > 0 ? "var(--danger)" : undefined }}
+        >
+          <p className="text-faint" style={{ fontSize: 12, margin: 0 }}>Falharam</p>
+          <p style={{ fontSize: 26, fontWeight: 600, margin: "2px 0 0", color: falhas > 0 ? "var(--danger)" : undefined }}>
+            {falhas}
+          </p>
+          <p className="text-faint" style={{ fontSize: 11, margin: 0 }}>não chegaram</p>
+        </div>
+      </div>
+
+      <p className="text-faint mt-8" style={{ fontSize: 12 }}>
+        Custo estimado do mês: <strong>{reais(gasto.gastoCents)}</strong> em{" "}
+        {gasto.totalMensagens} mensagem(ns). A tarifa em reais ainda é conversão do
+        dólar, não o rate card da conta — ver <Link href="/painel/admin/cotas">Cota de IA</Link>.
+      </p>
+
+      {/* ---------------------------------------------------- AS FALHAS
+          ⚠ PRIMEIRO NA TELA E COM MOTIVO JUNTO. A Meta devolve um texto que
+          diz POR QUE não chegou, e cada motivo tem conserto diferente: número
+          que não tem WhatsApp, modelo não aprovado, limite da pessoa. Trocar
+          isso por "falha no envio" economizaria uma linha e custaria a única
+          informação que resolve o problema. */}
+      {falhas > 0 && (
+        <div className="card mt-24" style={{ borderColor: "var(--danger)" }}>
+          <div className="between" style={{ alignItems: "baseline" }}>
+            <strong>Não chegaram — e cada uma custou</strong>
+            <span className="text-faint" style={{ fontSize: 12 }}>
+              {fs.length >= 50 ? "as 50 mais recentes" : `${fs.length} no mês`}
+            </span>
+          </div>
+          <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0" }}>
+            {fs.map((f) => (
+              <li key={f.id} style={{ padding: "10px 0", borderTop: "1px solid var(--border)" }}>
+                <div className="row wrap" style={{ gap: 8, alignItems: "baseline" }}>
+                  <Link href={`/painel/contatos/${f.contact_id}`} style={{ fontSize: 14 }}>
+                    {nomeDe(f)}
+                  </Link>
+                  <span className="text-faint" style={{ fontSize: 12 }}>{quando(f.delivery_at)}</span>
+                </div>
+                <p className="text-dim" style={{ fontSize: 13, margin: "4px 0 0" }}>
+                  {f.delivery_error ?? "A Meta não disse o motivo."}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
 
       {/* ---------------------------------------------------- A ATIVIDADE */}
       <div className="card mt-24">

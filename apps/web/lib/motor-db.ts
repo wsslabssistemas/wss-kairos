@@ -47,6 +47,30 @@ export type ResultadoDoMotor = {
 const HORA = 3_600_000;
 
 /**
+ * A PAUSA ENTRE UM ENVIO E O SEGUINTE.
+ *
+ * ⚠ POR QUE ELA EXISTE — pergunta do fundador depois do primeiro lote real:
+ * *"não teremos problemas por serem 7 mensagens enviadas ao mesmo tempo?"*.
+ *
+ * A resposta medida: não foram ao mesmo tempo. O laço é em série e saíram com
+ * **1,4 segundo** entre uma e outra, que é a latência da própria chamada. As 7
+ * foram entregues, 3 lidas em minutos, zero falhas. Rate limit da Cloud API
+ * está ordens de grandeza acima disso.
+ *
+ * Mesmo assim a pausa entra, e não é superstição: **o que derruba a qualidade
+ * de um número não é o limite técnico, é o padrão.** Um número novo, no
+ * primeiro degrau de 250/dia, disparando dez mensagens idênticas em catorze
+ * segundos é a assinatura de quem faz disparo em massa. Sete reais custam
+ * segundos; a reputação do número não se recupera.
+ *
+ * ⚠ E É COM VARIAÇÃO, não fixa. Intervalo constante é tão artificial quanto
+ * intervalo nenhum — um relógio batendo de 6 em 6 segundos é padrão igual.
+ */
+const PAUSA_MIN_MS = 4_000;
+const PAUSA_MAX_MS = 9_000;
+const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
  * Roda o motor de UMA empresa.
  *
  * `simular: true` força o modo simulação mesmo com a empresa em automático —
@@ -123,9 +147,16 @@ export async function rodarMotor(entrada: {
   // mesmo segundo, que é exatamente o padrão de rajada que faz o WhatsApp
   // marcar a conta — e o teto do dia perderia o sentido se as dez saíssem
   // antes de qualquer uma ser contada.
-  for (const contactId of plano.enviar) {
+  for (const [posicao, contactId] of plano.enviar.entries()) {
     const item = doCanal.find((f) => f.contactId === contactId);
     if (!item) continue;
+
+    // ⚠ A PAUSA VEM ANTES, E NÃO NA PRIMEIRA. Depois da última ela só
+    // seguraria a função sem servir a ninguém — e função segurada à toa é
+    // função que estoura o tempo com o trabalho já feito.
+    if (posicao > 0) {
+      await esperar(PAUSA_MIN_MS + Math.floor(Math.random() * (PAUSA_MAX_MS - PAUSA_MIN_MS)));
+    }
 
     const r = await despacharToque({
       supabase: admin,

@@ -21,6 +21,24 @@ import {
 // mensagem chegou — recebe contexto, devolve decisão.
 export const runtime = "nodejs";
 
+/**
+ * ⚠ O TEMPO PRECISA SER DECLARADO, e não estava.
+ *
+ * Esta rota é a que o agendador do motor chama, e o motor manda mensagem por
+ * mensagem, em série. Sem `maxDuration` vale o padrão da plataforma — e um
+ * padrão curto mata a função NO MEIO DO LAÇO: parte do lote sai, o resto não,
+ * e não há erro em lugar nenhum, porque cada envio já foi registrado antes de
+ * a função morrer. Metade da campanha some em silêncio.
+ *
+ * Com a pausa entre envios (ver `lib/motor-db.ts`) um lote de 10 leva ~1
+ * minuto e meio. O teto abaixo dá folga de sobra para isso e para o dia em que
+ * o teto diário subir.
+ *
+ * Isto é um LIMITE, não um custo: o webhook da Meta continua respondendo em
+ * milissegundos. Ninguém paga por tempo que não usa.
+ */
+export const maxDuration = 300;
+
 const app = new Hono().basePath("/api");
 
 /**
