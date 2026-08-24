@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { responderPeloCanal } from "./actions";
+import { responderPeloCanal, gerarSugestaoDaConversa } from "./actions";
 
 /**
  * A CAIXA DE RESPOSTA — e o relógio da janela ao lado dela.
@@ -30,16 +30,58 @@ export function Responder({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviado, setEnviado] = useState(false);
+  const [gerando, setGerando] = useState(false);
+  /**
+   * O que a IA sugeriu, guardado separado do que está na caixa.
+   *
+   * ⚠ SÃO DUAS COISAS DIFERENTES e a diferença É a lição: se no fim o texto
+   * enviado não for igual a este, alguém corrigiu o motor — e a correção vai
+   * junto no envio, sem depender de ninguém lembrar de registrar depois.
+   */
+  const [sugerido, setSugerido] = useState<string | null>(null);
+  const [recusa, setRecusa] = useState<string | null>(null);
+
+  const gerar = async () => {
+    setGerando(true);
+    setErro(null);
+    setRecusa(null);
+    try {
+      const r = await gerarSugestaoDaConversa(contactId);
+      if (!r.ok) { setErro(r.motivo); return; }
+      // ⚠ `escalar` COM TEXTO VAZIO É O CASO QUE JÁ QUEBROU ESTA TELA UMA VEZ.
+      // A trava anti-invenção devolve mensagem vazia junto com o pedido de
+      // escalar; testar a verdade da string deixaria a tela IDÊNTICA depois do
+      // clique, e botão que não muda nada é indistinguível de botão quebrado.
+      if (r.escalar || !r.texto.trim()) {
+        setRecusa(
+          "O motor se recusou a redigir" +
+            (r.faltam.length ? ` — falta no DNA: ${r.faltam.join(", ")}` : "") +
+            ". Escreva você mesmo: ele preferiu não inventar.",
+        );
+      }
+      if (r.texto.trim()) {
+        setTexto(r.texto);
+        setSugerido(r.texto);
+        setEnviado(false);
+      }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGerando(false);
+    }
+  };
 
 
   const enviar = async () => {
     setEnviando(true);
     setErro(null);
     try {
-      const r = await responderPeloCanal(contactId, texto);
+      const r = await responderPeloCanal(contactId, texto, sugerido ?? undefined);
       if (r.ok) {
         setEnviado(true);
         setTexto("");
+        setSugerido(null);
+        setRecusa(null);
       } else setErro(r.motivo);
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -81,7 +123,31 @@ export function Responder({
         style={{ width: "100%", marginTop: 8, opacity: podeResponder ? 1 : 0.55 }}
         disabled={enviando || !podeResponder}
       />
+      {recusa && (
+        <p className="badge badge-warn" style={{ marginTop: 8, whiteSpace: "normal", textAlign: "left" }}>
+          {recusa}
+        </p>
+      )}
+
+      {sugerido && texto.trim() !== sugerido.trim() && (
+        <p className="text-faint" style={{ fontSize: 11, marginTop: 8, marginBottom: 0 }}>
+          Você mudou o texto da IA — a diferença vira lição para o motor quando enviar.
+        </p>
+      )}
+
       <div className="row wrap" style={{ gap: 8, alignItems: "center", marginTop: 8 }}>
+        {/* ⚠ GERAR E ENVIAR SÃO BOTÕES SEPARADOS, sempre. Um botão só que
+            gerasse e mandasse tiraria da pessoa o único momento em que ela
+            pode discordar — e é justamente esse momento que autoriza o
+            automático mais tarde. */}
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={gerar}
+          disabled={gerando || enviando || !podeResponder}
+        >
+          {gerando ? "gerando…" : "✨ Gerar resposta com IA"}
+        </button>
         <button
           type="button"
           className="btn btn-sm btn-primary"

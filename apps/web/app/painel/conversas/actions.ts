@@ -6,6 +6,8 @@ import { credencialDoCanal } from "@/lib/credenciais";
 import { rotaDaResposta } from "@/lib/roteamento";
 import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
 import { enviarPelaCloudAPI } from "@/lib/envio";
+import { gerarResposta } from "../responder/ai-actions";
+import { guardarCorrecao } from "@/lib/correcoes";
 import { paraE164BR } from "@/lib/phone";
 import { registrarEnvio } from "@/lib/custo_mensagem-db";
 import { revalidatePath } from "next/cache";
@@ -40,9 +42,67 @@ export type RespostaResult =
  * sai por onde a conversa está. Uma chave para desligar isso seria uma chave
  * para quebrar conversa pela metade.
  */
+/**
+ * GERA A SUGESTÃO PARA ESTA CONVERSA — sem enviar nada.
+ *
+ * ⚠ ELA EXISTE PORQUE O FLUXO QUE O FUNDADOR PEDIU PULAVA DE TELA. A conversa
+ * mora aqui e a geração morava no *Responder*: para aprovar uma resposta ele
+ * precisava sair, achar o contato de novo, colar a mensagem e voltar. Com uma
+ * ou duas respostas por dia dá para levar; com dez, ninguém faz.
+ *
+ * ⚠ E ELA PEGA A ÚLTIMA MENSAGEM **DELE**, não a última da conversa. Gerar em
+ * cima da nossa própria mensagem faria o motor responder a si mesmo.
+ */
+export async function gerarSugestaoDaConversa(
+  contactId: string,
+): Promise<{ ok: true; texto: string; escalar: boolean; faltam: string[] } | { ok: false; motivo: string }> {
+  const membership = await getActiveTenant();
+  const tenant = membership?.tenant;
+  if (!tenant) return { ok: false, motivo: "Sem empresa vinculada." };
+  if (!contactId) return { ok: false, motivo: "Contato não informado." };
+
+  const supabase = await createClient();
+  // paginacao-ok: uma linha, a mais recente, endereçada por índice.
+  const { data: ult } = await supabase
+    .from("interactions")
+    .select("content")
+    .eq("tenant_id", tenant.id)
+    .eq("contact_id", contactId)
+    .eq("direction", "inbound")
+    .order("occurred_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const mensagem = ((ult as { content: string | null } | null)?.content ?? "").trim();
+  if (!mensagem) return { ok: false, motivo: "Ele ainda não escreveu nada nesta conversa." };
+
+  const r = await gerarResposta({ contactId, message: mensagem });
+  if (!r.ok) return { ok: false, motivo: "limite" in r ? r.mensagem : r.error };
+
+  // ⚠ `texto` PODE VIR VAZIO, e isso é a trava anti-invenção agindo. Quem
+  // chama precisa distinguir "não escreveu" de "falhou" — testar a verdade da
+  // string aqui repetiria o defeito de 20/ago, em que a tela ficava idêntica
+  // depois do clique e a pessoa concluía que o botão estava quebrado.
+  return {
+    ok: true,
+    texto: r.data.resposta_sugerida ?? "",
+    escalar: !!r.data.escalar,
+    faltam: r.data.faltam_fatos ?? [],
+  };
+}
+
 export async function responderPeloCanal(
   contactId: string,
   texto: string,
+  /**
+   * O que a IA tinha sugerido, quando a resposta veio dela.
+   *
+   * ⚠ É O QUE FECHA O CICLO DE APRENDIZADO SEM DEPENDER DE NINGUÉM LEMBRAR.
+   * Se o texto enviado difere do sugerido, a diferença é uma correção — e ela
+   * é guardada aqui, no momento em que acontece. Pedir que alguém registre
+   * depois é o mesmo que não ter.
+   */
+  sugerido?: string,
 ): Promise<RespostaResult> {
   const membership = await getActiveTenant();
   const tenant = membership?.tenant;
@@ -127,7 +187,25 @@ export async function responderPeloCanal(
   // depois. Medir desde já é o que faz a virada não ser surpresa.
   await registrarEnvio(tenant.id, { temModelo: false });
 
+  // ⚠ A CORREÇÃO É GUARDADA AQUI, no instante em que ela existe.
+  //
+  // Se o texto enviado difere do que a IA sugeriu, alguém acabou de ensinar o
+  // motor — e esse é o sinal que o produto inteiro persegue. `guardarCorrecao`
+  // é best-effort e só grava quando houve mudança de verdade: mensagem enviada
+  // igualzinha é confirmação, não lição.
+  if (sugerido?.trim()) {
+    await guardarCorrecao({
+      tenantId: tenant.id,
+      contactId,
+      membershipId: membership!.membershipId,
+      contexto: "Resposta pelo canal oficial, dentro da janela de 24h.",
+      sugerido,
+      enviado: limpo,
+    });
+  }
+
   revalidatePath("/painel/conversas");
+  revalidatePath("/painel/correcoes");
   revalidatePath(`/painel/contatos/${contactId}`);
   return { ok: true, id: envio.id };
 }

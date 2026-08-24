@@ -15,7 +15,10 @@ export const metadata = { title: "Canal oficial" };
 // declarado: o padrão da Vercel mata a função no meio e devolve silêncio —
 // o botão gira para sempre, sem erro. É a PÁGINA que governa a duração das
 // ações invocadas a partir dela.
-export const maxDuration = 30;
+// ⚠ 60, e nao 30: esta tela agora GERA resposta com IA. O padrao da Vercel
+// mata a funcao no meio da geracao e nao devolve nada — o botao gira para
+// sempre, sem erro. Tela que chama IA declara a duracao.
+export const maxDuration = 60;
 
 /**
  * O CANAL OFICIAL — o que saiu, o que chegou e o que FALHOU.
