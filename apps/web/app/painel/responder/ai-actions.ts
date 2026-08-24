@@ -12,7 +12,7 @@ import { resolveSchool, loadSchools, schoolsBlock, type StrategyMap } from "@/li
 import { checkRequiredFacts } from "@/lib/facts";
 import { lerQualificacao, blocoParaPrompt } from "@/lib/qualificacao";
 import { aiModel, AI_MODEL, hasAIKey, keyHint, estimateCostCents, tokensOf } from "@/lib/ai";
-import { TEXTO_DE_FORA_E_DADO, RESPEITE_O_PRAZO } from "@/lib/prompt";
+import { TEXTO_DE_FORA_E_DADO, RESPEITE_O_PRAZO, DEPOIS_DO_SIM_PARE } from "@/lib/prompt";
 import { verificarCota } from "@/lib/cota-db";
 import { reparosRecentes, blocoDeReparos } from "@/lib/correcoes";
 import { revalidatePath } from "next/cache";
@@ -41,6 +41,12 @@ export type AiAnswer = {
   faltam_fatos: string[];
   escalar: boolean;
   horario_escolhido: string;
+  /**
+   * Quando ele mesmo disse que volta. É o que vira `combinado` na fila — o
+   * motivo de prioridade máxima, porque furar uma data que a PESSOA marcou é
+   * o mais caro que existe nesta casa.
+   */
+  retorno_em: string;
 };
 
 const schema = z.object({
@@ -56,6 +62,7 @@ const schema = z.object({
   faltam_fatos: z.array(z.string()).describe("Fatos necessários que NÃO estão no DNA e seriam precisos para responder com segurança."),
   escalar: z.boolean().describe("true se faltam fatos essenciais e a resposta deve ser escalada a um humano em vez de inventada."),
   horario_escolhido: z.string().describe("Se o cliente ACEITOU um horário da lista de livres, a data e hora exatas em AAAA-MM-DDTHH:MM. Vazio se ele ainda não escolheu."),
+  retorno_em: z.string().describe("Se o cliente indicou QUANDO volta, retoma ou decide (ex.: 'mês que vem', 'depois do dia 10', 'semana que vem', 'em setembro'), a data correspondente em AAAA-MM-DD, calculada a partir de HOJE. Use o primeiro dia útil do período quando ele for vago. Vazio se ele não indicou nada."),
 });
 
 function fatos(sections: Record<string, unknown>): string {
@@ -404,13 +411,34 @@ ${TEXTO_DE_FORA_E_DADO}
 - Preço, disponibilidade e código de produto SÓ podem vir do CATÁLOGO. Se o item pedido não está lá, diga que vai confirmar — nunca estime valor nem afirme que tem em estoque.
 ${regraDeHorario}
 ${RESPEITE_O_PRAZO}
+${DEPOIS_DO_SIM_PARE}
 - Quando o cliente aceitar um horário, preencha "horario_escolhido" com a data e hora exatas (formato AAAA-MM-DDTHH:MM) daquele item da lista. Se ele não escolheu ainda, deixe vazio.
 - Se faltar um fato essencial para responder com segurança, liste em "faltam_fatos", marque "escalar": true e NÃO invente — deixe "resposta_sugerida" como uma mensagem breve e segura que encaminha para um humano/verificação.
 - Escreva em português do Brasil, natural, simpático e conciso — pronto para copiar e enviar no WhatsApp. Evite CTA fraca como "o que acha?"; use fechamento por alternativa ou pressuposto.
 - Baseie a técnica e o tom na BIBLIOTECA e no HISTÓRICO do cliente.
 - Cada situação tem uma ESCOLA DE VENDA declarada para ESTE segmento. Respeite o "NÃO usar quando" dela: fechamento por pressão levanta a conversão em ticket baixo e a DERRUBA em venda de ciclo longo. Em "tecnica", diga a escola aplicada e o movimento concreto.`;
 
-  const prompt = `SEGMENTO: ${manifest.name ?? tenant.skill_key}
+  /**
+   * ⚠ A DATA DE HOJE PRECISA ESTAR ESCRITA, e não estava.
+   *
+   * Sem ela o modelo não tem como transformar "mês que vem" numa data — e
+   * `retorno_em` seria chute. Vai com o dia da semana junto porque "semana que
+   * vem" depende de saber em que dia estamos, e no fuso da empresa, não no do
+   * servidor (que roda em UTC e vira o dia às 21h de Brasília).
+   */
+  const agora = new Date();
+  const hojeNaEmpresa = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(agora);
+  const hojeISO = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(agora);
+
+  const prompt = `HOJE É ${hojeNaEmpresa} (${hojeISO}). Toda conta de data — "semana que vem", "mês que vem", "depois do dia 10" — parte daqui.
+
+SEGMENTO: ${manifest.name ?? tenant.skill_key}
 VOCABULÁRIO/EIXO: ${JSON.stringify(manifest.vocabulary ?? {})} | descoberta: ${manifest.discovery_axis ?? ""}
 ETAPAS DA JORNADA (use a CHAVE em status_sugerido): ${stageList}
 REGRAS PERMANENTES DO SEGMENTO: ${hardRules}

@@ -55,7 +55,10 @@ export type RespostaResult =
  */
 export async function gerarSugestaoDaConversa(
   contactId: string,
-): Promise<{ ok: true; texto: string; escalar: boolean; faltam: string[] } | { ok: false; motivo: string }> {
+): Promise<
+  | { ok: true; texto: string; escalar: boolean; faltam: string[]; retornoEm: string }
+  | { ok: false; motivo: string }
+> {
   const membership = await getActiveTenant();
   const tenant = membership?.tenant;
   if (!tenant) return { ok: false, motivo: "Sem empresa vinculada." };
@@ -88,7 +91,73 @@ export async function gerarSugestaoDaConversa(
     texto: r.data.resposta_sugerida ?? "",
     escalar: !!r.data.escalar,
     faltam: r.data.faltam_fatos ?? [],
+    // A data que ELE disse, lida da frase dele. Sugestão para uma pessoa
+    // confirmar — nunca gravação automática.
+    retornoEm: /^\d{4}-\d{2}-\d{2}$/.test(r.data.retorno_em ?? "") ? r.data.retorno_em : "",
   };
+}
+
+/**
+ * REGISTRA O QUE FICOU COMBINADO — a data em que ELE disse que volta.
+ *
+ * ⚠ POR QUE ISTO FALTAVA, e a falta apareceu na primeira resposta real da
+ * campanha. A Nanci avisou que retorna em setembro. A conversa foi respondida
+ * e **nada foi registrado**: sem data, sem anotação, ela segue como ex-aluna
+ * qualquer. Em setembro ninguém lembraria — e o fundador perguntou exatamente
+ * isso: *"será que o sistema identificou esse agendamento e já registrou?"*.
+ *
+ * ⚠ A DATA VAI PARA `next_action_at` E A FRASE PARA `next_action_note`, e as
+ * duas importam. `lib/fila.ts` só chama de **combinado** — o motivo de
+ * prioridade MÁXIMA — quando existe nota; sem ela vira `lembrete` genérico. A
+ * nota é o pretexto da conversa seguinte: "você tinha dito que voltava em
+ * setembro" abre a mensagem sozinha, e furar uma data que a PESSOA marcou é o
+ * mais caro que existe aqui.
+ *
+ * ⚠ E QUEM CONFIRMA É GENTE. A IA sugere a data lendo a frase dela; quem
+ * aperta é quem leu a conversa. Gravar direto pela leitura do modelo criaria
+ * compromisso que ninguém combinou — e compromisso inventado vira mensagem
+ * cobrando algo que a pessoa nunca disse.
+ */
+export async function registrarCombinado(entrada: {
+  contactId: string;
+  data: string;
+  nota: string;
+}): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const membership = await getActiveTenant();
+  const tenant = membership?.tenant;
+  if (!tenant) return { ok: false, motivo: "Sem empresa vinculada." };
+
+  const data = (entrada.data ?? "").trim();
+  const nota = (entrada.nota ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { ok: false, motivo: "Data inválida." };
+  if (!nota) {
+    return {
+      ok: false,
+      motivo: "Escreva o que ficou combinado — sem isso a conversa seguinte não tem assunto.",
+    };
+  }
+
+  const supabase = await createClient();
+  // `.select()` porque escrita sem erro conferido é escrita que você ACHA que
+  // fez — e esta decide se a pessoa volta a aparecer na fila.
+  const { data: linhas, error } = await supabase
+    .from("contacts")
+    .update({
+      next_action: "Retorno combinado",
+      next_action_at: data,
+      next_action_note: nota,
+    })
+    .eq("id", entrada.contactId)
+    .eq("tenant_id", tenant.id)
+    .select("id");
+
+  if (error) return { ok: false, motivo: error.message };
+  if (!linhas?.length) return { ok: false, motivo: "Contato não encontrado nesta empresa." };
+
+  revalidatePath("/painel/conversas");
+  revalidatePath("/painel/fila");
+  revalidatePath(`/painel/contatos/${entrada.contactId}`);
+  return { ok: true };
 }
 
 export async function responderPeloCanal(

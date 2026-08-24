@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { responderPeloCanal, gerarSugestaoDaConversa } from "./actions";
+import { responderPeloCanal, gerarSugestaoDaConversa, registrarCombinado } from "./actions";
 
 /**
  * A CAIXA DE RESPOSTA — e o relógio da janela ao lado dela.
@@ -41,6 +41,17 @@ export function Responder({
    */
   const [sugerido, setSugerido] = useState<string | null>(null);
   const [recusa, setRecusa] = useState<string | null>(null);
+  /**
+   * O COMBINADO — a data em que ELE disse que volta.
+   *
+   * ⚠ Fica separado da caixa de resposta de propósito: responder e registrar
+   * são duas decisões. A Nanci foi respondida e nada ficou marcado; em
+   * setembro ninguém lembraria. Aqui a IA sugere a data lendo a frase dela, e
+   * quem confirma é quem leu a conversa.
+   */
+  const [combinado, setCombinado] = useState<{ data: string; nota: string } | null>(null);
+  const [salvandoCombinado, setSalvandoCombinado] = useState(false);
+  const [combinadoOk, setCombinadoOk] = useState(false);
   const router = useRouter();
 
   /**
@@ -78,6 +89,10 @@ export function Responder({
         setTexto(r.texto);
         setSugerido(r.texto);
         setEnviado(false);
+      }
+      if (r.retornoEm) {
+        setCombinado({ data: r.retornoEm, nota: "" });
+        setCombinadoOk(false);
       }
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -155,6 +170,75 @@ export function Responder({
           Você mudou o texto da IA — a diferença vira lição para o motor quando enviar.
         </p>
       )}
+
+      {/* ⚠ O COMBINADO, LOGO ABAIXO DA RESPOSTA. Ele aparece só quando a
+          pessoa disse quando volta — e some depois de registrado. Campo que
+          fica sempre na tela vira campo que ninguém preenche. */}
+      {combinado && !combinadoOk && (
+        <div
+          className="mt-16"
+          style={{ padding: "12px 14px", borderRadius: 8, border: "1px solid var(--border-brand)" }}
+        >
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+            📌 Ela disse quando volta — registrar?
+          </p>
+          <p className="text-dim" style={{ margin: "4px 0 10px", fontSize: 13 }}>
+            Fica marcado na ficha e ela volta para a fila nesse dia, com o motivo{" "}
+            <strong>&ldquo;Você combinou de voltar&rdquo;</strong> — que é o primeiro da lista.
+          </p>
+          <div className="row wrap" style={{ gap: 10 }}>
+            <div>
+              <label className="label" htmlFor="combinado-data">Volta em</label>
+              <input
+                id="combinado-data"
+                type="date"
+                value={combinado.data}
+                onChange={(e) => setCombinado({ ...combinado, data: e.target.value })}
+                disabled={salvandoCombinado}
+              />
+            </div>
+            <div style={{ flex: "1 1 240px" }}>
+              <label className="label" htmlFor="combinado-nota">O que ela disse</label>
+              <input
+                id="combinado-nota"
+                value={combinado.nota}
+                onChange={(e) => setCombinado({ ...combinado, nota: e.target.value })}
+                placeholder='ex.: "retorno em setembro, vem com a amiga"'
+                disabled={salvandoCombinado}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary mt-16"
+            disabled={salvandoCombinado || !combinado.nota.trim()}
+            onClick={async () => {
+              setSalvandoCombinado(true);
+              setErro(null);
+              try {
+                const r = await registrarCombinado({ contactId, ...combinado });
+                if (r.ok) { setCombinadoOk(true); router.refresh(); }
+                else setErro(r.motivo);
+              } finally {
+                setSalvandoCombinado(false);
+              }
+            }}
+          >
+            {salvandoCombinado ? "salvando…" : "Registrar o combinado"}
+          </button>
+          <p className="text-faint" style={{ fontSize: 11, marginTop: 8, marginBottom: 0 }}>
+            A frase é obrigatória: sem ela a conversa de setembro não tem assunto, e o
+            sistema manda um lembrete genérico em vez de retomar o que ela disse.
+          </p>
+        </div>
+      )}
+
+      {combinadoOk && (
+        <p className="badge badge-success mt-16" style={{ whiteSpace: "normal", textAlign: "left" }}>
+          Combinado registrado — ela volta para a fila no dia marcado.
+        </p>
+      )}
+
 
       <div className="row wrap" style={{ gap: 8, alignItems: "center", marginTop: 8 }}>
         {/* ⚠ GERAR E ENVIAR SÃO BOTÕES SEPARADOS, sempre. Um botão só que
