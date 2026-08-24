@@ -208,5 +208,28 @@ export function variantesArmazenadas(e164digits: string): string[] {
     fora.add(`${ddd}${antigo}`);
   }
 
+  // ⚠ E O CAMINHO CONTRÁRIO, QUE FALTAVA — descoberto ao vivo em 24/ago.
+  //
+  // **A META DEVOLVE O REMETENTE BRASILEIRO SEM O NONO DÍGITO.** O modelo saiu
+  // para `5551993742002` (13 dígitos, com o 9 que `paraE164BR` acrescenta), a
+  // pessoa respondeu, e o `wa_id` que voltou foi `555193742002` — 12 dígitos.
+  //
+  // Esta função sabia converter "tenho o 9, procure também sem" e não sabia o
+  // inverso. Resultado: o cadastro estava gravado COM o 9, a busca procurou só
+  // SEM, não achou, e o webhook criou um contato novo. A conversa foi parar
+  // num segundo cadastro e a caixa de resposta do primeiro apareceu cinza,
+  // com a janela de 24h "fechada" — porque naquele contato ninguém havia
+  // escrito mesmo.
+  //
+  // ⚠ É A MESMA CLASSE DA LILIAN, com a direção trocada: lá o cadastro estava
+  // sem o 9 e a mensagem chegava com; aqui o cadastro tem e a mensagem chega
+  // sem. Consertar uma direção e não a outra é o que faz o defeito voltar com
+  // outra cara — e este voltaria em TODA resposta da campanha.
+  if (assinante.length === 8 && assinante[0] >= "6" && assinante[0] <= "9") {
+    const novo = `9${assinante}`;
+    fora.add(`55${ddd}${novo}`);
+    fora.add(`${ddd}${novo}`);
+  }
+
   return [...fora];
 }

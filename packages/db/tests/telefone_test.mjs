@@ -13,7 +13,7 @@
 //
 // Roda sem banco.
 
-import { paraE164BR, whatsappNumber, normalizePhone } from "../../../apps/web/lib/phone.ts";
+import { paraE164BR, whatsappNumber, normalizePhone, variantesArmazenadas } from "../../../apps/web/lib/phone.ts";
 
 let passou = 0;
 const falhas = [];
@@ -114,6 +114,61 @@ if (normalizePhone("(51) 98251-2270") === "51982512270") passou++;
 else falhas.push("normalizePhone continua devolvendo só dígitos, sem código de país");
 
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// O CAMINHO DE VOLTA — achar o cadastro quando a mensagem CHEGA
+// ---------------------------------------------------------------------
+//
+// ⚠ ESTE BLOCO NASCEU DE UM DEFEITO AO VIVO, em 24/ago/2026, no primeiro
+// envio real que este sistema fez pela Meta.
+//
+// O modelo saiu para `5551993742002` (13 dígitos, com o nono acrescentado por
+// `paraE164BR`). A pessoa leu e respondeu. E a Meta devolveu o remetente como
+// **`555193742002` — 12 dígitos, SEM o nono**.
+//
+// A busca procurou só pelas formas sem o 9, o cadastro estava gravado COM o 9,
+// não achou, e o webhook criou um SEGUNDO contato. A conversa foi parar no
+// cadastro novo e a caixa de resposta do original apareceu cinza, com a janela
+// de 24h "fechada" — porque naquele contato ninguém tinha escrito mesmo.
+//
+// ⚠ É a mesma classe da Lilian com a direção invertida: lá o cadastro estava
+// sem o 9 e a mensagem chegava com; aqui o cadastro tem e a mensagem chega
+// sem. Consertar uma direção e não a outra faz o defeito voltar com outra
+// cara — e este voltaria em TODA resposta da campanha.
+
+function variantes(nome, entrada, precisaConter) {
+  const v = variantesArmazenadas(entrada);
+  const faltando = precisaConter.filter((x) => !v.includes(x));
+  if (faltando.length) {
+    falhas.push(`${nome}\n    faltou nas variantes: ${faltando.join(", ")}\n    obtido: ${v.join(", ")}`);
+    return;
+  }
+  passou++;
+}
+
+// Esperado: as quatro formas. É o caso REAL de 24/ago.
+variantes(
+  "Meta manda SEM o nono; o cadastro tem COM",
+  "555193742002",
+  ["555193742002", "5193742002", "5551993742002", "51993742002"],
+);
+
+// A direção que já existia continua valendo — 39% da base está assim.
+variantes(
+  "Meta manda COM o nono; o cadastro tem SEM",
+  "5551993742002",
+  ["5551993742002", "51993742002", "555193742002", "5193742002"],
+);
+
+// ⚠ FIXO NÃO GANHA NONO DÍGITO. `5551` + `32250000` começa em 3: é telefone
+// fixo, e inventar um 9 na frente procuraria um celular que não existe.
+variantes("fixo continua sendo fixo", "555132250000", ["555132250000", "5132250000"]);
+{
+  const v = variantesArmazenadas("555132250000");
+  if (v.some((x) => x.includes("932250000"))) {
+    falhas.push("fixo NÃO pode ganhar o nono dígito\n    obtido: " + v.join(", "));
+  } else passou++;
+}
+
 const total = passou + falhas.length;
 if (falhas.length) {
   console.error(`\n✗ FALHOU — ${passou}/${total}\n`);

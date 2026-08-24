@@ -7,6 +7,7 @@ import { reais } from "@/lib/custo_mensagem";
 import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
 import { rotaDaResposta } from "@/lib/roteamento";
 import { credencialDoCanal } from "@/lib/credenciais";
+import { lerTudo } from "@/lib/paginado";
 import { Responder } from "./Responder";
 
 export const metadata = { title: "Canal oficial" };
@@ -46,9 +47,9 @@ export const maxDuration = 60;
 export default async function ConversasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filtro?: string; contato?: string }>;
+  searchParams: Promise<{ filtro?: string; contato?: string; busca?: string }>;
 }) {
-  const { filtro, contato } = await searchParams;
+  const { filtro, contato, busca } = await searchParams;
   const membership = await getActiveTenant();
   const tenant = membership?.tenant;
   if (!tenant) {
@@ -220,7 +221,86 @@ export default async function ConversasPage({
   for (const e of ((entradas as Linha[] | null) ?? [])) {
     if (!porContato.has(e.contact_id)) porContato.set(e.contact_id, e);
   }
-  const conversas = [...porContato.values()];
+  /**
+   * ⚠ QUEM ESTÁ ESPERANDO RESPOSTA — a informação que faltava, e a única que
+   * decide o que fazer agora.
+   *
+   * A lista mostrava as conversas por recência, e recência não é urgência:
+   * quem escreveu há dez minutos e já foi respondido aparecia acima de quem
+   * escreveu há três horas e está esperando. Com duas conversas ninguém nota;
+   * com trinta, a pessoa que espera some no meio — e a perda medida deste
+   * produto é silêncio, não objeção.
+   *
+   * A regra é simples e não depende de ninguém marcar nada: **se a última
+   * mensagem da conversa é DELE, ninguém respondeu ainda.**
+   *
+   * ⚠ E ELA É PAGINADA, apesar de parecer pequena. São no máximo 40 pessoas,
+   * mas **cada uma pode ter centenas de saídas** — o José Ricardo tem conversa
+   * de meses. Quarenta contatos velhos passam de 1.000 linhas com folga, e o
+   * PostgREST cortaria em silêncio: as saídas que faltassem virariam "ninguém
+   * respondeu", e a tela mandaria responder de novo quem já foi respondido.
+   *
+   * O recorte por data reduz de verdade o volume — só interessa o que saiu
+   * depois da entrada mais antiga da lista, porque nada anterior a isso pode
+   * ser resposta a ela.
+   */
+  const idsDaLista = [...porContato.keys()];
+  const ultimaSaida = new Map<string, string>();
+  if (idsDaLista.length) {
+    const maisAntiga = [...porContato.values()]
+      .map((e) => e.occurred_at)
+      .sort()[0];
+
+    const saidas = await lerTudo<{ contact_id: string; occurred_at: string }>(
+      (de, ate) =>
+        supabase
+          .from("interactions")
+          .select("contact_id, occurred_at")
+          .eq("tenant_id", tenant!.id)
+          .eq("direction", "outbound")
+          .in("contact_id", idsDaLista)
+          .gte("occurred_at", maisAntiga)
+          .order("occurred_at", { ascending: false })
+          .order("id")
+          .range(de, ate),
+      { rotulo: "saidas das conversas do canal" },
+    );
+    for (const o of saidas) {
+      if (!ultimaSaida.has(o.contact_id)) ultimaSaida.set(o.contact_id, o.occurred_at);
+    }
+  }
+
+  const HORA = 3_600_000;
+  const esperando = (c: Linha) => {
+    const nossa = ultimaSaida.get(c.contact_id);
+    return !nossa || nossa < c.occurred_at;
+  };
+  const horasDeEspera = (c: Linha) =>
+    Math.floor((Date.now() - Date.parse(c.occurred_at)) / HORA);
+
+  const termo = (busca ?? "").trim().toLowerCase();
+
+  const conversas = [...porContato.values()]
+    // A BUSCA é por nome ou pelo texto da mensagem: quem procura "Jacque"
+    // lembra do nome, quem procura "semana free" lembra do que foi dito.
+    .filter((c) => {
+      if (!termo) return true;
+      return (
+        nomeDe(c).toLowerCase().includes(termo) ||
+        (c.content ?? "").toLowerCase().includes(termo)
+      );
+    })
+    // ⚠ QUEM ESPERA VEM PRIMEIRO, e entre eles o que espera HÁ MAIS TEMPO. É o
+    // oposto da ordem natural de um chat, e é de propósito: esta tela não
+    // existe para ler conversa, existe para não deixar ninguém sem resposta.
+    .sort((a, b) => {
+      const ea = esperando(a), eb = esperando(b);
+      if (ea !== eb) return ea ? -1 : 1;
+      if (ea) return a.occurred_at.localeCompare(b.occurred_at);
+      return b.occurred_at.localeCompare(a.occurred_at);
+    });
+
+  const aguardando = conversas.filter(esperando).length;
 
   // O estado da conversa selecionada: a janela vem da última ENTRADA dela.
   const selecionada = contato ? porContato.get(contato) ?? null : null;
@@ -336,6 +416,31 @@ export default async function ConversasPage({
           </span>
         </div>
 
+        {/* ⚠ O CONTADOR DE QUEM ESPERA, ANTES DA LISTA. Ele responde a única
+            pergunta que alguém faz ao abrir esta tela — "tem alguém sem
+            resposta?" — sem precisar ler trinta linhas para descobrir. */}
+        <div className="row wrap" style={{ gap: 10, alignItems: "center", marginTop: 10 }}>
+          {aguardando > 0 ? (
+            <span className="badge badge-warn">{aguardando} aguardando resposta</span>
+          ) : (
+            conversas.length > 0 && <span className="badge badge-success">ninguém sem resposta</span>
+          )}
+          <form method="get" className="row" style={{ gap: 6, alignItems: "center" }}>
+            {contato && <input type="hidden" name="contato" value={contato} />}
+            <input
+              type="search"
+              name="busca"
+              defaultValue={busca ?? ""}
+              placeholder="procurar por nome ou pelo que foi dito"
+              style={{ fontSize: 13, minWidth: 240 }}
+            />
+            <button type="submit" className="btn btn-sm btn-ghost">buscar</button>
+            {termo && (
+              <Link href="/painel/conversas" className="btn btn-sm btn-ghost">limpar</Link>
+            )}
+          </form>
+        </div>
+
         {conversas.length === 0 ? (
           <p className="text-dim" style={{ fontSize: 14, marginBottom: 0 }}>
             Ninguém escreveu para o número do sistema ainda. Quando a primeira pessoa
@@ -356,6 +461,15 @@ export default async function ConversasPage({
                     >
                       {aberto ? "▾ " : "▸ "}{nomeDe(c)}
                     </Link>
+                    {/* ⚠ "AGUARDANDO" VEM ANTES DO RELÓGIO DA JANELA, porque
+                        são coisas diferentes: a janela diz se DÁ para
+                        responder, esta etiqueta diz se PRECISA. */}
+                    {esperando(c) && (
+                      <span className="badge badge-warn">
+                        aguardando
+                        {horasDeEspera(c) >= 1 ? ` há ${horasDeEspera(c)}h` : ""}
+                      </span>
+                    )}
                     <span className="text-faint" style={{ fontSize: 12 }}>{quando(c.occurred_at)}</span>
                     {j.aberta ? (
                       <span className={j.minutosRestantes !== null && j.minutosRestantes <= 120 ? "badge badge-warn" : "badge badge-success"}>
