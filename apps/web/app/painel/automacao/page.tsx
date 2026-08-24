@@ -8,6 +8,7 @@ import { Canal } from "./Canal";
 import { Guia } from "./Guia";
 import { Roteamento } from "./Roteamento";
 import { Simulacao } from "./Simulacao";
+import { DisparoDeTeste } from "./DisparoDeTeste";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 
@@ -205,6 +206,12 @@ export default async function AutomacaoPage({
       )}
 
       {canEdit && <Simulacao modo={a.mode} />}
+
+      {/* COLADO NA SIMULAÇÃO de propósito: uma mostra quem sairia sem mandar
+          nada, o outro manda de verdade para um número escolhido. As duas
+          perguntas que alguém faz antes de virar a chave, na ordem em que as
+          faz. */}
+      {canEdit && <DisparoDeTeste />}
 
       <div className="card mt-16">
         <p className="eyebrow" style={{ marginBottom: 8 }}>Histórico de execuções</p>
