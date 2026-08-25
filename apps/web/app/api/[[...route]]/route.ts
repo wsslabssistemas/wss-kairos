@@ -467,7 +467,15 @@ async function registrar(mensagens: MensagemRecebida[]) {
       // resposta filtrando exatamente por este valor. Inventar um
       // `input_kind: "whatsapp"` faria as mensagens do canal novo sumirem
       // silenciosamente da métrica que mede o produto.
-      input_kind: "customer_message",
+      // ⚠ REAGIR NÃO É ESCREVER. A Taiane reagiu com emoji a uma despedida e a
+      // conversa, já resolvida, voltou para a lista como "aguardando
+      // resposta". Reagir é o equivalente a acenar com a cabeça — cobrar
+      // resposta de um aceno cria pendência fantasma, e o pior seria alguém
+      // gerar resposta comercial paga para um 👍 de quem acabou de dizer não.
+      //
+      // A reação NÃO some: fica no histórico como sinal (reagir bem a uma
+      // despedida é diferente de silêncio). Só não conta como pergunta.
+      input_kind: msg.tipo === "reaction" ? "customer_reaction" : "customer_message",
       channel: "whatsapp",
       content: msg.texto,
       occurred_at: msg.quando.toISOString(),

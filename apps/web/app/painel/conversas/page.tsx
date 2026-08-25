@@ -170,12 +170,16 @@ export default async function ConversasPage({
   // aparecendo na lista, porque a consulta parte de `interactions` e a
   // exclusão mora no contato. O contato de teste do fundador ficou dias como
   // "aguardando resposta" por causa disso.
+  // ⚠ E REAÇÃO NÃO ENTRA (`input_kind`). Ver `0063`: reagir com emoji é acenar
+  // com a cabeça, e a conversa da Taiane voltou para "aguardando" duas horas
+  // depois de resolvida por causa de um 👍.
   const { data: entradas } = await supabase
     .from("interactions")
     .select("id, occurred_at, content, contact_id, contacts!inner(name, deleted_at, atendimento_encerrado_em)")
     .is("contacts.deleted_at", null)
     .eq("tenant_id", tenant.id)
     .eq("direction", "inbound")
+    .eq("input_kind", "customer_message")
     .not("external_id", "is", null)
     .order("occurred_at", { ascending: false })
     .limit(40);
