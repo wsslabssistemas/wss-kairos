@@ -21,6 +21,35 @@ export function PerfilDoNumero() {
   const [salvando, setSalvando] = useState(false);
 
   const perfil = r?.ok ? r.perfil : null;
+  const estado = r?.ok ? r.estado : null;
+
+  /**
+   * ⚠ A QUALIDADE TRADUZIDA, e com o QUE FAZER junto.
+   *
+   * "GREEN" não diz nada para quem opera uma academia, e "qualidade média"
+   * sozinho também não: a pessoa precisa saber se manda o próximo lote hoje ou
+   * não. O número que governa a decisão mais cara da operação tem que vir com
+   * a decisão escrita ao lado.
+   */
+  const QUALIDADE: Record<string, { txt: string; cls: string; oque: string }> = {
+    GREEN: {
+      txt: "Alta", cls: "badge badge-success",
+      oque: "Pode seguir com a campanha no ritmo combinado.",
+    },
+    YELLOW: {
+      txt: "Média", cls: "badge badge-warn",
+      oque: "PARE de ampliar. Mande menos, e só para quem saiu há pouco tempo — quem esfriou há mais tempo bloqueia mais.",
+    },
+    RED: {
+      txt: "Baixa", cls: "badge badge-danger",
+      oque: "PARE a campanha. Nesse estado a Meta reduz sua entrega, e insistir é o caminho para perder o número.",
+    },
+    UNKNOWN: {
+      txt: "ainda sem nota", cls: "badge",
+      oque: "A Meta ainda não avaliou — número novo com pouco volume costuma ficar assim por alguns dias.",
+    },
+  };
+  const q = QUALIDADE[estado?.quality_rating ?? "UNKNOWN"] ?? QUALIDADE.UNKNOWN;
 
   const abrir = async () => {
     setCarregando(true);
@@ -63,6 +92,41 @@ export function PerfilDoNumero() {
         <p className="badge badge-danger" style={{ whiteSpace: "normal", textAlign: "left" }}>
           {r.erro}
         </p>
+      )}
+
+      {/* ⚠ O ESTADO DO NÚMERO VEM ANTES DO FORMULÁRIO. É o que decide se o
+          próximo lote sai — e estava atrás de uma tela da Meta que respondeu
+          "You don't have access" para o dono do próprio número. */}
+      {estado && (
+        <div
+          className="mt-16"
+          style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-elev)" }}
+        >
+          <div className="row wrap" style={{ gap: 10, alignItems: "baseline" }}>
+            <span className={q.cls}>Qualidade: {q.txt}</span>
+            {estado.messaging_limit_tier && (
+              <span className="badge">
+                Degrau: {estado.messaging_limit_tier.replace("TIER_", "").replace("_", " ")}
+              </span>
+            )}
+            {estado.display_phone_number && (
+              <span className="text-faint" style={{ fontSize: 13 }}>{estado.display_phone_number}</span>
+            )}
+          </div>
+          <p className="text-dim" style={{ fontSize: 13, margin: "8px 0 0" }}>{q.oque}</p>
+
+          {/* O nome que a pessoa lê antes de decidir se abre. Ver na tela do
+              produto o que o cliente vê é diferente de acreditar que está certo. */}
+          {estado.verified_name && (
+            <p className="text-dim" style={{ fontSize: 13, margin: "8px 0 0" }}>
+              Aparece para quem recebe como <strong>&ldquo;{estado.verified_name}&rdquo;</strong>
+              {estado.name_status && estado.name_status !== "APPROVED" && (
+                <> — situação do nome: <strong>{estado.name_status}</strong></>
+              )}
+              .
+            </p>
+          )}
+        </div>
       )}
 
       {perfil && (

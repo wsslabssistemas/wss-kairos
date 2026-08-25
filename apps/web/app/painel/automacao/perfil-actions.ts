@@ -2,7 +2,10 @@
 
 import { getActiveTenant } from "@/lib/auth";
 import { credencialDoCanal } from "@/lib/credenciais";
-import { lerPerfil, gravarPerfil, idDoApp, subirImagem, type PerfilDoCanal } from "@/lib/perfil-canal";
+import {
+  lerPerfil, gravarPerfil, idDoApp, subirImagem, estadoDoNumero,
+  type PerfilDoCanal, type EstadoDoNumero,
+} from "@/lib/perfil-canal";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -14,7 +17,7 @@ import { revalidatePath } from "next/cache";
  */
 
 export type PerfilResult =
-  | { ok: true; perfil: PerfilDoCanal }
+  | { ok: true; perfil: PerfilDoCanal; estado?: EstadoDoNumero }
   | { ok: false; erro: string };
 
 export async function carregarPerfil(): Promise<PerfilResult> {
@@ -28,8 +31,11 @@ export async function carregarPerfil(): Promise<PerfilResult> {
   const cred = await credencialDoCanal(tenant.id);
   if (!cred) return { ok: false, erro: "Esta empresa ainda não tem canal oficial configurado." };
 
-  const r = await lerPerfil(cred);
-  return r.ok ? { ok: true, perfil: r.perfil } : { ok: false, erro: r.motivo };
+  // As duas leituras juntas: o perfil (o que o cliente vê ao tocar no nome) e
+  // o estado (qualidade e degrau — o que decide se a campanha continua).
+  const [r, e] = await Promise.all([lerPerfil(cred), estadoDoNumero(cred)]);
+  if (!r.ok) return { ok: false, erro: r.motivo };
+  return { ok: true, perfil: r.perfil, estado: e.ok ? e.estado : undefined };
 }
 
 export async function salvarPerfil(form: FormData): Promise<PerfilResult> {
@@ -93,8 +99,8 @@ export async function salvarPerfil(form: FormData): Promise<PerfilResult> {
   // ⚠ RELÊ DEPOIS DE GRAVAR, e não devolve o que foi mandado. Escrita sem
   // erro conferido é escrita que você ACHA que fez — e aqui o que confirma é a
   // própria Meta, não o nosso otimismo.
-  const depois = await lerPerfil(cred);
+  const [depois, est] = await Promise.all([lerPerfil(cred), estadoDoNumero(cred)]);
   return depois.ok
-    ? { ok: true, perfil: depois.perfil }
+    ? { ok: true, perfil: depois.perfil, estado: est.ok ? est.estado : undefined }
     : { ok: false, erro: `Gravou, mas não consegui reler para confirmar: ${depois.motivo}` };
 }

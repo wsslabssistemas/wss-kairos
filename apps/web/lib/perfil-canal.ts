@@ -89,6 +89,52 @@ export async function gravarPerfil(
 }
 
 /**
+ * O ESTADO DO NÚMERO NA META — qualidade, degrau de envio e nome aprovado.
+ *
+ * ⚠ POR QUE ISTO VIROU TELA. A qualidade do número é o instrumento que decide
+ * se a campanha continua ou para, e a única forma de vê-la era o WhatsApp
+ * Manager — que respondeu ao fundador *"You don't have access. This feature
+ * isn't available to you yet"*. O dado que governa a decisão mais cara da
+ * operação estava atrás de uma tela que o dono do número não consegue abrir.
+ *
+ * Os mesmos campos que aquela tela mostra vêm do nó do número, com o token que
+ * já temos. Não é atalho: é tirar a decisão da dependência de uma interface
+ * que a Meta muda de lugar.
+ *
+ * ⚠ E O `verified_name` VEM JUNTO DE PROPÓSITO. É o nome que a pessoa lê antes
+ * de decidir se abre — e é onde está escrito "Be Fitness2". Ver na própria
+ * tela do produto o que o cliente vê é diferente de acreditar que está certo.
+ */
+export type EstadoDoNumero = {
+  verified_name?: string;
+  display_phone_number?: string;
+  quality_rating?: string;
+  name_status?: string;
+  code_verification_status?: string;
+  messaging_limit_tier?: string;
+  platform_type?: string;
+};
+
+export async function estadoDoNumero(
+  cred: CredencialCanal,
+): Promise<{ ok: true; estado: EstadoDoNumero } | { ok: false; motivo: string }> {
+  const campos =
+    "verified_name,display_phone_number,quality_rating,name_status," +
+    "code_verification_status,messaging_limit_tier,platform_type";
+  try {
+    const r = await fetch(
+      `https://graph.facebook.com/${cred.versao}/${cred.phoneId}?fields=${campos}`,
+      { headers: { Authorization: `Bearer ${cred.token}` }, cache: "no-store" },
+    );
+    const j = (await r.json()) as EstadoDoNumero & { error?: { message?: string } };
+    if (!r.ok) return { ok: false, motivo: j?.error?.message ?? `A Meta respondeu ${r.status}.` };
+    return { ok: true, estado: j };
+  } catch (e) {
+    return { ok: false, motivo: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
  * O ID DO APP, descoberto a partir do token.
  *
  * ⚠ Ele não está guardado em lugar nenhum — e pedir mais um campo a quem já
