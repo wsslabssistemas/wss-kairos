@@ -302,6 +302,47 @@ lead_sources:
   - outro
 
 # ---------------------------------------------------------------------
+# POR QUE A PESSOA PAROU — a lista fechada de motivos de saída.
+#
+# ⚠ ELA EXISTE PARA PODER SOMAR. Texto livre viraria acervo que ninguém conta,
+# e o que a campanha seguinte precisa é justamente "41 saíram por preço, 12
+# mudaram de bairro". A frase da pessoa fica guardada ao lado, em
+# `motivo_saida_texto` — a chave soma, a frase abre a conversa.
+#
+# ⚠ E O `o_que_fazer` NÃO É ENFEITE. Foi o fundador quem separou: *"os que
+# estão morando longe, descartamos; os que falta um incentivo precisamos
+# encontrar algo que o faça retornar; os que estão em outra academia, temos
+# que descobrir o que fariam retornar"*. Motivo sem consequência vira relatório
+# bonito que ninguém usa — cada linha aqui diz o que a lista de amanhã faz com
+# aquela pessoa.
+#
+# ⚠ `nao_disse` EXISTE E É O MAIS IMPORTANTE DA LISTA. Sem ele, quem não
+# contou o motivo fica indistinguível de quem nunca foi perguntado — e essas
+# duas pessoas exigem coisas opostas: uma já respondeu, a outra ainda pode.
+churn_reasons:
+  - key: mudou_endereco
+    label: "Mudou de endereço ou mora longe"
+    o_que_fazer: "Fora do alcance. Não insistir — e é o único motivo que tira a pessoa da reativação de vez."
+  - key: outra_academia
+    label: "Está treinando em outro lugar"
+    o_que_fazer: "Não oferecer desconto: descobrir o que a outra tem. Volta quando aquilo falhar, e a anotação é o que avisa."
+  - key: preco
+    label: "Preço ou dinheiro apertado"
+    o_que_fazer: "É o único motivo em que condição resolve. Plano de maior compromisso tem mensalidade menor — e a isenção de adesão fala com este grupo."
+  - key: tempo
+    label: "Falta de tempo, mudou a rotina"
+    o_que_fazer: "Falar de HORÁRIO, não de preço. Musculação é acesso livre dentro do funcionamento — quem parou por rotina não sabe disso."
+  - key: saude
+    label: "Lesão, gravidez ou orientação médica"
+    o_que_fazer: "Não vender. Perguntar quando libera e marcar a data — insistir aqui é constrangedor e não converte."
+  - key: desmotivou
+    label: "Desanimou, não via resultado"
+    o_que_fazer: "É acompanhamento, não desconto. Falar do professor presente e da avaliação — o que faltou foi companhia, não plano."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registrar assim mesmo: quem não contou é diferente de quem nunca foi perguntado, e só o primeiro já teve a chance."
+
+# ---------------------------------------------------------------------
 # SEÇÕES DE DNA
 # Os FATOS da empresa. O que não estiver aqui a IA não pode afirmar.
 # ---------------------------------------------------------------------

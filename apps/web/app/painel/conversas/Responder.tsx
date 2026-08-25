@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   responderPeloCanal, gerarSugestaoDaConversa, registrarCombinado, encerrarAtendimento,
+  registrarMotivoDeSaida,
 } from "./actions";
 
 /**
@@ -23,11 +24,17 @@ export function Responder({
   podeResponder,
   motivoDoBloqueio,
   aviso,
+  motivos,
+  motivoAtual,
 }: {
   contactId: string;
   podeResponder: boolean;
   motivoDoBloqueio: string | null;
   aviso: string | null;
+  /** Os motivos de saída deste ramo, do manifesto. Vazio = o bloco não aparece. */
+  motivos: { key: string; label: string }[];
+  /** O que já está registrado, se já perguntaram. */
+  motivoAtual: string | null;
 }) {
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -55,6 +62,10 @@ export function Responder({
   const [salvandoCombinado, setSalvandoCombinado] = useState(false);
   const [combinadoOk, setCombinadoOk] = useState(false);
   const [encerrando, setEncerrando] = useState(false);
+  const [motivo, setMotivo] = useState(motivoAtual ?? "");
+  const [motivoTexto, setMotivoTexto] = useState("");
+  const [salvandoMotivo, setSalvandoMotivo] = useState(false);
+  const [motivoOk, setMotivoOk] = useState(false);
   const router = useRouter();
 
   /**
@@ -241,6 +252,77 @@ export function Responder({
           Combinado registrado — ela volta para a fila no dia marcado, e a conversa sai da
           lista de quem espera resposta.
         </p>
+      )}
+
+      {/* ⚠ POR QUE ELA PAROU — perguntado onde a resposta acabou de ser dita.
+          Duas pessoas disseram não no primeiro dia de campanha e nenhuma disse
+          por quê; o motivo sumiu junto com a conversa. É ele que separa
+          campanha de 3% de campanha de 15%, porque quem mudou de bairro não
+          volta com desconto e quem parou por preço não volta com saudade.
+          Fica aqui, e não na ficha três telas adiante: campo que exige desvio
+          é campo que ninguém preenche — a lição dos 257 contatos com data
+          marcada e ZERO com nota. */}
+      {motivos.length > 0 && (
+        <div className="mt-16" style={{ paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+          <label className="label" htmlFor="motivo-saida">
+            Ela disse por que parou?
+          </label>
+          <div className="row wrap" style={{ gap: 8, alignItems: "flex-start" }}>
+            <select
+              id="motivo-saida"
+              value={motivo}
+              onChange={(e) => { setMotivo(e.target.value); setMotivoOk(false); }}
+              disabled={salvandoMotivo}
+              style={{ width: "auto", minWidth: 220 }}
+            >
+              <option value="">— ainda não sei —</option>
+              {motivos.map((m) => (
+                <option key={m.key} value={m.key}>{m.label}</option>
+              ))}
+            </select>
+            <input
+              value={motivoTexto}
+              onChange={(e) => setMotivoTexto(e.target.value)}
+              placeholder="com as palavras dela (opcional, mas é o que abre a próxima conversa)"
+              disabled={salvandoMotivo || !motivo}
+              style={{ flex: "1 1 260px" }}
+            />
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={salvandoMotivo || !motivo}
+              onClick={async () => {
+                setSalvandoMotivo(true);
+                setErro(null);
+                try {
+                  const r = await registrarMotivoDeSaida({ contactId, motivo, texto: motivoTexto });
+                  if (r.ok) { setMotivoOk(true); router.refresh(); }
+                  else setErro(r.motivo);
+                } finally {
+                  setSalvandoMotivo(false);
+                }
+              }}
+            >
+              {salvandoMotivo ? "salvando…" : "Registrar"}
+            </button>
+          </div>
+          {motivoOk ? (
+            <p className="badge badge-success" style={{ marginTop: 8, whiteSpace: "normal", textAlign: "left" }}>
+              Motivo registrado — é ele que decide como a próxima campanha fala com ela.
+            </p>
+          ) : (
+            /* ⚠ A PERGUNTA CERTA VAI ESCRITA AQUI. "Por que você saiu?" soa
+               como cobrança e a resposta vira "falta de tempo" — o que se diz
+               para encerrar o assunto. Alternativas concretas custam menos que
+               confessar, e por isso coletam a verdade. */
+            <p className="text-faint" style={{ fontSize: 11, marginTop: 6, marginBottom: 0 }}>
+              Se ela não disse, pergunte assim: <em>&ldquo;só pra eu entender e não te
+              incomodar à toa: é mais questão de horário, de estar treinando em outro lugar,
+              ou é outra coisa?&rdquo;</em> — nunca &ldquo;por que você saiu?&rdquo;, e nunca
+              com uma oferta na mesma mensagem.
+            </p>
+          )}
+        </div>
       )}
 
       {/* ⚠ "NÃO PRECISA RESPONDER" — o botão que faltava, e o motivo dele.

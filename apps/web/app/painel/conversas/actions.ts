@@ -7,6 +7,7 @@ import { rotaDaResposta } from "@/lib/roteamento";
 import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
 import { enviarPelaCloudAPI } from "@/lib/envio";
 import { gerarResposta } from "../responder/ai-actions";
+import { getSkillFormConfig } from "@/lib/skill";
 import { guardarCorrecao } from "@/lib/correcoes";
 import { paraE164BR } from "@/lib/phone";
 import { registrarEnvio } from "@/lib/custo_mensagem-db";
@@ -133,6 +134,53 @@ export async function gerarSugestaoDaConversa(
  * ⚠ E NÃO ARQUIVA A PESSOA. Se ela escrever depois, volta para a lista na
  * hora — a comparação é com a data, não com um interruptor.
  */
+/**
+ * REGISTRA POR QUE A PESSOA PAROU.
+ *
+ * ⚠ A CHAVE É VALIDADA CONTRA O MANIFESTO, nunca aceita crua. Chave inventada
+ * viraria uma categoria de uma pessoa só, e o valor deste campo é justamente
+ * poder somar: "41 saíram por preço" decide a campanha seguinte; "41 motivos
+ * diferentes" não decide nada.
+ *
+ * ⚠ E A FRASE DELA VAI JUNTO. A chave soma; a frase é o pretexto da próxima
+ * conversa. *"Você tinha me dito que ia começar a fazer hora extra"* abre a
+ * mensagem sozinha — "motivo: tempo" não abre nada.
+ */
+export async function registrarMotivoDeSaida(entrada: {
+  contactId: string;
+  motivo: string;
+  texto?: string;
+}): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const membership = await getActiveTenant();
+  const tenant = membership?.tenant;
+  if (!tenant) return { ok: false, motivo: "Sem empresa vinculada." };
+
+  const { churnReasons } = await getSkillFormConfig(tenant.skill_key);
+  const valida = (churnReasons as { key: string }[]).some((r) => r.key === entrada.motivo);
+  if (!valida) return { ok: false, motivo: "Motivo desconhecido para este ramo." };
+
+  const supabase = await createClient();
+  // paginacao-ok: UPDATE de UMA linha, endereçada por chave primária. O
+  // `.select("id")` existe para conferir que a gravação alcançou alguém.
+  const { data, error } = await supabase
+    .from("contacts")
+    .update({
+      motivo_saida: entrada.motivo,
+      motivo_saida_texto: entrada.texto?.trim() || null,
+      motivo_saida_em: new Date().toISOString(),
+    })
+    .eq("id", entrada.contactId)
+    .eq("tenant_id", tenant.id)
+    .select("id");
+
+  if (error) return { ok: false, motivo: error.message };
+  if (!data?.length) return { ok: false, motivo: "Contato não encontrado nesta empresa." };
+
+  revalidatePath("/painel/conversas");
+  revalidatePath(`/painel/contatos/${entrada.contactId}`);
+  return { ok: true };
+}
+
 export async function encerrarAtendimento(
   contactId: string,
 ): Promise<{ ok: true } | { ok: false; motivo: string }> {

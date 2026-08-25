@@ -74,6 +74,7 @@ export async function getSkillFormConfig(skillKey: string) {
          */
         ended_stage?: string;
       };
+      churn_reasons?: { key: string; label: string; o_que_fazer?: string }[];
     } | null) ?? {};
 
   return {
@@ -92,5 +93,10 @@ export async function getSkillFormConfig(skillKey: string) {
     // Quem vende período mostra início/vencimento no cadastro e recebe as
     // três janelas de renovação (`lib/renovacao.ts`).
     contract: m.contract ?? null,
+    // ⚠ POR QUE A PESSOA PAROU — lista fechada, do MANIFESTO. "Lesão" e "outra
+    // academia" são vocabulário de academia; numa distribuidora o equivalente
+    // é "mudou de fornecedor". Enum no banco exigiria migration a cada
+    // segmento novo e quebraria a Lei 2.
+    churnReasons: m.churn_reasons ?? [],
   };
 }

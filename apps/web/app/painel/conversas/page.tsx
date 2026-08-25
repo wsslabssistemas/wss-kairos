@@ -8,6 +8,7 @@ import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
 import { rotaDaResposta } from "@/lib/roteamento";
 import { credencialDoCanal } from "@/lib/credenciais";
 import { lerTudo } from "@/lib/paginado";
+import { getSkillFormConfig } from "@/lib/skill";
 import { Responder } from "./Responder";
 
 export const metadata = { title: "Canal oficial" };
@@ -63,6 +64,9 @@ export default async function ConversasPage({
 
   const supabase = await createClient();
   const canal = await statusDoCanal(tenant.id);
+  // Os motivos de saída deste ramo. Vazio em segmento que não declara — e aí
+  // o bloco simplesmente não aparece, em vez de mostrar lista vazia.
+  const { churnReasons } = await getSkillFormConfig(tenant.skill_key);
 
   if (!canal.configurado) {
     return (
@@ -257,7 +261,22 @@ export default async function ConversasPage({
    * depois da entrada mais antiga da lista, porque nada anterior a isso pode
    * ser resposta a ela.
    */
+  // O motivo de saída já registrado de cada pessoa da lista — para o bloco
+  // aparecer preenchido em vez de perguntar de novo o que já foi respondido.
   const idsDaLista = [...porContato.keys()];
+  const motivoPorContato = new Map<string, string | null>();
+  if (idsDaLista.length) {
+    // paginacao-ok: busca por lista fechada de no máximo 40 ids.
+    const { data: ms } = await supabase
+      .from("contacts")
+      .select("id, motivo_saida")
+      .eq("tenant_id", tenant.id)
+      .in("id", idsDaLista);
+    for (const m of ((ms as { id: string; motivo_saida: string | null }[] | null) ?? [])) {
+      motivoPorContato.set(m.id, m.motivo_saida);
+    }
+  }
+  const motivoDe = (id: string) => motivoPorContato.get(id) ?? null;
   const ultimaSaida = new Map<string, string>();
   if (idsDaLista.length) {
     const maisAntiga = [...porContato.values()]
@@ -496,6 +515,8 @@ export default async function ConversasPage({
                       </ul>
 
                       <Responder
+                        motivos={churnReasons as { key: string; label: string }[]}
+                        motivoAtual={motivoDe(c.contact_id)}
                         contactId={c.contact_id}
                         podeResponder={rotaSel?.via === "cloud_api_texto"}
                         motivoDoBloqueio={rotaSel && rotaSel.via !== "cloud_api_texto" ? rotaSel.porque : null}
