@@ -141,6 +141,9 @@ export async function encerrarAtendimento(
   if (!tenant) return { ok: false, motivo: "Sem empresa vinculada." };
 
   const supabase = await createClient();
+  // paginacao-ok: UPDATE de UMA linha, endereçada por chave primária. O
+  // `.select("id")` devolve no máximo um registro — existe para conferir que a
+  // gravação alcançou alguém, não para listar.
   const { data, error } = await supabase
     .from("contacts")
     .update({ atendimento_encerrado_em: new Date().toISOString() })
