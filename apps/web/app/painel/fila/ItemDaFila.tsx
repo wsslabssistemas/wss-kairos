@@ -70,6 +70,21 @@ export function ItemDaFila({
    * qualidade que o produto tem. Ver `lib/correcoes.ts`.
    */
   const [sugerido, setSugerido] = useState("");
+  /**
+   * ⚠ A PESSOA JÁ ABRIU O WHATSAPP — e é aqui que o registro se perde.
+   *
+   * O funcionário relatou não conseguir "salvar a mensagem editada". O
+   * mecanismo funciona: o texto ajustado vai no formulário e a correção é
+   * guardada. O que não funciona é a SEQUÊNCIA — ele edita, clica no botão
+   * VERDE (que abre outra aba e é o único chamativo da tela), manda a mensagem
+   * lá e nunca volta para marcar. Do lado de cá não aconteceu nada: nem o
+   * toque, nem a lição.
+   *
+   * O botão de registrar é cinza e mora depois de um campo de anotação. Ele
+   * compete com um botão verde do WhatsApp e perde — como perderia para
+   * qualquer um. Depois do clique, ele passa a ser o assunto da tela.
+   */
+  const [abriuWhatsapp, setAbriuWhatsapp] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [limite, setLimite] = useState<string | null>(null);
@@ -255,6 +270,7 @@ export function ItemDaFila({
                     rel="noopener noreferrer"
                     className="btn btn-sm"
                     style={{ background: "#25D366", color: "#0b2e13", border: "none" }}
+                    onClick={() => setAbriuWhatsapp(true)}
                   >
                     Abrir no WhatsApp
                   </a>
@@ -401,9 +417,21 @@ export function ItemDaFila({
               pessoa por fora — e "Já falei com ele" é o que ela faria mesmo
               sem o sistema existir. Rótulo que promete a mesma coisa nos dois
               casos ensina a desconfiar do registro. */}
+          {/* ⚠ DEPOIS DE ABRIR O WHATSAPP, ESTE VIRA O ASSUNTO DA TELA.
+              Sem isto a pessoa manda a mensagem na outra aba e fecha — e do
+              lado de cá não existiu nem o toque nem a correção. O aviso diz o
+              que se perde, não só o que fazer: "marque" é ordem, "senão o
+              sistema não aprende" é motivo. */}
+          {abriuWhatsapp && (
+            <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left", marginBottom: 0 }}>
+              <strong>Enviou? Marque abaixo.</strong> É o que registra o toque
+              {texto !== sugerido && sugerido ? " e guarda o seu ajuste para o motor aprender" : ""} —
+              sem isso, para o sistema esta conversa não aconteceu.
+            </p>
+          )}
           <button
             type="submit"
-            className={linkComTexto ? "btn btn-sm" : "btn btn-sm btn-ghost"}
+            className={abriuWhatsapp ? "btn btn-sm btn-primary" : linkComTexto ? "btn btn-sm" : "btn btn-sm btn-ghost"}
             style={{ alignSelf: "flex-start" }}
           >
             {linkComTexto
