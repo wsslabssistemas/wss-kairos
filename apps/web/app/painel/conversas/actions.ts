@@ -118,6 +118,43 @@ export async function gerarSugestaoDaConversa(
  * compromisso que ninguém combinou — e compromisso inventado vira mensagem
  * cobrando algo que a pessoa nunca disse.
  */
+/**
+ * DECLARA QUE AQUELA CONVERSA NÃO PRECISA MAIS DE RESPOSTA.
+ *
+ * ⚠ POR QUE ISTO É UM BOTÃO E NÃO UMA DEDUÇÃO. A Daniela fechou com um
+ * "Combinado" depois de já ter sido respondida — para a tela, a última
+ * mensagem é dela e ela está esperando; para quem lê, a conversa acabou.
+ *
+ * Pedir para a IA classificar o fecho custaria uma chamada em toda mensagem
+ * que chega, e o erro tem lados muito diferentes: fechar por engano SOME com
+ * alguém que esperava resposta, que é o defeito mais caro desta tela. Um
+ * clique de quem leu custa dois segundos e não erra.
+ *
+ * ⚠ E NÃO ARQUIVA A PESSOA. Se ela escrever depois, volta para a lista na
+ * hora — a comparação é com a data, não com um interruptor.
+ */
+export async function encerrarAtendimento(
+  contactId: string,
+): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const membership = await getActiveTenant();
+  const tenant = membership?.tenant;
+  if (!tenant) return { ok: false, motivo: "Sem empresa vinculada." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .update({ atendimento_encerrado_em: new Date().toISOString() })
+    .eq("id", contactId)
+    .eq("tenant_id", tenant.id)
+    .select("id");
+
+  if (error) return { ok: false, motivo: error.message };
+  if (!data?.length) return { ok: false, motivo: "Contato não encontrado nesta empresa." };
+
+  revalidatePath("/painel/conversas");
+  return { ok: true };
+}
+
 export async function registrarCombinado(entrada: {
   contactId: string;
   data: string;
@@ -146,6 +183,10 @@ export async function registrarCombinado(entrada: {
       next_action: "Retorno combinado",
       next_action_at: data,
       next_action_note: nota,
+      // ⚠ REGISTRAR O COMBINADO TAMBÉM ENCERRA. Quem marcou a data fez o que
+      // a conversa pedia — deixá-la na lista de "aguardando" faria a pessoa
+      // procurar, todo dia, o que já resolveu.
+      atendimento_encerrado_em: new Date().toISOString(),
     })
     .eq("id", entrada.contactId)
     .eq("tenant_id", tenant.id)

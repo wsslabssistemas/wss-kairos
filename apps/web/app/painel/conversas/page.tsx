@@ -166,9 +166,14 @@ export default async function ConversasPage({
   // `.limit(40)` é decisão de produto ("as 40 conversas mais recentes"), não
   // leitura de tabela que cresce: quem passa disso não precisa de lista, e o
   // placar acima já diz o tamanho.
+  // ⚠ `contacts!inner` COM `deleted_at is null`: contato apagado continuava
+  // aparecendo na lista, porque a consulta parte de `interactions` e a
+  // exclusão mora no contato. O contato de teste do fundador ficou dias como
+  // "aguardando resposta" por causa disso.
   const { data: entradas } = await supabase
     .from("interactions")
-    .select("id, occurred_at, content, contact_id, contacts(name)")
+    .select("id, occurred_at, content, contact_id, contacts!inner(name, deleted_at, atendimento_encerrado_em)")
+    .is("contacts.deleted_at", null)
     .eq("tenant_id", tenant.id)
     .eq("direction", "inbound")
     .not("external_id", "is", null)
@@ -196,7 +201,11 @@ export default async function ConversasPage({
   type Linha = {
     id: string; occurred_at: string; direction?: string; content: string;
     delivery_status?: string | null; delivery_error?: string | null; delivery_at?: string | null;
-    contact_id: string; contacts: { name: string } | { name: string }[] | null;
+    contact_id: string;
+    contacts:
+      | { name: string; atendimento_encerrado_em?: string | null }
+      | { name: string; atendimento_encerrado_em?: string | null }[]
+      | null;
   };
 
   const nomeDe = (l: Linha) =>
@@ -271,9 +280,26 @@ export default async function ConversasPage({
   }
 
   const HORA = 3_600_000;
+  /** Quando alguém declarou que aquela conversa não pedia mais resposta. */
+  const encerradoEm = (c: Linha) => {
+    const ct = Array.isArray(c.contacts) ? c.contacts[0] : c.contacts;
+    return ct?.atendimento_encerrado_em ?? null;
+  };
+
+  /**
+   * ⚠ ESPERANDO = ele falou por último **e** ninguém encerrou DEPOIS disso.
+   *
+   * A comparação é com a DATA, nunca com um interruptor: se a pessoa escrever
+   * de novo depois de encerrado, ela volta para a lista na hora. Encerrar é
+   * sobre o que já foi dito — arquivo que engole mensagem nova é a caixa de
+   * entrada que perde cliente.
+   */
   const esperando = (c: Linha) => {
     const nossa = ultimaSaida.get(c.contact_id);
-    return !nossa || nossa < c.occurred_at;
+    if (nossa && nossa >= c.occurred_at) return false;
+    const fim = encerradoEm(c);
+    if (fim && fim >= c.occurred_at) return false;
+    return true;
   };
   const horasDeEspera = (c: Linha) =>
     Math.floor((Date.now() - Date.parse(c.occurred_at)) / HORA);
@@ -405,12 +431,14 @@ export default async function ConversasPage({
                     {/* ⚠ "AGUARDANDO" VEM ANTES DO RELÓGIO DA JANELA, porque
                         são coisas diferentes: a janela diz se DÁ para
                         responder, esta etiqueta diz se PRECISA. */}
-                    {esperando(c) && (
+                    {esperando(c) ? (
                       <span className="badge badge-warn">
                         aguardando
                         {horasDeEspera(c) >= 1 ? ` há ${horasDeEspera(c)}h` : ""}
                       </span>
-                    )}
+                    ) : encerradoEm(c) ? (
+                      <span className="badge">encerrada</span>
+                    ) : null}
                     <span className="text-faint" style={{ fontSize: 12 }}>{quando(c.occurred_at)}</span>
                     {j.aberta ? (
                       <span className={j.minutosRestantes !== null && j.minutosRestantes <= 120 ? "badge badge-warn" : "badge badge-success"}>

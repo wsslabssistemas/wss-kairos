@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { responderPeloCanal, gerarSugestaoDaConversa, registrarCombinado } from "./actions";
+import {
+  responderPeloCanal, gerarSugestaoDaConversa, registrarCombinado, encerrarAtendimento,
+} from "./actions";
 
 /**
  * A CAIXA DE RESPOSTA — e o relógio da janela ao lado dela.
@@ -52,6 +54,7 @@ export function Responder({
   const [combinado, setCombinado] = useState<{ data: string; nota: string } | null>(null);
   const [salvandoCombinado, setSalvandoCombinado] = useState(false);
   const [combinadoOk, setCombinadoOk] = useState(false);
+  const [encerrando, setEncerrando] = useState(false);
   const router = useRouter();
 
   /**
@@ -235,9 +238,42 @@ export function Responder({
 
       {combinadoOk && (
         <p className="badge badge-success mt-16" style={{ whiteSpace: "normal", textAlign: "left" }}>
-          Combinado registrado — ela volta para a fila no dia marcado.
+          Combinado registrado — ela volta para a fila no dia marcado, e a conversa sai da
+          lista de quem espera resposta.
         </p>
       )}
+
+      {/* ⚠ "NÃO PRECISA RESPONDER" — o botão que faltava, e o motivo dele.
+          A Daniela fechou com "Combinado" depois de já ter sido respondida:
+          para a tela a última mensagem é dela e ela está esperando; para quem
+          leu, a conversa acabou. O sistema não tem como saber sozinho, e pedir
+          para a IA classificar erraria para o lado caro — fechar por engano
+          SOME com alguém que esperava.
+          Ele fica discreto e longe do "enviar" de propósito: encerrar por
+          engano é pior que encerrar de menos. */}
+      <div className="row wrap" style={{ gap: 8, alignItems: "center", marginTop: 10 }}>
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost"
+          disabled={encerrando || enviando || gerando}
+          onClick={async () => {
+            setEncerrando(true);
+            setErro(null);
+            try {
+              const r = await encerrarAtendimento(contactId);
+              if (r.ok) router.refresh();
+              else setErro(r.motivo);
+            } finally {
+              setEncerrando(false);
+            }
+          }}
+        >
+          {encerrando ? "encerrando…" : "✓ Não precisa responder"}
+        </button>
+        <span className="text-faint" style={{ fontSize: 11 }}>
+          Tira da lista de quem espera. Se ela escrever de novo, volta na hora.
+        </span>
+      </div>
 
 
       <div className="row wrap" style={{ gap: 8, alignItems: "center", marginTop: 8 }}>
