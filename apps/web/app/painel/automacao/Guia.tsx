@@ -179,6 +179,19 @@ export function Guia() {
           </span>
           <br />
           <span className="text-faint">
+            ⚠ <strong>SE O NOME FOR RECUSADO, o erro não explica.</strong> A Be Fitness levou{" "}
+            <em>Rejeitado</em> e, ao tentar de novo, a Meta respondeu{" "}
+            <em>&ldquo;Operação não autorizada&rdquo;</em> (erro 1675034) — que parece falta de
+            permissão e não é: é a fila de revisão de nome travada depois de uma recusa. As
+            duas causas de recusa, em ordem: <strong>número solto no fim do nome</strong>{" "}
+            (padrão de conta duplicada, recusa automática) e <strong>nome diferente do
+            negócio verificado</strong> — a Meta compara com o CNPJ. Peça exatamente a razão
+            social ou o nome fantasia que apareça no site e no Instagram. Se continuar
+            recusando, é caso de suporte: <em>business.facebook.com/business/help</em>, com o
+            código do erro e o identificador entre parênteses, que é como eles acham o caso.
+          </span>
+          <br />
+          <span className="text-faint">
             ⚠ <strong>E na MESMA tela, preencha o perfil inteiro com a cara da EMPRESA:</strong>{" "}
             foto (a logo dela, não a do sistema), descrição, endereço, e-mail e site. É o que a
             pessoa vê ao tocar no nome para decidir se aquilo é confiável — e o perfil vazio,
