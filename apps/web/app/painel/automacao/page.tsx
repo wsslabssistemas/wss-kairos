@@ -10,6 +10,7 @@ import { Roteamento } from "./Roteamento";
 import { Simulacao } from "./Simulacao";
 import { DisparoDeTeste } from "./DisparoDeTeste";
 import { RodarAgora } from "./RodarAgora";
+import { PerfilDoNumero } from "./PerfilDoNumero";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 
@@ -212,6 +213,10 @@ export default async function AutomacaoPage({
       {canEdit && <Simulacao modo={a.mode} />}
 
       {canEdit && <RodarAgora modo={a.mode} />}
+
+      {/* Colado no disparo: antes de mandar mais gente, o que ela vê ao tocar
+          no nome importa tanto quanto o texto. */}
+      {canEdit && status.configurado && <PerfilDoNumero />}
 
       {/* COLADO NA SIMULAÇÃO de propósito: uma mostra quem sairia sem mandar
           nada, o outro manda de verdade para um número escolhido. As duas
