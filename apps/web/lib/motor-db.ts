@@ -32,6 +32,12 @@ export type ResultadoDoMotor = {
   /** Falhas de envio, com o motivo da Meta inteiro. */
   falhas: { contactId: string; motivo: string }[];
   /**
+   * O lote parou no meio por causa do relógio, e sobrou gente escolhida sem
+   * mensagem. Quem chama precisa DIZER isso: lote pela metade em silêncio é
+   * indistinguível de lote completo.
+   */
+  interrompido: boolean;
+  /**
    * O motivo DA FILA de cada candidato (`reativacao`, `renovacao`…).
    *
    * ⚠ Não confundir com o `motivo` de um veredito recusado, que é o TEXTO da
@@ -82,8 +88,18 @@ export async function rodarMotor(entrada: {
   tenantNome: string;
   simular?: boolean;
   agora?: Date;
+  /**
+   * ⚠ O RELÓGIO DO LOTE. Quando o tempo acaba, o motor PARA sozinho e devolve
+   * o que fez — em vez de ser morto no meio do laço pela plataforma.
+   *
+   * A diferença não é estética: função morta deixa metade do lote enviado e
+   * ninguém sabe quais. Quem chama recebe `interrompido` e mostra na tela
+   * "saíram N, rode de novo para continuar".
+   */
+  limiteMs?: number;
 }): Promise<ResultadoDoMotor> {
-  const { tenantId, skillKey, tenantNome, simular = false, agora = new Date() } = entrada;
+  const { tenantId, skillKey, tenantNome, simular = false, agora = new Date(), limiteMs } = entrada;
+  const comecou = Date.now();
 
   // O motor não tem sessão de usuário: usa o admin, com `tenant_id` explícito
   // em toda consulta. Ver a nota de `lib/despacho.ts`.
@@ -137,11 +153,12 @@ export async function rodarMotor(entrada: {
   for (const f of doCanal) motivoPorContato[f.contactId] = f.motivo;
 
   if (plano.simulado || !plano.ativo) {
-    return { tenantId, plano, enviadas: 0, falhas: [], motivoPorContato, settings: carga.settings };
+    return { tenantId, plano, enviadas: 0, falhas: [], motivoPorContato, settings: carga.settings, interrompido: false };
   }
 
   const falhas: ResultadoDoMotor["falhas"] = [];
   let enviadas = 0;
+  let interrompido = false;
 
   // ⚠ EM SÉRIE, DE PROPÓSITO. Disparar em paralelo mandaria dez mensagens no
   // mesmo segundo, que é exatamente o padrão de rajada que faz o WhatsApp
@@ -150,6 +167,13 @@ export async function rodarMotor(entrada: {
   for (const [posicao, contactId] of plano.enviar.entries()) {
     const item = doCanal.find((f) => f.contactId === contactId);
     if (!item) continue;
+
+    // ⚠ PARA ANTES DE SER MORTO. Sem isto a plataforma corta no meio do laço
+    // e ninguém fica sabendo em quem parou.
+    if (limiteMs && Date.now() - comecou > limiteMs) {
+      interrompido = true;
+      break;
+    }
 
     // ⚠ A PAUSA VEM ANTES, E NÃO NA PRIMEIRA. Depois da última ela só
     // seguraria a função sem servir a ninguém — e função segurada à toa é
@@ -176,7 +200,7 @@ export async function rodarMotor(entrada: {
     else falhas.push({ contactId, motivo: r.motivo });
   }
 
-  return { tenantId, plano, enviadas, falhas, motivoPorContato, settings: carga.settings };
+  return { tenantId, plano, enviadas, falhas, motivoPorContato, settings: carga.settings, interrompido };
 }
 
 // ---------------------------------------------------------------------

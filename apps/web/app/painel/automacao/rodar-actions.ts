@@ -27,6 +27,8 @@ export type RodadaResult =
       escolhidos: number;
       porque: string;
       simulado: boolean;
+      /** Parou por tempo, com gente escolhida ainda sem mensagem. */
+      interrompido: boolean;
     }
   | { ok: false; erro: string };
 
@@ -44,6 +46,11 @@ export async function rodarAgora(): Promise<RodadaResult> {
       skillKey: tenant.skill_key,
       tenantNome: tenant.name,
       simular: false,
+      // ⚠ 240s contra os 300 declarados na PÁGINA. A folga de um minuto é para
+      // o motor terminar de contar e a resposta voltar — parar exatamente no
+      // limite é ser morto no último passo, que é o mesmo defeito com outro
+      // nome.
+      limiteMs: 240_000,
     });
 
     // Os nomes de quem falhou. Sem eles a lista de falhas é uma lista de
@@ -77,6 +84,7 @@ export async function rodarAgora(): Promise<RodadaResult> {
       escolhidos: r.plano.enviar.length,
       porque: r.plano.porque,
       simulado: r.plano.simulado,
+      interrompido: r.interrompido,
     };
   } catch (e) {
     // O erro sobe INTEIRO. Um "rodar agora" que falha em silêncio é pior que

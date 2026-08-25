@@ -16,7 +16,25 @@ import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 
 // Chamada de rede para a Meta no teste de conexao. Ver a nota em
 // `fila/page.tsx`: tela que fala com servico externo declara o tempo.
-export const maxDuration = 60;
+/**
+ * ⚠ 300, E O MOTIVO É UMA REGRA DESTA CASA QUE EU MESMO VIOLEI.
+ *
+ * "`maxDuration` mora na PÁGINA, nunca no arquivo de ações — é a página que
+ * governa a duração das ações invocadas a partir dela." Está escrito no
+ * `CLAUDE.md`. Ontem eu declarei 300 na ROTA da API (que o agendador usa) e
+ * deixei esta página em 60.
+ *
+ * Em 25/ago o fundador apertou "Enviar agora" com 20 no teto do dia. Com a
+ * pausa entre envios, 8 mensagens saíram em 54 segundos e a função foi morta
+ * aos 60 — a tela devolveu *"An unexpected response was received from the
+ * server"* e ele concluiu, razoavelmente, que **nada** tinha sido enviado.
+ * Oito tinham.
+ *
+ * ⚠ E ELEVAR O TETO NÃO BASTA, por isso `rodarAgora` também tem RELÓGIO
+ * PRÓPRIO: ele para sozinho antes do limite e diz onde parou. Função morta no
+ * meio do laço deixa metade do lote enviado sem ninguém saber quais.
+ */
+export const maxDuration = 300;
 
 const FIELDS: { key: keyof ReturnType<typeof readAutomation>; label: string; hint: string; min: number; max: number }[] = [
   { key: "max_per_day", label: "Máx. de mensagens por dia", hint: "Limite total gerado pela automação em 24h", min: 0, max: 1000 },

@@ -110,6 +110,19 @@ export function RodarAgora({ modo }: { modo: "off" | "simulation" | "auto" }) {
             <p className="text-dim" style={{ fontSize: 13, marginTop: 8 }}>{r.porque}</p>
           )}
 
+          {/* ⚠ LOTE PELA METADE PRECISA DIZER QUE FICOU PELA METADE.
+              Em 25/ago a função foi morta aos 60 segundos com 8 de 20
+              enviadas, e a tela devolveu "resposta inesperada do servidor" —
+              o fundador concluiu que nada tinha saído. Oito tinham. */}
+          {r.interrompido && (
+            <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left" }}>
+              <strong>O lote parou no meio por causa do tempo.</strong> As {r.enviadas} acima
+              saíram de verdade; o resto da fila continua esperando. Clique em{" "}
+              <strong>Enviar agora</strong> de novo para continuar de onde parou — ninguém
+              recebe duas vezes, porque quem já recebeu sai da fila.
+            </p>
+          )}
+
           {r.simulado && (
             <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left" }}>
               Rodou em <strong>simulação</strong>: os cálculos foram feitos e{" "}
