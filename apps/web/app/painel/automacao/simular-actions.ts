@@ -63,6 +63,8 @@ export type SimulacaoResult =
       linhas: LinhaDaSimulacao[];
       sairiam: number;
       avaliados: number;
+      /** A lista foi montada fora do horário de operação — é o lote da próxima abertura. */
+      foraDaJanela: boolean;
     }
   | { ok: false; erro: string };
 
@@ -165,6 +167,7 @@ export async function simularMotor(): Promise<SimulacaoResult> {
       linhas,
       sairiam: r.plano.enviar.length,
       avaliados: r.plano.vereditos.length,
+      foraDaJanela: r.plano.foraDaJanela,
     };
   } catch (e) {
     // O erro sobe INTEIRO. Simulação que falha em silêncio é pior que não ter

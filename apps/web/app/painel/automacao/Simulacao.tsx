@@ -96,6 +96,19 @@ export function Simulacao({ modo }: { modo: "off" | "simulation" | "auto" }) {
             </span>
           </div>
 
+          {/* ⚠ FORA DA JANELA, A LISTA CONTINUA SENDO MOSTRADA — e a tela diz
+              que é da próxima abertura. O fundador confere nome por nome antes
+              de disparar (aluno atual? convênio? nunca foi cliente?), e quer
+              fazer isso às 8h. Antes a simulação respondia "fora do horário" e
+              a conferência só podia começar quando a campanha já podia sair. */}
+          {r.foraDaJanela && (
+            <p className="badge badge-warn mt-16" style={{ whiteSpace: "normal", textAlign: "left" }}>
+              <strong>Fora do horário de operação agora.</strong> Esta é a lista que sairia na
+              próxima abertura da janela — dá para conferir nome por nome desde já. O ENVIO
+              continua respeitando o horário.
+            </p>
+          )}
+
           {/* ⚠ QUANDO NADA SAI, O MOTIVO VIRA O ASSUNTO DA TELA.
               Antes ele era uma linha cinza de 13px embaixo do placar, e a
               tela ainda mostrava, logo abaixo, a explicação GENÉRICA de "não

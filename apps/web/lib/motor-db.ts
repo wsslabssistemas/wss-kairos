@@ -147,6 +147,9 @@ export async function rodarMotor(entrada: {
     // janela de 9h–19h. A automação nunca rodaria à tarde, e rodaria às 6h da
     // manhã. Ver `lib/fuso.ts`.
     horaLocal: horaLocal(agora, fuso),
+    // ⚠ SÓ A SIMULAÇÃO IGNORA O HORÁRIO. Quem confere a lista precisa poder
+    // conferir antes de a janela abrir; quem ENVIA continua preso a ela.
+    ignorarJanela: simular,
   });
 
   const motivoPorContato: Record<string, MotivoDaFila> = {};

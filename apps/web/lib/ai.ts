@@ -28,14 +28,12 @@ export const aiModel = IS_OPENAI
   : createAnthropic({ apiKey })(AI_MODEL);
 
 // Estimativa de custo em CENTAVOS de R$ (o painel do fabricante mostra em R$).
-// Taxas em USD por 1M de tokens — ajuste aos preços vigentes por ambiente.
-export function estimateCostCents(inTok: number, outTok: number): number {
-  const IN_PER_M = Number(process.env.AI_IN_PER_M ?? 3);
-  const OUT_PER_M = Number(process.env.AI_OUT_PER_M ?? 15);
-  const USD_BRL = Number(process.env.USD_BRL ?? 5.5);
-  const usd = (inTok / 1e6) * IN_PER_M + (outTok / 1e6) * OUT_PER_M;
-  return Math.round(usd * USD_BRL * 100);
-}
+//
+// ⚠ A CONTA MORA EM `lib/preco-ia.ts`, pura e testada. Ela estava aqui com
+// US$ 3/15 fixos e cobrava **1,5 vez a mais**: o Sonnet 5 está em promoção de
+// lançamento (US$ 2/10) até 31/08/2026. O fundador descobriu quando o teto de
+// R$ 100 bateu com US$ 13,41 gastos de verdade.
+export { estimarCentavos as estimateCostCents } from "@/lib/preco-ia";
 
 // Normaliza o objeto de uso entre versões do SDK.
 export function tokensOf(usage: unknown): { in: number; out: number } {

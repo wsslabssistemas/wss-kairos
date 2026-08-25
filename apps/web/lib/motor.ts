@@ -88,6 +88,11 @@ export type PlanoDoMotor = {
   vereditos: Veredito[];
   /** `true` no modo simulação: gera e conta, não envia. */
   simulado: boolean;
+  /**
+   * A lista foi montada FORA da janela de horário — ela é o que sairia na
+   * próxima abertura, não o que sai agora. Só acontece em simulação.
+   */
+  foraDaJanela: boolean;
 };
 
 /**
@@ -132,14 +137,34 @@ export function planejar(entrada: {
    * continua pura e recebe o número pronto.
    */
   horaLocal: number;
+  /**
+   * ⚠ A SIMULAÇÃO IGNORA A JANELA; O ENVIO NUNCA.
+   *
+   * O fundador confere a lista NOME POR NOME antes de disparar — se alguém já
+   * é aluno, se é convênio, se nunca foi cliente. Esse trabalho leva tempo e
+   * ele quer fazer às 8h, antes de abrir a academia. Com a janela valendo na
+   * simulação, a resposta às 8h era "fora do horário", e a conferência só
+   * podia começar quando a campanha já podia sair — o pior momento possível.
+   *
+   * A janela existe para proteger QUEM RECEBE, não para atrapalhar quem
+   * prepara. Simular não manda mensagem nenhuma.
+   *
+   * ⚠ E O PLANO DIZ QUE IGNOROU. Mostrar a lista sem avisar faria a pessoa
+   * concluir que aquilo sairia agora — e a diferença entre "sai" e "sairia às
+   * 9h" é a única coisa que ela precisa saber neste momento.
+   */
+  ignorarJanela?: boolean;
 }): PlanoDoMotor {
-  const { candidatos, regras, enviadosHoje, horaLocal } = entrada;
+  const { candidatos, regras, enviadosHoje, horaLocal, ignorarJanela = false } = entrada;
   const vazio = (porque: string): PlanoDoMotor => ({
-    ativo: false, porque, enviar: [], vereditos: [], simulado: regras.mode === "simulation",
+    ativo: false, porque, enviar: [], vereditos: [],
+    simulado: regras.mode === "simulation", foraDaJanela: false,
   });
 
   if (regras.mode === "off") return vazio("A automação está desligada.");
-  if (!dentroDaJanela(horaLocal, regras.window_start, regras.window_end)) {
+
+  const foraDaJanela = !dentroDaJanela(horaLocal, regras.window_start, regras.window_end);
+  if (foraDaJanela && !ignorarJanela) {
     return vazio(
       `Fora da janela de horário (${regras.window_start}h às ${regras.window_end}h). ` +
       `Agora são ${horaLocal}h na empresa.`,
@@ -252,5 +277,6 @@ export function planejar(entrada: {
     enviar,
     vereditos,
     simulado: regras.mode === "simulation",
+    foraDaJanela,
   };
 }

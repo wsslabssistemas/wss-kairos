@@ -183,6 +183,30 @@ verifica("e os dois barrados têm motivo escrito",
   p5.vereditos.filter((v) => !v.enviar && v.motivo.length > 10).length, 2);
 
 // ---------------------------------------------------------------------
+// 5b. A JANELA VALE PARA ENVIAR, NÃO PARA CONFERIR
+// ---------------------------------------------------------------------
+//
+// ⚠ O fundador confere a lista NOME POR NOME antes de disparar — aluno atual,
+// convênio, quem nunca foi cliente — e quer fazer isso às 8h, antes de abrir a
+// academia. Com a janela valendo na simulação, a resposta era "fora do
+// horário" e a conferência só podia começar quando a campanha já podia sair.
+//
+// A janela protege QUEM RECEBE. Simular não manda mensagem nenhuma.
+const p5b = planejar({
+  candidatos: [livre("a")], regras: REGRAS, enviadosHoje: 0,
+  horaLocal: 8, ignorarJanela: true,
+});
+verifica("às 8h, simulando, a lista aparece", p5b.enviar, ["a"]);
+verifica("e o plano diz que foi fora da janela", p5b.foraDaJanela, true);
+
+// ⚠ E O ENVIO CONTINUA PRESO AO HORÁRIO. Sem esta linha, a mudança acima
+// teria transformado a trava de horário em enfeite.
+verifica("às 8h, enviando, continua barrado", plano({}, [livre("a")], 0, 8).ativo, false);
+verifica("e dentro da janela nada muda", plano({}, [livre("a")], 0, 10).enviar, ["a"]);
+verifica("dentro da janela, `foraDaJanela` é falso",
+  plano({}, [livre("a")], 0, 10).foraDaJanela, false);
+
+// ---------------------------------------------------------------------
 // 6. O RECORTE DA CAMPANHA — quem saiu HÁ QUANTO TEMPO entra no lote
 // ---------------------------------------------------------------------
 //
