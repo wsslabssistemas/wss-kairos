@@ -25,6 +25,29 @@ import type { CredencialCanal } from "@/lib/credenciais";
  * descoberto a partir do próprio token (ver `idDoApp`).
  */
 
+/**
+ * ⚠ A META CONTA BYTES, NÃO LETRAS — e essa diferença travou duas telas.
+ *
+ * O fundador encurtou a descrição até o contador da própria Meta mostrar
+ * **492/512** e a gravação continuou falhando. Pelo nosso painel veio o motivo
+ * escrito: *"Param description must be at most 512 characters long"*.
+ *
+ * Os dois contadores estavam certos e medindo coisas diferentes. Em português
+ * quase toda frase tem acento, e em UTF-8 **cada acento ocupa 2 bytes**: "é",
+ * "ç", "ã", "õ". Um texto de 492 letras com 30 acentos passa de 520 bytes. A
+ * régua da Meta é o byte; a da tela era a letra.
+ *
+ * ⚠ E É PIOR EM PORTUGUÊS QUE EM INGLÊS, o que explica por que isso não é
+ * problema conhecido: em inglês letra e byte coincidem quase sempre, então o
+ * contador da Meta funciona lá e mente aqui.
+ */
+export function tamanhoEmBytes(texto: string): number {
+  return new TextEncoder().encode(texto).length;
+}
+
+/** Os tetos da Meta, em BYTES. */
+export const LIMITES = { about: 139, description: 512, address: 256, email: 128, website: 256 };
+
 export type PerfilDoCanal = {
   about?: string;
   description?: string;

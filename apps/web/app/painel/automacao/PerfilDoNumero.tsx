@@ -19,6 +19,17 @@ export function PerfilDoNumero() {
   const [r, setR] = useState<PerfilResult | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  /**
+   * ⚠ O CONTADOR É EM BYTES, e a diferença não é detalhe técnico.
+   *
+   * A tela da própria Meta conta LETRAS: mostrou 492/512 e recusou a gravação,
+   * porque a régua dela é o byte. Em português cada acento ocupa 2 — "é", "ç",
+   * "ã" — então uma descrição de 492 letras passa de 520 bytes.
+   *
+   * Contador que diz "está dentro" e servidor que recusa é a pior combinação
+   * possível: a pessoa apaga texto no escuro sem nunca saber quanto falta.
+   */
+  const bytes = (t: string) => new TextEncoder().encode(t).length;
   const [tamAbout, setTamAbout] = useState(0);
   const [tamDesc, setTamDesc] = useState(0);
 
@@ -59,8 +70,8 @@ export function PerfilDoNumero() {
       const carregado = await carregarPerfil();
       setR(carregado);
       if (carregado.ok) {
-        setTamAbout((carregado.perfil.about ?? "").length);
-        setTamDesc((carregado.perfil.description ?? "").length);
+        setTamAbout(bytes(carregado.perfil.about ?? ""));
+        setTamDesc(bytes(carregado.perfil.description ?? ""));
       }
     } catch (e) {
       setR({ ok: false, erro: e instanceof Error ? e.message : String(e) });
@@ -178,22 +189,29 @@ export function PerfilDoNumero() {
           <div>
             <label className="label" htmlFor="about">Recado do perfil</label>
             <input id="about" name="about" defaultValue={perfil.about ?? ""} disabled={salvando}
-              maxLength={139} onChange={(e) => setTamAbout(e.target.value.length)}
+              onChange={(e) => setTamAbout(bytes(e.target.value))}
               placeholder="a frase curta embaixo do nome" />
-            <p className="text-faint" style={{ fontSize: 11, marginTop: 4, marginBottom: 0 }}>{tamAbout}/139</p>
+            <p className={tamAbout > 139 ? "badge badge-danger" : "text-faint"}
+               style={{ fontSize: 11, marginTop: 4, marginBottom: 0, whiteSpace: "normal", textAlign: "left" }}>
+              {tamAbout}/139
+            </p>
           </div>
 
           <div>
             <label className="label" htmlFor="description">Descrição</label>
             <textarea id="description" name="description" defaultValue={perfil.description ?? ""}
-              disabled={salvando} rows={4} maxLength={512}
-              onChange={(e) => setTamDesc(e.target.value.length)}
+              disabled={salvando} rows={5}
+              onChange={(e) => setTamDesc(bytes(e.target.value))}
               style={{ width: "100%" }}
               placeholder="o que a empresa é, em poucas linhas" />
-            <p className={tamDesc > 480 ? "badge badge-warn" : "text-faint"}
+            <p className={tamDesc > 512 ? "badge badge-danger" : tamDesc > 480 ? "badge badge-warn" : "text-faint"}
                style={{ fontSize: 11, marginTop: 4, marginBottom: 0, whiteSpace: "normal", textAlign: "left" }}>
-              {tamDesc}/512
-              {tamDesc > 480 && " — perto do limite. A Meta recusa a gravação INTEIRA quando estoura, e não diz qual campo foi."}
+              {tamDesc}/512 <strong>bytes</strong>
+              {tamDesc > 512
+                ? " — passou. A Meta conta BYTES, e cada acento vale 2: o contador dela mostra menos que isso e recusa a gravação assim mesmo."
+                : tamDesc > 480
+                  ? " — perto do limite. A conta é em bytes: cada acento vale 2."
+                  : ""}
             </p>
           </div>
 
@@ -213,7 +231,9 @@ export function PerfilDoNumero() {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={salvando} style={{ alignSelf: "flex-start" }}>
+          <button type="submit" className="btn btn-primary"
+            disabled={salvando || tamDesc > 512 || tamAbout > 139}
+            style={{ alignSelf: "flex-start" }}>
             {salvando ? "salvando na Meta…" : "Salvar o perfil"}
           </button>
 

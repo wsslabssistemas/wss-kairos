@@ -4,6 +4,7 @@ import { getActiveTenant } from "@/lib/auth";
 import { credencialDoCanal } from "@/lib/credenciais";
 import {
   lerPerfil, gravarPerfil, idDoApp, subirImagem, estadoDoNumero,
+  tamanhoEmBytes, LIMITES,
   type PerfilDoCanal, type EstadoDoNumero,
 } from "@/lib/perfil-canal";
 import { revalidatePath } from "next/cache";
@@ -51,6 +52,34 @@ export async function salvarPerfil(form: FormData): Promise<PerfilResult> {
 
   const texto = (k: string) => String(form.get(k) ?? "").trim();
   const site = texto("site");
+
+  // ⚠ O TAMANHO É CONFERIDO AQUI, EM BYTES, ANTES DE GASTAR A VIAGEM.
+  //
+  // A Meta recusa com "must be at most 512 characters long" — e a palavra
+  // "characters" é o que engana: a régua dela é BYTE. Em português cada acento
+  // vale 2, então 492 letras podem ser 520 bytes. Devolver o erro dela seria
+  // repetir a mentira; aqui a mensagem diz quantos CARACTERES tirar.
+  const excesso = (
+    [
+      ["Descrição", texto("description"), LIMITES.description],
+      ["Recado do perfil", texto("about"), LIMITES.about],
+      ["Endereço", texto("address"), LIMITES.address],
+      ["E-mail", texto("email"), LIMITES.email],
+      ["Site", site, LIMITES.website],
+    ] as const
+  ).find(([, v, max]) => tamanhoEmBytes(v) > max);
+
+  if (excesso) {
+    const [rotulo, valor, max] = excesso;
+    const bytes = tamanhoEmBytes(valor);
+    return {
+      ok: false,
+      erro:
+        `${rotulo} está com ${bytes} de ${max} — e a conta da Meta é em BYTES, não em letras. ` +
+        `Cada acento vale 2 (é, ç, ã), então o texto tem ${valor.length} letras e ocupa ${bytes}. ` +
+        `Tire cerca de ${Math.ceil((bytes - max) / 2)} palavras e tente de novo.`,
+    };
+  }
 
   const campos: Partial<PerfilDoCanal> & { profile_picture_handle?: string } = {
     about: texto("about"),
