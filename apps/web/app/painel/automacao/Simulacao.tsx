@@ -96,10 +96,23 @@ export function Simulacao({ modo }: { modo: "off" | "simulation" | "auto" }) {
             </span>
           </div>
 
-          {/* O `porque` do plano explica o caso em que NADA sai — fora da janela
-              de horário, teto do dia esgotado, modo desligado. Sem ele, uma
-              lista vazia é indistinguível de um defeito. */}
-          <p className="text-dim" style={{ fontSize: 13, marginTop: 8 }}>{r.porque}</p>
+          {/* ⚠ QUANDO NADA SAI, O MOTIVO VIRA O ASSUNTO DA TELA.
+              Antes ele era uma linha cinza de 13px embaixo do placar, e a
+              tela ainda mostrava, logo abaixo, a explicação GENÉRICA de "não
+              há ninguém na fila" — que aponta para a causa errada.
+
+              Aconteceu em 25/ago: às 8h22 o fundador rodou a simulação e leu
+              "nenhum contato". A causa real era a janela de 9h às 19h, e
+              estava escrita na letra miúda; a explicação em destaque falava
+              de etapa e roteamento. **Motivo certo em cinza perde para motivo
+              errado em negrito.** */}
+          {!r.ativo && r.avaliados === 0 ? (
+            <p className="badge badge-warn mt-16" style={{ whiteSpace: "normal", textAlign: "left" }}>
+              <strong>Nada sairia agora — e o motivo não é a lista:</strong> {r.porque}
+            </p>
+          ) : (
+            <p className="text-dim" style={{ fontSize: 13, marginTop: 8 }}>{r.porque}</p>
+          )}
 
           {erroAoTirar && (
             <p className="badge badge-danger" style={{ marginTop: 8, whiteSpace: "normal", textAlign: "left" }}>
@@ -130,13 +143,18 @@ export function Simulacao({ modo }: { modo: "off" | "simulation" | "auto" }) {
             </p>
           )}
 
+          {/* ⚠ ESTA EXPLICAÇÃO SÓ VALE QUANDO O PLANO ESTÁ ATIVO. Com o motor
+              parado por horário, teto ou modo, ela aponta para o lugar errado
+              e manda a pessoa procurar defeito em roteamento e etapa. */}
           {r.avaliados === 0 ? (
-            <p className="text-dim" style={{ fontSize: 14, marginBottom: 0 }}>
-              Nenhum contato da fila está marcado para sair pelo número da empresa. Isso
-              é o esperado se só a <strong>reativação</strong> estiver ligada e ninguém
-              estiver na etapa de ex-aluno com toque vencido — confira em{" "}
-              <strong>Por onde cada motivo sai</strong>, logo acima.
-            </p>
+            r.ativo ? (
+              <p className="text-dim" style={{ fontSize: 14, marginBottom: 0 }}>
+                Nenhum contato da fila está marcado para sair pelo número da empresa. Isso
+                é o esperado se só a <strong>reativação</strong> estiver ligada e ninguém
+                estiver na etapa de ex-aluno com toque vencido — confira em{" "}
+                <strong>Por onde cada motivo sai</strong>, logo acima.
+              </p>
+            ) : null
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0" }}>
               {[...r.linhas]

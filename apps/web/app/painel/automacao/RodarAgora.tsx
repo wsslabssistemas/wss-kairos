@@ -99,7 +99,16 @@ export function RodarAgora({ modo }: { modo: "off" | "simulation" | "auto" }) {
             </span>
           </div>
 
-          <p className="text-dim" style={{ fontSize: 13, marginTop: 8 }}>{r.porque}</p>
+          {/* Mesma regra da simulação: quando nada saiu, o motivo é o assunto
+              — e ele quase nunca é "não tem ninguém". Em 25/ago, às 8h22, era
+              a janela de horário, escrita em cinza embaixo de um placar. */}
+          {r.enviadas === 0 && r.escolhidos === 0 ? (
+            <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left", marginTop: 8 }}>
+              <strong>Nada saiu:</strong> {r.porque}
+            </p>
+          ) : (
+            <p className="text-dim" style={{ fontSize: 13, marginTop: 8 }}>{r.porque}</p>
+          )}
 
           {r.simulado && (
             <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left" }}>
