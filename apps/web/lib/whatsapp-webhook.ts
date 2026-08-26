@@ -139,6 +139,34 @@ export type MensagemRecebida = {
   quando: Date;
   /** O número DA EMPRESA que recebeu — é o que diz de qual tenant é. */
   phoneNumberId: string;
+  /**
+   * ⚠ DE ONDE A PESSOA VEIO DE VERDADE — e o WhatsApp não é a resposta.
+   *
+   * O fundador nomeou: *"uma coisa é vir apenas do whats, mas o whats foi o
+   * MEIO de contato; o lugar real pode ser a campanha do Meta"*. Registrar
+   * todo mundo como "whatsapp" é registrar o telefone como origem de todo
+   * cliente — e a origem é a única variável que ele impôs como obrigatória na
+   * medição, porque convênio tem 9% de resposta contra 54% do WhatsApp.
+   *
+   * Quando alguém clica num anúncio "Clique para WhatsApp", a Meta manda um
+   * bloco `referral` junto da PRIMEIRA mensagem, com o anúncio que originou o
+   * clique. Ele vem uma vez só — se for descartado ali, a informação não
+   * existe em lugar nenhum depois.
+   */
+  origem: OrigemDoContato | null;
+};
+
+/** O anúncio que trouxe a pessoa, quando ela veio de um. */
+export type OrigemDoContato = {
+  /** `ad` (anúncio) ou `post` (publicação orgânica). */
+  tipo: string;
+  /** O identificador do anúncio na Meta — é por ele que se compara campanha. */
+  anuncioId: string | null;
+  /** O título que ela leu antes de clicar. É o que a IA pode retomar. */
+  titulo: string | null;
+  corpo: string | null;
+  /** A publicação de onde veio o clique. */
+  url: string | null;
 };
 
 export type StatusDeEnvio = {
@@ -204,6 +232,10 @@ export function desmontarPacote(corpo: unknown): PacoteDoWebhook {
         const mm = msg as {
           id?: string; from?: string; timestamp?: string; type?: string;
           text?: { body?: string };
+          referral?: {
+            source_type?: string; source_id?: string; source_url?: string;
+            headline?: string; body?: string;
+          };
         };
         if (!mm.id || !mm.from) continue;
 
@@ -251,6 +283,17 @@ export function desmontarPacote(corpo: unknown): PacoteDoWebhook {
           tipo,
           quando: paraData(mm.timestamp),
           phoneNumberId,
+          // ⚠ SÓ VEM NA PRIMEIRA MENSAGEM depois do clique no anúncio. Não é
+          // consultável depois: ou se guarda agora, ou a origem some.
+          origem: mm.referral
+            ? {
+                tipo: mm.referral.source_type ?? "ad",
+                anuncioId: mm.referral.source_id ?? null,
+                titulo: mm.referral.headline ?? null,
+                corpo: mm.referral.body ?? null,
+                url: mm.referral.source_url ?? null,
+              }
+            : null,
         });
       }
 

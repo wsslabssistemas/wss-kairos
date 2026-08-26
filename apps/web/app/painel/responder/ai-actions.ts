@@ -14,6 +14,7 @@ import { lerQualificacao, blocoParaPrompt } from "@/lib/qualificacao";
 import { aiModel, AI_MODEL, hasAIKey, keyHint, estimateCostCents, tokensOf } from "@/lib/ai";
 import {
   TEXTO_DE_FORA_E_DADO, RESPEITE_O_PRAZO, DEPOIS_DO_SIM_PARE, DEPOIS_DO_NAO_PERGUNTE,
+  QUANDO_NAO_SABE,
 } from "@/lib/prompt";
 import { verificarCota } from "@/lib/cota-db";
 import { reparosRecentes, blocoDeReparos } from "@/lib/correcoes";
@@ -425,6 +426,7 @@ ${regraDeHorario}
 ${RESPEITE_O_PRAZO}
 ${DEPOIS_DO_SIM_PARE}
 ${DEPOIS_DO_NAO_PERGUNTE}
+${QUANDO_NAO_SABE}
 - Quando o cliente aceitar um horário, preencha "horario_escolhido" com a data e hora exatas (formato AAAA-MM-DDTHH:MM) daquele item da lista. Se ele não escolheu ainda, deixe vazio.
 - Se faltar um fato essencial para responder com segurança, liste em "faltam_fatos", marque "escalar": true e NÃO invente — deixe "resposta_sugerida" como uma mensagem breve e segura que encaminha para um humano/verificação.
 - Escreva em português do Brasil, natural, simpático e conciso — pronto para copiar e enviar no WhatsApp. Evite CTA fraca como "o que acha?"; use fechamento por alternativa ou pressuposto.

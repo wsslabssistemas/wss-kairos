@@ -426,7 +426,26 @@ async function registrar(mensagens: MensagemRecebida[]) {
           tenant_id: tenantId,
           name: msg.nome ?? msg.de,
           phone: msg.de,
-          source: "whatsapp",
+          // ⚠ O WHATSAPP É O MEIO, NÃO A ORIGEM. Quem clicou num anúncio veio
+          // da CAMPANHA — e registrar todo mundo como "whatsapp" transforma o
+          // telefone na origem de todo cliente da casa. A origem é a única
+          // variável que o fundador impôs como obrigatória na medição, porque
+          // convênio tem 9% de resposta contra 54% do WhatsApp: somar as duas
+          // é medir duas coisas e chamar de uma.
+          source: msg.origem ? "campanha meta" : "whatsapp",
+          // ⚠ E O ANÚNCIO INTEIRO FICA GUARDADO. Ele vem UMA VEZ, junto da
+          // primeira mensagem, e não é consultável depois — descartar aqui é
+          // perder para sempre qual criativo trouxe a pessoa. O título é o que
+          // ela LEU antes de clicar: é o assunto que ela já tem na cabeça.
+          custom: msg.origem
+            ? {
+                anuncio_id: msg.origem.anuncioId,
+                anuncio_titulo: msg.origem.titulo,
+                anuncio_corpo: msg.origem.corpo,
+                anuncio_url: msg.origem.url,
+                anuncio_tipo: msg.origem.tipo,
+              }
+            : {},
           owner_id: responsavel,
         })
         .select("id")
