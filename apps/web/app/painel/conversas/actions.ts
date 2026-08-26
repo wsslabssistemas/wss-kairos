@@ -8,6 +8,7 @@ import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
 import { enviarPelaCloudAPI } from "@/lib/envio";
 import { gerarResposta } from "../responder/ai-actions";
 import { getSkillFormConfig } from "@/lib/skill";
+import { ajustarRetorno } from "@/lib/retorno";
 import { guardarCorrecao } from "@/lib/correcoes";
 import { paraE164BR } from "@/lib/phone";
 import { registrarEnvio } from "@/lib/custo_mensagem-db";
@@ -57,7 +58,23 @@ export type RespostaResult =
 export async function gerarSugestaoDaConversa(
   contactId: string,
 ): Promise<
-  | { ok: true; texto: string; escalar: boolean; faltam: string[]; retornoEm: string }
+  | {
+      ok: true; texto: string; escalar: boolean; faltam: string[]; retornoEm: string;
+      /**
+       * ⚠ O HORÁRIO QUE ELE ACEITOU — e ele NÃO EXISTIA nesta tela.
+       *
+       * `marcarCompromisso` estava ligado só na tela *Responder*, onde alguém
+       * cola a mensagem à mão. Na conversa do canal — que é por onde a campanha
+       * inteira acontece — a IA lia "pode ser terça de manhã", escrevia a
+       * confirmação, e **nada ia para a agenda**.
+       *
+       * É a mesma falha que o fundador acabou de pegar com a equipe: duas
+       * pessoas fizeram a semana experimental e ninguém cadastrou, então o
+       * sistema não lembrou de ninguém por dez dias. Só que aqui seria o
+       * sistema cometendo o erro que ele existe para impedir.
+       */
+      horarioEscolhido: string;
+    }
   | { ok: false; motivo: string }
 > {
   const membership = await getActiveTenant();
@@ -94,7 +111,14 @@ export async function gerarSugestaoDaConversa(
     faltam: r.data.faltam_fatos ?? [],
     // A data que ELE disse, lida da frase dele. Sugestão para uma pessoa
     // confirmar — nunca gravação automática.
-    retornoEm: /^\d{4}-\d{2}-\d{2}$/.test(r.data.retorno_em ?? "") ? r.data.retorno_em : "",
+    //
+    // ⚠ E QUANDO ELE FALOU SÓ DO MÊS, quem escolhe o dia é a REGRA DA CASA:
+    // primeira segunda-feira. O modelo classifica se houve dia ou não; a
+    // aritmética de calendário é do código. Ver `lib/retorno.ts`.
+    retornoEm: /^\d{4}-\d{2}-\d{2}$/.test(r.data.retorno_em ?? "")
+      ? ajustarRetorno(r.data.retorno_em, !!r.data.retorno_vago)
+      : "",
+    horarioEscolhido: (r.data.horario_escolhido ?? "").trim(),
   };
 }
 

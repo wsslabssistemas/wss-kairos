@@ -49,6 +49,15 @@ export type AiAnswer = {
    * o mais caro que existe nesta casa.
    */
   retorno_em: string;
+  /**
+   * Ele falou só do mês, sem dizer o dia.
+   *
+   * ⚠ QUEM ESCOLHE O DIA É A CASA, NÃO O MODELO. Pedir para ele "usar o
+   * primeiro dia útil" é pedir aritmética de calendário a um gerador de texto,
+   * e uma segunda-feira errada marca a pessoa na semana errada. Ele classifica
+   * ("teve dia ou não teve"); `lib/retorno.ts` calcula.
+   */
+  retorno_vago: boolean;
 };
 
 const schema = z.object({
@@ -64,7 +73,8 @@ const schema = z.object({
   faltam_fatos: z.array(z.string()).describe("Fatos necessários que NÃO estão no DNA e seriam precisos para responder com segurança."),
   escalar: z.boolean().describe("true se faltam fatos essenciais e a resposta deve ser escalada a um humano em vez de inventada."),
   horario_escolhido: z.string().describe("Se o cliente ACEITOU um horário da lista de livres, a data e hora exatas em AAAA-MM-DDTHH:MM. Vazio se ele ainda não escolheu."),
-  retorno_em: z.string().describe("Se o cliente indicou QUANDO volta, retoma ou decide (ex.: 'mês que vem', 'depois do dia 10', 'semana que vem', 'em setembro'), a data correspondente em AAAA-MM-DD, calculada a partir de HOJE. Use o primeiro dia útil do período quando ele for vago. Vazio se ele não indicou nada."),
+  retorno_em: z.string().describe("Se o cliente indicou QUANDO volta, retoma ou decide (ex.: 'mês que vem', 'depois do dia 10', 'semana que vem', 'em setembro'), a data correspondente em AAAA-MM-DD, calculada a partir de HOJE. Vazio se ele não indicou nada."),
+  retorno_vago: z.boolean().describe("true quando ele falou só do MÊS ou de um período, sem dizer o dia ('mês que vem', 'em setembro', 'depois das férias'). false quando ele disse um dia específico ('dia 12', 'na segunda'). Serve para o sistema escolher a data — não invente o dia você."),
 });
 
 function fatos(sections: Record<string, unknown>): string {

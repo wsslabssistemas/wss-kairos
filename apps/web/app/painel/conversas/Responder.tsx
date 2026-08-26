@@ -6,6 +6,7 @@ import {
   responderPeloCanal, gerarSugestaoDaConversa, registrarCombinado, encerrarAtendimento,
   registrarMotivoDeSaida,
 } from "./actions";
+import { marcarCompromisso } from "../agenda/horarios-actions";
 
 /**
  * A CAIXA DE RESPOSTA — e o relógio da janela ao lado dela.
@@ -66,6 +67,17 @@ export function Responder({
   const [motivoTexto, setMotivoTexto] = useState("");
   const [salvandoMotivo, setSalvandoMotivo] = useState(false);
   const [motivoOk, setMotivoOk] = useState(false);
+  /**
+   * ⚠ O HORÁRIO QUE ELE ACEITOU — e que não chegava na agenda.
+   *
+   * A IA já lia "pode ser terça de manhã" e escrevia a confirmação; a agenda
+   * ficava vazia. É a mesma falha que o fundador pegou com a equipe (duas
+   * experimentais sem cadastro, dez dias de silêncio), só que cometida pelo
+   * sistema — que existe justamente para não deixar isso acontecer.
+   */
+  const [horario, setHorario] = useState("");
+  const [marcando, setMarcando] = useState(false);
+  const [horarioOk, setHorarioOk] = useState(false);
   const router = useRouter();
 
   /**
@@ -107,6 +119,10 @@ export function Responder({
       if (r.retornoEm) {
         setCombinado({ data: r.retornoEm, nota: "" });
         setCombinadoOk(false);
+      }
+      if (r.horarioEscolhido) {
+        setHorario(r.horarioEscolhido);
+        setHorarioOk(false);
       }
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
@@ -182,6 +198,53 @@ export function Responder({
       {sugerido && texto.trim() !== sugerido.trim() && (
         <p className="text-faint" style={{ fontSize: 11, marginTop: 8, marginBottom: 0 }}>
           Você mudou o texto da IA — a diferença vira lição para o motor quando enviar.
+        </p>
+      )}
+
+      {/* ⚠ O AGENDAMENTO — a peça que faltava para o sistema fazer "tudo o que
+          o humano faria". Aparece só quando a pessoa aceitou um horário. */}
+      {horario && !horarioOk && (
+        <div
+          className="mt-16"
+          style={{ padding: "12px 14px", borderRadius: 8, border: "1px solid var(--border-brand)" }}
+        >
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+            📅 Ela aceitou um horário — marcar na agenda?
+          </p>
+          <p className="text-dim" style={{ margin: "4px 0 10px", fontSize: 13 }}>
+            {new Date(horario).toLocaleString("pt-BR", {
+              weekday: "long", day: "2-digit", month: "2-digit",
+              hour: "2-digit", minute: "2-digit",
+            })}
+          </p>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            disabled={marcando}
+            onClick={async () => {
+              setMarcando(true);
+              setErro(null);
+              try {
+                const r = await marcarCompromisso({
+                  contactId,
+                  quandoISO: horario,
+                  origem: "cliente",
+                });
+                if (r.ok) { setHorarioOk(true); router.refresh(); }
+                else setErro(r.error ?? "Não consegui marcar.");
+              } finally {
+                setMarcando(false);
+              }
+            }}
+          >
+            {marcando ? "marcando…" : "Marcar na agenda"}
+          </button>
+        </div>
+      )}
+
+      {horarioOk && (
+        <p className="badge badge-success mt-16" style={{ whiteSpace: "normal", textAlign: "left" }}>
+          Marcado na agenda — e agora existe registro, mesmo que ninguém lembre.
         </p>
       )}
 

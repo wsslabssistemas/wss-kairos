@@ -188,6 +188,12 @@ jobs:
       # incluindo palavras.
       - name: Mensagem que nao pede resposta (emoji x cortesia)
         run: node packages/db/tests/fecho_test.mjs
+      # "Mes que vem" nao e data, e alguem precisa escolher uma. A regra e do
+      # fundador: primeira segunda-feira. Guarda o caso que quebra conta
+      # ingenua — quando o dia 1o JA E segunda, a resposta e o proprio dia 1o,
+      # e a versao sem `% 7` marcaria a pessoa uma semana tarde.
+      - name: A data do retorno (primeira segunda do mes)
+        run: node packages/db/tests/retorno_test.mjs
       - name: Motor — as regras anti-bloqueio sendo obedecidas
         run: node packages/db/tests/motor_test.mjs
       # Quem pediu para nao receber mais. Honrar descadastro e exigencia da
