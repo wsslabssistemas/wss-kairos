@@ -5,6 +5,7 @@ import { variantesArmazenadas } from "@/lib/phone";
 import { escolherResponsavel } from "@/lib/carteira";
 import { empresaDoNumero } from "@/lib/credenciais";
 import { pediuParaSair } from "@/lib/optout";
+import { tipoDeFecho } from "@/lib/fecho";
 import { rodarTodasAsEmpresas } from "@/lib/motor-rota";
 import { timingSafeEqual } from "node:crypto";
 import {
@@ -475,7 +476,18 @@ async function registrar(mensagens: MensagemRecebida[]) {
       //
       // A reação NÃO some: fica no histórico como sinal (reagir bem a uma
       // despedida é diferente de silêncio). Só não conta como pergunta.
-      input_kind: msg.tipo === "reaction" ? "customer_reaction" : "customer_message",
+      // ⚠ E UM "👍" MANDADO COMO TEXTO É A MESMA COISA QUE UMA REAÇÃO. A Meta
+      // separa os dois — quem toca na mensagem gera `reaction`, quem digita o
+      // emoji gera `text` — mas para quem atende não há diferença nenhuma:
+      // nos dois casos a pessoa acenou com a cabeça e não perguntou nada.
+      //
+      // `tipoDeFecho` só classifica assim texto SEM UMA ÚNICA LETRA. "ok" e
+      // "obrigada" são palavras e continuam sendo mensagem: fechar por engano
+      // deixa alguém esperando para sempre, e esse é o erro caro.
+      input_kind:
+        msg.tipo === "reaction" || tipoDeFecho(msg.texto) === "sem_conteudo"
+          ? "customer_reaction"
+          : "customer_message",
       channel: "whatsapp",
       content: msg.texto,
       occurred_at: msg.quando.toISOString(),

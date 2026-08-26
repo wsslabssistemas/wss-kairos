@@ -335,6 +335,20 @@ export async function responderPeloCanal(
     content: limpo,
     occurred_at: new Date().toISOString(),
     created_by: membership!.membershipId,
+    // ⚠ O NÚMERO QUE AUTORIZA O AUTOMÁTICO.
+    //
+    // Sem esta coluna, "aceitei a sugestão sem mexer" é indistinguível de
+    // "escrevi do zero" — as duas viram uma linha `outbound` igual. E é
+    // exatamente essa diferença que decide se dá para tirar a pessoa do meio.
+    //
+    // `ai_edits` guarda só as EDITADAS, de propósito: mensagem idêntica não é
+    // lição, e encheria o bloco do prompt de ruído. Mas para a DECISÃO, as
+    // idênticas são o sinal — são elas que dizem que a IA acertou sozinha.
+    origem_ia: sugerido?.trim()
+      ? (sugerido.replace(/\s+/g, " ").trim() === limpo.replace(/\s+/g, " ").trim()
+          ? "aceita"
+          : "editada")
+      : null,
   });
   if (error) {
     console.error(`[conversas] resposta ${envio.id} SAIU mas não registrou: ${error.message}`);

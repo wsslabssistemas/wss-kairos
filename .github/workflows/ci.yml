@@ -181,6 +181,13 @@ jobs:
       # depois da virada ele erraria para BAIXO, que e o lado pior.
       - name: Preco da IA — a virada da promocao, nos dois lados
         run: node packages/db/tests/preco_ia_test.mjs
+      # O "👍" que nao pede resposta. Assunto pequeno, erro caro: fechar por
+      # engano deixa alguem esperando PARA SEMPRE, porque sai da lista e
+      # ninguem descobre. Este teste guarda a regra de so fechar sozinho o que
+      # nao tem UMA LETRA — e existe para que ninguem "melhore" a regra
+      # incluindo palavras.
+      - name: Mensagem que nao pede resposta (emoji x cortesia)
+        run: node packages/db/tests/fecho_test.mjs
       - name: Motor — as regras anti-bloqueio sendo obedecidas
         run: node packages/db/tests/motor_test.mjs
       # Quem pediu para nao receber mais. Honrar descadastro e exigencia da
