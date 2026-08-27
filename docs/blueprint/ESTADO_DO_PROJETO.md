@@ -107,6 +107,42 @@ texto atual (*"você já treinou com a gente e acabou parando"*) funciona para
 quem saiu há 4 meses e soa estranho para quem saiu há 3 anos. Aprovação leva
 dias: pedir cedo é o que permite usar na semana seguinte.
 
+### 🔧 O AGENDADOR FOI INVESTIGADO E CORRIGIDO (27/ago, fim do dia)
+
+O cron perdeu as **duas** execuções do dia. A investigação achou causa medida,
+não suposta:
+
+| O que se mediu | O que revelou |
+|---|---|
+| 8 execuções agendadas, atrasos de 22 a 162 min | **Nenhuma pontual.** Vivíamos no balde de alta carga |
+| `created_at` = `run_started_at` em todas | Não era fila nem runner: era o GitHub demorando a **criar** |
+| CI rodou 3× hoje, instantâneo, no push | O Actions está saudável — a falha é só do gatilho `schedule` |
+| Incidente aberto 26/08 23:37 → 27/08 19:44 UTC | O dia em que "atrasa" virou "descarta" |
+| Documentação do `schedule` | *"some queued jobs may be dropped"*, e o pior momento é **o começo de cada hora** — onde nosso cron estava |
+
+⚠ **A causa raiz era de projeto:** 15 mensagens penduradas em UM tique, duas
+vezes ao dia. Perder um tique custava meio dia de campanha.
+
+**O que mudou** (migration `0067`, `lib/espacamento.ts`):
+
+1. O agendador bate **de 15 em 15 minutos**, nos minutos 7/22/37/52 — nunca no
+   `:00`. São 40 batidas por dia: um tique perdido custa 15 minutos.
+2. **Quem decide a cadência é o motor**, não o cron
+   (`min_minutos_entre_rodadas`, padrão 240). Com 30/dia e 15 por rodada dá as
+   **mesmas duas rodadas de hoje** — o que muda não é o que sai, é que cada
+   rodada tem 16 chances de acontecer em vez de 1.
+3. A **batida recusada vira linha** (`motor_execucoes.pulada`). Sem ela, duas
+   linhas por dia seriam idênticas a um agendador morto — a `0066` desfeita
+   pela própria correção.
+4. O alarme de silêncio caiu de **26 horas para 1 hora**, e a tela mostra
+   "agendador vivo — última batida há N min" **mesmo quando está tudo certo**.
+5. O botão *Enviar agora* **nunca** é barrado pelo espaçamento.
+
+⚠ **O que isso NÃO resolve:** o GitHub continua provedor único. Um dia inteiro
+degradado derruba as 40 batidas igual derrubou as 2.
+`scripts/agendador-reserva.sql` põe um segundo relógio no `pg_cron` do
+Supabase — **pendente de duas ações no painel do Supabase.**
+
 ### ⚠ O QUE ESTA SEMANA ENSINOU — cinco defeitos, todos silenciosos
 
 Nenhum apareceu como erro. Todos foram achados por uma pessoa usando.

@@ -124,6 +124,27 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   gasta dinheiro sozinha. Toda rodada fica em `motor_execucoes`, com a ORIGEM
   separada (agendador × botão), e a tela tem alarme de silêncio. **Toda peça
   agendada precisa de registro da execução, não só do resultado.**
+- **⚠ TIQUE AGENDADO É PROBABILIDADE, NÃO COMPROMISSO — E O MINUTO `:00` É O
+  PIOR DE TODOS.** No mesmo 27/ago o GitHub perdeu as DUAS execuções do dia, e
+  a investigação mostrou que nunca tinha sido pontual: em 8 execuções o tique
+  atrasou 22, 25, 26, 49, 50, 52, 54 e 162 minutos, com `created_at` igual a
+  `run_started_at` em todas — **não era fila nem falta de runner, era o
+  agendador demorando para criar a execução.** A documentação do `schedule`
+  avisa: sob carga *"some queued jobs may be dropped"*, e nomeia o começo de
+  cada hora como o pior momento. Estávamos no minuto zero.
+  **Mas a causa raiz era de projeto, não do GitHub:** 15 mensagens penduradas
+  em UM tique, duas vezes ao dia. A regra que ficou:
+  **trabalho agendado se pendura em MUITAS batidas pequenas, e quem decide a
+  cadência é o produto, nunca o agendador** — bater de 15 em 15 minutos faz um
+  tique perdido custar 15 minutos em vez de meio dia. Ver `lib/espacamento.ts`
+  e o cabeçalho de `.github/workflows/motor.yml`.
+  ⚠ E **a batida recusada precisa virar linha no banco** (`motor_execucoes.
+  pulada`): sem ela, uma tabela com duas linhas por dia é idêntica à de um
+  agendador morto, e o defeito que a `0066` fechou volta pela porta da própria
+  correção.
+  ⚠ E **agendador único continua sendo ponto único de falha.** As quatro
+  camadas acima melhoram muito o GitHub; só um segundo relógio em outra
+  infraestrutura tira ele do caminho crítico. Ver `scripts/agendador-reserva.sql`.
 - **⚠ A META CONTA BYTES, NÃO LETRAS.** O contador dela mostrou "492/512" e a
   gravação falhou: em UTF-8 cada acento ocupa 2 bytes, e em português quase toda
   frase tem acento. O erro dela diz "characters" e mede byte. **Funciona em

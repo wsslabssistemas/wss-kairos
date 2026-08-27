@@ -38,6 +38,7 @@ export async function saveAutomation(formData: FormData) {
       reativacao_max_dias: num("reativacao_max_dias"),
       max_por_rodada: num("max_por_rodada"),
       pausa_entre_envios_seg: num("pausa_entre_envios_seg"),
+      min_minutos_entre_rodadas: num("min_minutos_entre_rodadas"),
       monthly_budget_credits: num("monthly_budget_credits"),
     },
   });

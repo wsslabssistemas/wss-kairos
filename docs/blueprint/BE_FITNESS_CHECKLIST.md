@@ -36,6 +36,8 @@ envia → ela responde de novo.
 | 4 | **SMTP próprio no Supabase** | Resend ou Brevo, ~10 min. Destrava o alerta por e-mail |
 | 5 | Subir o teto global de IA na aba Fabricante | Está R$ 130; a soma das 4 empresas é R$ 195 |
 | 6 | Decidir sobre `teste-a@exemplo.com` (owner com acesso real) | Tela de Equipe |
+| 7 | **Aplicar a migration `0067`** (antes do deploy — ver abaixo) | SQL Editor do Supabase |
+| 8 | **Agendador reserva**: ligar `pg_cron` e `pg_net` e rodar `scripts/agendador-reserva.sql` | É o que tira o GitHub de ponto único de falha |
 
 ## ❌ O QUE FALTA — minhas, e o que cada uma espera
 
@@ -54,6 +56,12 @@ envia → ela responde de novo.
 - **O agendador do GitHub PULA execução, e não avisa.** Quando ele disser que
   não saiu, olhe **Automação → Últimas rodadas do motor** ANTES de procurar
   defeito. O botão *Enviar agora* resolve na hora.
+  ⚠ **Corrigido em 27/ago:** ele passou a bater de 15 em 15 minutos (nunca no
+  minuto `:00`, que é o pior), a cadência virou ajuste do motor, e a tela agora
+  mostra *"agendador vivo — última batida há N min"* mesmo quando está tudo
+  certo. O alarme toca em **1 hora**, não em 26. **Ainda falta o agendador
+  reserva** (`scripts/agendador-reserva.sql`) — sem ele o GitHub continua
+  provedor único.
 - **A Meta conta BYTES, não letras** — cada acento vale 2. "492/512" recusa.
 - **A Meta devolve o remetente sem o nono dígito.** `variantesArmazenadas`
   cobre os dois sentidos; não mexer sem rodar `telefone_test`.

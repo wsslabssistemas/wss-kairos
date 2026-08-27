@@ -63,6 +63,31 @@ export type AutomationSettings = {
    * por rodada é o jeito certo de espalhar; a pausa é o jeito caro.
    */
   pausa_entre_envios_seg: number;
+  /**
+   * O ESPAÇAMENTO MÍNIMO ENTRE DUAS RODADAS DO AGENDADOR, em minutos.
+   *
+   * ⚠ ELE EXISTE PORQUE O AGENDADOR PASSOU A BATER DE 15 EM 15 MINUTOS. Em
+   * 27/ago o cron do GitHub perdeu as duas execuções do dia — comportamento
+   * documentado dele sob carga, e o nosso cron estava no minuto `:00`, o pior
+   * momento possível. Com duas batidas por dia, perder uma custava meio dia de
+   * campanha; com quarenta, custa quinze minutos.
+   *
+   * ⚠ MAS BATER SEMPRE SEM ESTA REGRA MANDARIA O DIA INTEIRO ANTES DAS 11h.
+   * O `max_por_rodada` existe para espalhar o TRABALHO que a resposta gera —
+   * não adianta fatiar o lote se as fatias saem todas de manhã. Quem espalha
+   * passa a ser o motor, e o agendador volta a ser só quem bate na porta.
+   *
+   * ⚠ O PADRÃO DE 240 MINUTOS PRESERVA A OPERAÇÃO ATUAL, de propósito. Com
+   * 30/dia e 15 por rodada são duas rodadas — que com 4h de espaçamento caem
+   * de manhã e no começo da tarde, como já caíam. A diferença não é a
+   * cadência: é que cada uma passa a ter dezesseis chances de acontecer em vez
+   * de uma.
+   *
+   * ⚠ NÃO VALE PARA O BOTÃO *Enviar agora*. Ver `lib/espacamento.ts`.
+   *
+   * 0 = sem espaçamento (o teto do dia e o da rodada mandam sozinhos).
+   */
+  min_minutos_entre_rodadas: number;
 };
 
 export const AUTOMATION_DEFAULTS: AutomationSettings = {
@@ -83,6 +108,9 @@ export const AUTOMATION_DEFAULTS: AutomationSettings = {
   max_por_rodada: 0,
   // 6 segundos: o meio do intervalo que já existia no código (4 a 9).
   pausa_entre_envios_seg: 6,
+  // 4 horas: com 30/dia e 15 por rodada dá as MESMAS duas rodadas de hoje.
+  // Este número não muda o que sai — muda quantas chances cada rodada tem.
+  min_minutos_entre_rodadas: 240,
 };
 
 const MODES: AutomationMode[] = ["off", "simulation", "auto"];
@@ -108,6 +136,15 @@ export function readAutomation(settings: unknown): AutomationSettings {
     // O teto de 120s não é capricho: acima disso um lote grande não cabe no
     // tempo da função, e o relógio do lote corta pela metade.
     pausa_entre_envios_seg: num(a.pausa_entre_envios_seg, AUTOMATION_DEFAULTS.pausa_entre_envios_seg, 0, 120),
+    // O teto de 720 min (12h) cobre a janela inteira: acima disso o
+    // espaçamento passaria a significar "uma rodada por dia", que já é o que
+    // `max_per_day` faz — e duas regras dizendo a mesma coisa divergem.
+    min_minutos_entre_rodadas: num(
+      a.min_minutos_entre_rodadas,
+      AUTOMATION_DEFAULTS.min_minutos_entre_rodadas,
+      0,
+      720,
+    ),
   };
 }
 

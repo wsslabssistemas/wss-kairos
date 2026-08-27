@@ -50,7 +50,11 @@ const FIELDS: { key: keyof ReturnType<typeof readAutomation>; label: string; hin
   { key: "reativacao_max_dias", label: "Reativação: só quem saiu nos últimos (dias)", hint: "Recorte da campanha de retorno. 0 = a base inteira, do mais antigo ao mais novo", min: 0, max: 3650 },
   // ⚠ ESPALHAR O DISPARO É ESPALHAR O TRABALHO, não enganar a Meta. Resposta
   // vem em onda: 40 de uma vez viram seis conversas simultâneas.
-  { key: "max_por_rodada", label: "Máx. por rodada", hint: "Fatia o teto do dia entre as rodadas (9h e 17h). 0 = manda tudo de uma vez", min: 0, max: 1000 },
+  { key: "max_por_rodada", label: "Máx. por rodada", hint: "Fatia o teto do dia entre as rodadas. 0 = manda tudo de uma vez", min: 0, max: 1000 },
+  // ⚠ O CAMPO QUE SUBSTITUIU O HORÁRIO FIXO DO AGENDADOR. Antes as rodadas
+  // eram 9h e 17h, cravadas no cron — e em 27/ago o GitHub descartou as duas.
+  // Hoje ele bate de 15 em 15 minutos e é ESTE número que decide a cadência.
+  { key: "min_minutos_entre_rodadas", label: "Espaço entre rodadas (minutos)", hint: "O agendador bate de 15 em 15 min; este número decide quando a batida vira rodada. 240 = ~2 rodadas/dia. 0 = toda batida roda", min: 0, max: 720 },
   { key: "pausa_entre_envios_seg", label: "Pausa entre mensagens (segundos)", hint: "Evita o padrão de rajada. Vai com variação automática — e pausa alta faz o lote não caber no tempo", min: 0, max: 120 },
   { key: "monthly_budget_credits", label: "Orçamento mensal (créditos)", hint: "0 = sem limite. Ao atingir, suspende até a virada do mês", min: 0, max: 100000000 },
 ];
@@ -84,12 +88,51 @@ export default async function AutomacaoPage({
   //
   // paginacao-ok: `.limit(10)` é decisão de produto — as dez últimas rodadas —
   // com ORDER BY explícito.
-  const { data: rodadas } = await supabase
-    .from("motor_execucoes")
-    .select("id, origem, simulado, avaliados, enviadas, falhas, interrompido, porque, erro, occurred_at")
-    .eq("tenant_id", tenant.id)
-    .order("occurred_at", { ascending: false })
-    .limit(10);
+  const listar = (filtrarPuladas: boolean) => {
+    let q = supabase
+      .from("motor_execucoes")
+      .select("id, origem, simulado, avaliados, enviadas, falhas, interrompido, porque, erro, occurred_at")
+      .eq("tenant_id", tenant.id);
+    if (filtrarPuladas) q = q.eq("pulada", false);
+    return q.order("occurred_at", { ascending: false }).limit(10);
+  };
+  // ⚠ SE A `0067` AINDA NÃO FOI APLICADA, o filtro devolve erro e a lista
+  // voltaria VAZIA — dizendo "nenhuma rodada registrada" para quem acabou de
+  // rodar. Lista vazia que mente é o sintoma proibido aqui: ela precisa dizer
+  // se é "ainda não aconteceu" ou "está quebrado".
+  const primeira = await listar(true);
+  const { data: rodadas } = primeira.error ? await listar(false) : primeira;
+
+  /**
+   * ⚠ A PROVA DE VIDA DO AGENDADOR — a pergunta que a lista acima não responde.
+   *
+   * São duas coisas diferentes, e confundi-las foi o defeito de 27/ago: "o
+   * motor não trabalhou" e "o agendador está morto" tinham a mesma cara. Esta
+   * consulta pega a última batida QUALQUER, inclusive a recusada pelo
+   * espaçamento — e é ela que faz o alarme tocar em uma hora, não em 26.
+   *
+   * paginacao-ok: `.limit(1)` com ORDER BY — é a última linha, não acervo.
+   */
+  const bater = (colunaNova: boolean) =>
+    supabase
+      .from("motor_execucoes")
+      .select(colunaNova ? "occurred_at, pulada, porque" : "occurred_at, porque")
+      .eq("tenant_id", tenant.id)
+      .eq("origem", "agendador")
+      .order("occurred_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  // ⚠ AQUI O ERRO SERIA PIOR QUE LISTA VAZIA: sem batida, o alarme conclui
+  // "agendador morto" e toca à toa em toda tela, dentro da janela — e alarme
+  // que toca à toa é alarme desligado, que é como se perde o próximo 27/ago.
+  const b1 = await bater(true);
+  const { data: batida } = b1.error ? await bater(false) : b1;
+  const ultimaBatida = batida as
+    | { occurred_at: string; pulada?: boolean; porque: string | null }
+    | null;
+  const minutosSemBatida = ultimaBatida
+    ? Math.floor((Date.now() - Date.parse(ultimaBatida.occurred_at)) / 60_000)
+    : null;
 
   type Rodada = {
     id: string; origem: string; simulado: boolean; avaliados: number;
@@ -110,13 +153,24 @@ export default async function AutomacaoPage({
     new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }),
   );
   const diaUtil = agoraNaEmpresa.getDay() >= 1 && agoraNaEmpresa.getDay() <= 5;
-  const ultimaDoAgendador = execucoes.find((e) => e.origem === "agendador");
-  const horasSemAgendador = ultimaDoAgendador
-    ? (Date.now() - Date.parse(ultimaDoAgendador.occurred_at)) / 3_600_000
-    : null;
+
+  /**
+   * ⚠ O LIMIAR CAIU DE 26 HORAS PARA 1. Ele era 26h porque o agendador batia
+   * duas vezes ao dia — menos que isso tocaria à toa, e alarme que toca à toa
+   * é alarme desligado. Mas 26h significava que a campanha podia ficar parada
+   * um dia inteiro antes de a tela dizer qualquer coisa. Foi exatamente o que
+   * aconteceu em 27/ago: as duas execuções do dia sumiram, e quem percebeu foi
+   * o fundador perguntando se as mensagens tinham saído.
+   *
+   * Com a batida de 15 em 15 minutos (`motor.yml`), quatro batidas perdidas
+   * seguidas já são anormais. Uma hora de silêncio dentro da janela é defeito,
+   * não paciência.
+   */
+  const horaAqui = agoraNaEmpresa.getHours();
+  const dentroDaJanela = horaAqui >= a.window_start + 1 && horaAqui < a.window_end;
   const agendadorMudo =
-    a.mode === "auto" && diaUtil && agoraNaEmpresa.getHours() >= 10 &&
-    (horasSemAgendador === null || horasSemAgendador > 26);
+    a.mode === "auto" && diaUtil && dentroDaJanela &&
+    (minutosSemBatida === null || minutosSemBatida > 60);
   const status = await statusDoCanal(tenant.id);
 
   const banner: Record<AutomationMode, { cls: string; txt: string }> = {
@@ -295,16 +349,35 @@ export default async function AutomacaoPage({
             perdido é uma lista que não anda. */}
         {agendadorMudo && (
           <p className="badge badge-danger" style={{ whiteSpace: "normal", textAlign: "left" }}>
-            <strong>O agendador não roda desde{" "}
-            {ultimaDoAgendador
-              ? new Date(ultimaDoAgendador.occurred_at).toLocaleString("pt-BR", {
+            <strong>O agendador não bate há{" "}
+            {minutosSemBatida === null
+              ? "nunca bateu"
+              : minutosSemBatida >= 120
+                ? `${Math.floor(minutosSemBatida / 60)} horas`
+                : `${minutosSemBatida} minutos`}.</strong>{" "}
+            Ele bate de 15 em 15 minutos, das {a.window_start}h às {a.window_end}h, de segunda
+            a sexta — quatro batidas perdidas seguidas não são atraso normal. O{" "}
+            <code>schedule</code> do GitHub descarta execuções sob carga e não avisa ninguém.{" "}
+            <strong>Use Enviar agora</strong> acima: isso não depende do agendador. Depois
+            confira em <em>Actions → Motor proativo</em> no GitHub se as execuções pararam de
+            ser criadas.
+          </p>
+        )}
+
+        {/* ⚠ A PROVA DE VIDA APARECE MESMO QUANDO ESTÁ TUDO CERTO. Campo que só
+            existe no erro é indistinguível de campo que não foi feito — a regra
+            do "campo cinza com o motivo escrito" do CLAUDE.md. Sem esta linha,
+            "o agendador está vivo" seria uma informação que ninguém tem como
+            confirmar, que é como 27/ago começou. */}
+        {!agendadorMudo && ultimaBatida && (
+          <p className="text-dim" style={{ margin: "0 0 4px", fontSize: 12 }}>
+            Agendador vivo — última batida{" "}
+            {minutosSemBatida !== null && minutosSemBatida < 60
+              ? `há ${minutosSemBatida} min`
+              : `em ${new Date(ultimaBatida.occurred_at).toLocaleString("pt-BR", {
                   day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                })
-              : "nunca"}.</strong>{" "}
-            Ele deveria rodar às 9h e às 17h, de segunda a sexta. O cron do GitHub pula
-            execuções em horário de pico e não avisa — use <strong>Enviar agora</strong> acima
-            e confira em <em>Actions → Motor proativo</em> no GitHub se a execução falhou ou
-            nem começou.
+                })}`}
+            {ultimaBatida.pulada && ultimaBatida.porque ? ` · ${ultimaBatida.porque}` : ""}
           </p>
         )}
 
