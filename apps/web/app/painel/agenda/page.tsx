@@ -10,6 +10,7 @@ import AssinarCalendario from "./AssinarCalendario";
 import { gerarEnderecoCalendario, removerEnderecoCalendario } from "./actions";
 import { cancelarCompromisso, bloquearHorario, removerBloqueio } from "./horarios-actions";
 import Jornada from "./Jornada";
+import { dataHoraLocal, horaMinutoLocal } from "@/lib/fuso";
 
 function localISO(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -174,9 +175,9 @@ export default async function AgendaPage({
             <div className="row wrap" style={{ gap: 8, marginBottom: 14 }}>
               {bloqueios.map((b) => (
                 <span key={b.id} className="badge" style={{ padding: "6px 10px" }}>
-                  {new Date(b.starts_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  {dataHoraLocal(b.starts_at)}
                   {"–"}
-                  {new Date(b.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  {horaMinutoLocal(b.ends_at)}
                   {b.reason ? ` · ${b.reason}` : ""}
                   {b.membership_id ? ` · ${profissionais.find((p) => p.id === b.membership_id)?.nome ?? ""}` : " · casa"}
                   <form action={removerBloqueio} style={{ display: "inline" }}>
@@ -223,7 +224,7 @@ export default async function AgendaPage({
                 {compromissos.map((a) => (
                   <tr key={a.id}>
                     <td style={{ whiteSpace: "nowrap" }}>
-                      {new Date(a.starts_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      {dataHoraLocal(a.starts_at)}
                     </td>
                     <td>
                       {a.contact_id ? (

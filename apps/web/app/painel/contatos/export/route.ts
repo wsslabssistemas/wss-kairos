@@ -3,6 +3,7 @@ import { getActiveTenant } from "@/lib/auth";
 import { getSkillFormConfig } from "@/lib/skill";
 import { buildCsv } from "@/lib/csv";
 import { lerTudo } from "@/lib/paginado";
+import { dataLocal } from "@/lib/fuso";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
       c.phone,
       stageLabel(c.journey_stage),
       c.source,
-      new Date(c.created_at).toLocaleDateString("pt-BR"),
+      dataLocal(c.created_at),
     ]);
   }
 

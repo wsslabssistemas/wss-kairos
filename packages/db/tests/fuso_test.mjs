@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const { horaLocal, diaLocalISO, lerFuso, FUSO_PADRAO } = await import(
+const { horaLocal, diaLocalISO, lerFuso, FUSO_PADRAO, dataHoraLocal, dataLocal, horaMinutoLocal } = await import(
   pathToFileURL(path.join(ROOT, "apps/web/lib/fuso.ts")).href
 );
 
@@ -58,6 +58,33 @@ verifica("fuso vazio cai no padrao", lerFuso({ timezone: "   " }), FUSO_PADRAO);
 // Manaus e UTC-4: a mesma hora UTC da numero diferente. Prova que o fuso da
 // empresa e lido de verdade, e nao um "-3" chumbado.
 verifica("Manaus (UTC-4) as 21:45 UTC e 17h", horaLocal(oCaso, "America/Manaus"), 17);
+
+// ================================================================ EXIBICAO
+// ⚠ O DEFEITO DE 27/ago/2026 — o MESMO deste arquivo, na camada de tela. O
+// fundador disparou a campanha as 17h37 e o Canal oficial mostrou **20:37**:
+// `toLocaleString("pt-BR")` sem `timeZone` usa o relogio de QUEM RENDERIZA, e
+// pagina de servidor renderiza na Vercel, que roda em UTC.
+//
+// ⚠ E ELE E PIOR QUE O DE CIMA, nao menor. Aquele fazia o motor nao rodar, e
+// ninguem acredita num numero que nao apareceu. Este mostra hora PLAUSIVEL e
+// errada: quem conferir se a mensagem saiu no horario combinado conclui que o
+// produto disparou fora da janela de operacao.
+const oEnvio = new Date("2026-08-27T20:37:00Z"); // 17h37 em Brasilia
+verifica("o envio das 17h37 aparece 17:37, nao 20:37", dataHoraLocal(oEnvio), "27/08, 17:37");
+verifica("e so a hora tambem", horaMinutoLocal(oEnvio), "17:37");
+
+// ⚠ A VIRADA DO DIA. Sem fuso, uma conversa das 22h de sexta aparece no
+// sabado — e some de quem filtra por dia.
+verifica("01:00 UTC de 28/08 e 22:00 de 27/08 aqui", dataHoraLocal("2026-08-28T01:00:00Z"), "27/08, 22:00");
+verifica("e a data segue sendo 27", dataLocal("2026-08-28T01:00:00Z"), "27/08/2026");
+
+// Manaus de novo: prova que o fuso e parametro, nao "-3" chumbado.
+verifica("o mesmo instante em Manaus e 16:37", horaMinutoLocal(oEnvio, "America/Manaus"), "16:37");
+
+// ⚠ VALOR AUSENTE OU PODRE VIRA TRACO, nunca "Invalid Date" na cara de quem usa.
+verifica("nulo vira traco", dataHoraLocal(null), "—");
+verifica("vazio vira traco", dataHoraLocal(""), "—");
+verifica("lixo vira traco, nao Invalid Date", dataHoraLocal("nao e data"), "—");
 
 console.log(falhas === 0 ? "\nfuso: tudo certo." : `\nfuso: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

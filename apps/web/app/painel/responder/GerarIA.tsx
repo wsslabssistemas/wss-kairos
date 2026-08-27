@@ -5,6 +5,7 @@ import { AvisoDeCota } from "@/app/painel/AvisoDeCota";
 import { gerarResposta, applyStage, saveInteraction, setOutcome, type AiAnswer } from "./ai-actions";
 import { marcarCompromisso } from "../agenda/horarios-actions";
 import { CopyButton } from "./CopyButton";
+import { FUSO_PADRAO } from "@/lib/fuso";
 
 // Chave CANÔNICA no banco (0044), rótulo legível na tela. A separação entre
 // "disse não" e "parou de responder" é o que permite ao M2 responder se a
@@ -189,7 +190,7 @@ export default function GerarIA({
                 <div>
                   <div className="badge badge-brand">Horário acertado na conversa</div>
                   <p style={{ margin: "8px 0 0", fontSize: 14 }}>
-                    <strong>{new Date(data.horario_escolhido).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</strong>
+                    <strong>{new Date(data.horario_escolhido).toLocaleString("pt-BR", { timeZone: FUSO_PADRAO, weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</strong>
                   </p>
                 </div>
                 <button

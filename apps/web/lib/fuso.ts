@@ -68,3 +68,61 @@ export function diaLocalISO(quando: Date, fuso: string = FUSO_PADRAO): string {
   }).format(quando);
   return p.slice(0, 10);
 }
+
+// =====================================================================
+// MOSTRAR A HORA PARA GENTE
+//
+// ⚠ O DEFEITO DE 27/ago/2026, e é o MESMO deste arquivo três camadas acima.
+// O fundador enviou a campanha às 17h37 e o Canal oficial mostrou **20:37**.
+// Nada quebrou, nada deu erro: `toLocaleString("pt-BR")` sem `timeZone` usa o
+// fuso de QUEM RENDERIZA — e página de servidor renderiza na Vercel, que roda
+// em UTC. Três horas a mais em toda tela do painel.
+//
+// ⚠ E ELE É PIOR QUE O DE 20/ago, não menor. Aquele fazia o motor não rodar,
+// e ninguém acreditou no número errado porque não havia número. Este mostra um
+// horário PLAUSÍVEL e errado: "20:37" é hora que existe, dentro de um dia que
+// existe, e quem for conferir se a mensagem saiu na hora combinada vai
+// concluir que o produto disparou fora da janela de operação. Número que
+// ninguém consegue contestar é o mais perigoso que existe aqui.
+//
+// ⚠ E NÃO É "SÓ" O SERVIDOR. Em componente de cliente o mesmo código acerta,
+// porque o navegador do fundador está em Brasília — então o defeito aparece em
+// UMAS telas e não em outras, o que faz parecer dado inconsistente em vez de
+// bug. Fixar o fuso resolve os dois casos com a mesma linha, e é o único jeito
+// de a tela ficar certa no dia em que um cliente operar de outro fuso.
+//
+// ⚠ ISTO SÓ VALE PARA INSTANTE (`timestamptz`). Coluna `date` — uma data sem
+// hora, como o encerramento de um edital — NÃO passa por aqui: `new
+// Date("2026-08-27")` é meia-noite UTC, e convertê-la para São Paulo devolve
+// **26/08**. Aplicar fuso onde não há hora cria o erro que ele deveria evitar.
+// =====================================================================
+
+/** Dia, mês, hora e minuto de um instante, no fuso da empresa. */
+export function dataHoraLocal(iso: string | Date | null | undefined, fuso: string = FUSO_PADRAO): string {
+  if (!iso) return "—";
+  const d = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("pt-BR", {
+    timeZone: fuso,
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Só o dia de um instante, no fuso da empresa. */
+export function dataLocal(iso: string | Date | null | undefined, fuso: string = FUSO_PADRAO): string {
+  if (!iso) return "—";
+  const d = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("pt-BR", { timeZone: fuso });
+}
+
+/** Só a hora e o minuto de um instante, no fuso da empresa. */
+export function horaMinutoLocal(iso: string | Date | null | undefined, fuso: string = FUSO_PADRAO): string {
+  if (!iso) return "—";
+  const d = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleTimeString("pt-BR", { timeZone: fuso, hour: "2-digit", minute: "2-digit" });
+}

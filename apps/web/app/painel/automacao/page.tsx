@@ -13,6 +13,7 @@ import { RodarAgora } from "./RodarAgora";
 import { PerfilDoNumero } from "./PerfilDoNumero";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
+import { dataHoraLocal } from "@/lib/fuso";
 
 // Chamada de rede para a Meta no teste de conexao. Ver a nota em
 // `fila/page.tsx`: tela que fala com servico externo declara o tempo.
@@ -374,9 +375,7 @@ export default async function AutomacaoPage({
             Agendador vivo — última batida{" "}
             {minutosSemBatida !== null && minutosSemBatida < 60
               ? `há ${minutosSemBatida} min`
-              : `em ${new Date(ultimaBatida.occurred_at).toLocaleString("pt-BR", {
-                  day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                })}`}
+              : `em ${dataHoraLocal(ultimaBatida.occurred_at)}`}
             {ultimaBatida.pulada && ultimaBatida.porque ? ` · ${ultimaBatida.porque}` : ""}
           </p>
         )}
@@ -393,9 +392,7 @@ export default async function AutomacaoPage({
               <li key={e.id} style={{ padding: "8px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
                 <div className="row wrap" style={{ gap: 8, alignItems: "baseline" }}>
                   <span className="text-faint" style={{ fontSize: 12, minWidth: 96 }}>
-                    {new Date(e.occurred_at).toLocaleString("pt-BR", {
-                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                    })}
+                    {dataHoraLocal(e.occurred_at)}
                   </span>
                   <span className="badge">{e.origem === "agendador" ? "agendador" : "botão"}</span>
                   {e.erro ? (

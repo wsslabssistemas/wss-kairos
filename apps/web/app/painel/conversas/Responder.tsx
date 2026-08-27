@@ -7,6 +7,7 @@ import {
   registrarMotivoDeSaida,
 } from "./actions";
 import { marcarCompromisso } from "../agenda/horarios-actions";
+import { FUSO_PADRAO } from "@/lib/fuso";
 
 /**
  * A CAIXA DE RESPOSTA — e o relógio da janela ao lado dela.
@@ -212,7 +213,11 @@ export function Responder({
             📅 Ela aceitou um horário — marcar na agenda?
           </p>
           <p className="text-dim" style={{ margin: "4px 0 10px", fontSize: 13 }}>
+            {/* ⚠ COM `timeZone`: sem ele, quem abrisse o painel de outro fuso
+                veria um horário diferente do que foi combinado com a lead —
+                num campo cuja única função é confirmar a hora marcada. */}
             {new Date(horario).toLocaleString("pt-BR", {
+              timeZone: FUSO_PADRAO,
               weekday: "long", day: "2-digit", month: "2-digit",
               hour: "2-digit", minute: "2-digit",
             })}

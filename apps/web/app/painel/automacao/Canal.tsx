@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { salvarCanal, testarCanal } from "./canal-actions";
+import { dataHoraLocal } from "@/lib/fuso";
 
 /**
  * LIGAR O CANAL OFICIAL — a credencial da empresa e o teste antes do primeiro
@@ -177,7 +178,7 @@ export function Canal({
 
       {atualizadoEm && (
         <p className="text-faint" style={{ fontSize: 11, marginTop: 14, marginBottom: 0 }}>
-          Credencial atualizada em {new Date(atualizadoEm).toLocaleString("pt-BR")}.
+          Credencial atualizada em {dataHoraLocal(atualizadoEm)}.
         </p>
       )}
     </div>

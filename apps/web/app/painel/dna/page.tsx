@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/auth";
+import { dataLocal } from "@/lib/fuso";
 
 type DnaSection = {
   key: string;
@@ -126,7 +127,7 @@ export default async function DnaPage() {
                 <span
                   className={velha(s.key) ? "badge badge-warn" : "text-faint"}
                   style={{ fontSize: 11, whiteSpace: "nowrap" }}
-                  title={`Atualizado em ${new Date(carimbos[s.key]).toLocaleDateString("pt-BR")}`}
+                  title={`Atualizado em ${dataLocal(carimbos[s.key])}`}
                 >
                   {dias === 0 ? "hoje" : dias === 1 ? "ontem" : `há ${dias} dias`}
                 </span>

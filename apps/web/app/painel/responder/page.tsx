@@ -12,6 +12,7 @@ import GerarIA from "./GerarIA";
 import { MoverEtapa } from "./MoverEtapa";
 import Abordar from "./Abordar";
 import { logInteraction } from "./actions";
+import { dataLocal } from "@/lib/fuso";
 
 // Tela que chama IA declara o tempo da função: sem isto a Vercel mata a
 // geração no meio e o botão fica girando sem erro nenhum. Ver `fila/page.tsx`.
@@ -189,7 +190,7 @@ export default async function ResponderPage({
                       {h.content}
                     </span>
                     <span className="text-faint" style={{ whiteSpace: "nowrap" }}>
-                      {new Date(h.occurred_at).toLocaleDateString("pt-BR")}
+                      {dataLocal(h.occurred_at)}
                     </span>
                   </li>
                 ))}

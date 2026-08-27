@@ -9,6 +9,7 @@ import JourneyBar from "@/components/JourneyBar";
 import { deleteContact, moveStage, updateStageStart } from "../actions";
 import { registrarAtendimento, excluirAtendimento } from "../../atendimentos/actions";
 import { brl } from "@/lib/money";
+import { dataLocal } from "@/lib/fuso";
 
 type Atendimento = {
   id: string;
@@ -101,7 +102,7 @@ export default async function ContatoDetalhe({
     { label: "Telefone", value: displayPhone(c.phone) },
     { label: "E-mail", value: c.email ?? "—" },
     { label: "Origem", value: c.source ?? "—" },
-    { label: "Criado em", value: new Date(c.created_at).toLocaleDateString("pt-BR") },
+    { label: "Criado em", value: dataLocal(c.created_at) },
     ...fields.map((f) => ({ label: f.label, value: custom[f.key] ?? "—" })),
   ];
 
@@ -230,7 +231,7 @@ export default async function ContatoDetalhe({
               <tbody>
                 {atendimentos.map((a) => (
                   <tr key={a.id}>
-                    <td className="text-dim">{new Date(a.occurred_at).toLocaleDateString("pt-BR")}</td>
+                    <td className="text-dim">{dataLocal(a.occurred_at)}</td>
                     <td>{a.service}</td>
                     {membros.length > 1 && (
                       <td className="text-dim">{membros.find((m) => m.id === a.performed_by)?.nome ?? "—"}</td>

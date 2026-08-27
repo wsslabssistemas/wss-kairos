@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/auth";
+import { dataHoraLocal } from "@/lib/fuso";
 
 export const metadata = { title: "O que a IA aprendeu" };
 
@@ -82,7 +83,7 @@ export default async function CorrecoesPage() {
   const comNota = provas.filter((p) => p.nota?.trim());
 
   const quando = (iso: string) =>
-    new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    dataHoraLocal(iso);
 
   return (
     <main>

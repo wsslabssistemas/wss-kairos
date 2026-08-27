@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { proximaProva, julgar, type Prova, type Veredito } from "./actions";
+import { dataHoraLocal } from "@/lib/fuso";
 
 /**
  * O JULGAMENTO, UMA MENSAGEM POR VEZ.
@@ -151,7 +152,7 @@ export function Provas({
           <div className="row wrap" style={{ gap: 8, alignItems: "baseline" }}>
             <strong style={{ fontSize: 15 }}>{prova.nome}</strong>
             <span className="text-faint" style={{ fontSize: 12 }}>
-              escreveu em {new Date(prova.quando).toLocaleString("pt-BR")}
+              escreveu em {dataHoraLocal(prova.quando)}
             </span>
           </div>
 

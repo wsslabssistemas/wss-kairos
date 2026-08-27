@@ -10,6 +10,7 @@ import { credencialDoCanal } from "@/lib/credenciais";
 import { lerTudo } from "@/lib/paginado";
 import { getSkillFormConfig } from "@/lib/skill";
 import { Responder } from "./Responder";
+import { dataHoraLocal } from "@/lib/fuso";
 
 export const metadata = { title: "Canal oficial" };
 
@@ -219,10 +220,10 @@ export default async function ConversasPage({
   const nomeDe = (l: Linha) =>
     (Array.isArray(l.contacts) ? l.contacts[0]?.name : l.contacts?.name) ?? "(sem nome)";
 
-  const quando = (iso: string | null | undefined) =>
-    iso
-      ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-      : "—";
+  // ⚠ COM O FUSO DA EMPRESA, NUNCA O DE QUEM RENDERIZA. Esta linha mostrava
+  // 20:37 para um envio das 17:37: sem `timeZone`, a página de servidor usa o
+  // relógio da Vercel, que é UTC. Ver `lib/fuso.ts`.
+  const quando = (iso: string | null | undefined) => dataHoraLocal(iso);
 
   const ROTULO_STATUS: Record<string, { txt: string; cls: string }> = {
     sent: { txt: "enviada", cls: "badge" },

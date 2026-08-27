@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { salvarExercicio } from "./actions";
+import { dataLocal } from "@/lib/fuso";
 
 type Recomendacao = { estrategia: string; tecnica: string; erros: string[]; proximoPasso: string };
 
@@ -208,7 +209,7 @@ export default function Exercicio({
 
       {!revelado && jaFeito && (
         <p className="text-faint mt-16" style={{ fontSize: 12 }}>
-          Você já fez este exercício em {new Date(jaFeito.updated_at).toLocaleDateString("pt-BR")}. Refazer
+          Você já fez este exercício em {dataLocal(jaFeito.updated_at)}. Refazer
           guarda uma resposta nova — e comparar as duas é onde dá para ver o que mudou.
         </p>
       )}
