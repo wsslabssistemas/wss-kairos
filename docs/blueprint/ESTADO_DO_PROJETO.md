@@ -1,5 +1,5 @@
 # ESTADO DO PROJETO — COS (WSS Kairós)
-**Última atualização:** 22 de agosto de 2026
+**Última atualização:** 27 de agosto de 2026
 **Fabricante:** WSS Labs · **Fundador:** William
 
 > Este documento existe para que qualquer conversa nova possa retomar o projeto
@@ -15,7 +15,159 @@
 
 ---
 
-## 0. ⚠ LEIA ISTO PRIMEIRO — repasse de 21 de agosto de 2026
+## 0. ⚠ LEIA ISTO PRIMEIRO — repasse de 27 de agosto de 2026
+
+> Os repasses anteriores continuam abaixo. **A CAMPANHA SAIU DO PAPEL:** o
+> canal está no ar, mensagens reais foram enviadas, pessoas reais responderam,
+> e a semana inteira foi trocar impressão por número.
+
+### 🟢 A PRIMEIRA CAMPANHA REAL ACONTECEU
+
+| | |
+|---|---|
+| Mensagens enviadas pela Meta | **61** |
+| Falhas de entrega | 7 |
+| Pessoas que responderam | **13** |
+| Qualidade do número | **Alta** · degrau 250/dia |
+| Gasto de IA no mês | R$ 80,55 |
+| Alunos vigentes | 300 |
+| Ex-alunos ainda não contatados | **920** |
+
+**A taxa do primeiro lote foi 31%** (6 respostas em 19 entregues) no grupo de
+até 90 dias — acima do dobro do piso do benchmark (10–20%). Ela cai conforme o
+público envelhece: 5–10% entre 90 e 180 dias, 2–5% acima de um ano.
+
+**Configuração corrente:** `auto` · 30/dia · **15 por rodada** · pausa 6s ·
+recorte **180 dias** · só `reativacao` sai pelo canal oficial.
+
+### 📊 O NÚMERO QUE AUTORIZA O AUTOMÁTICO — e ele ainda não existe
+
+O fundador quer virar a chave. O banco de provas deu **0 erro grave em 39
+mensagens reais**, o que prova SEGURANÇA (a IA não inventa nem nega o que
+existe). Falta a outra metade: **quantas sugestões saem sem edição.**
+
+`interactions.origem_ia` (`aceita` | `editada` | nulo) foi criada em 25/ago
+para isso e **ainda tem pouca amostra**. Antes de propor o automático, some
+por essa coluna.
+
+⚠ **`ai_edits` NÃO responde essa pergunta.** Ela guarda só as EDITADAS, de
+propósito — mensagem idêntica não é lição. Para a decisão, as idênticas é que
+são o sinal.
+
+### ⚠ A DECISÃO DE ARQUITETURA SOBRE HORÁRIO — do fundador, e está certa
+
+> *"Se o lead responder às 2h da manhã, o sistema espera 20/30s e já responde.
+> A resposta não precisa ter trava de horário; mandar mensagem para quem não
+> perguntou nada, aí sim vale a regra."*
+
+**O código já era assim** e ninguém tinha percebido: a janela de horário existe
+em UM lugar só (`lib/motor.ts`, o motor proativo). `responderPeloCanal` nunca
+teve verificação de hora. **Horário governa quem INICIA conversa, nunca quem
+RESPONDE.**
+
+E ele recusou o teto de turnos que eu propus, com razão: o que impede a IA de
+sair do que sabe é a trava anti-invenção, não uma contagem de mensagens — e
+parar no meio de uma conversa que vai bem é abandonar alguém no melhor momento.
+
+**Falta para a fase 2 (IA responde sozinha):** a pausa de 20–40s antes de
+responder, e o aviso de que há uma decisão esperando um humano — hoje a recusa
+aparece na tela porque é o fundador quem clica em gerar; sozinha, ela precisa
+chamar alguém.
+
+### 🔴 O QUE ESTÁ TRAVADO NA META — e não é do produto
+
+1. **O nome de exibição está REJEITADO.** Aparece "Seja Fitness2" para quem
+   recebe. Nova solicitação devolve *"Operação não autorizada"* (erro 1675034),
+   que PARECE falta de permissão e não é: é a fila de revisão travada depois de
+   uma recusa. Causas prováveis: número solto no fim do nome, e nome diferente
+   do negócio verificado. **É caso de suporte** —
+   `business.facebook.com/business/help`, com o código e o identificador.
+2. **A campanha do Meta ainda aponta para o número da recepção.** Não dá para
+   trocar o telefone de campanha rodando: é campanha nova. O fundador está
+   fazendo — e quando a primeira mensagem de anúncio chegar, CONFERIR se o
+   bloco `referral` veio como esperado.
+
+### 🎯 O PLANO COMBINADO PARA A LISTA DE EX-ALUNOS
+
+Restam 920, e o gargalo **não é a Meta** (30/dia é 12% do degrau). É a lista.
+
+| Faixa | Faltam | Recorte a usar |
+|---|---|---|
+| até 180 dias | 39 | 180 |
+| 181–365 | 167 | 365 |
+| 1–2 anos | 359 | 730 |
+| +2 anos | 355 | 0 (tudo) |
+
+Falando com as ~206 de até um ano em uma semana, ele chega perto das **250
+pessoas distintas em 7 dias que sobem o degrau para 1.000/dia** — o que importa
+para quando o anúncio novo entrar.
+
+⚠ **Pedir um SEGUNDO modelo na Meta é o item mais adiado e mais valioso.** O
+texto atual (*"você já treinou com a gente e acabou parando"*) funciona para
+quem saiu há 4 meses e soa estranho para quem saiu há 3 anos. Aprovação leva
+dias: pedir cedo é o que permite usar na semana seguinte.
+
+### ⚠ O QUE ESTA SEMANA ENSINOU — cinco defeitos, todos silenciosos
+
+Nenhum apareceu como erro. Todos foram achados por uma pessoa usando.
+
+1. **O agendador do GitHub PULA execução** (27/ago, 9h). Produto no ar, modo em
+   `auto`, 39 candidatos, zero mensagem, nenhum erro. "Não rodou" era
+   indistinguível de "não havia ninguém". Fechado por `motor_execucoes` + o
+   alarme de silêncio em Automação. **Quando ele reclamar que não saiu, olhe
+   ali PRIMEIRO.**
+2. **O custo da IA estava 1,5× a mais.** O Sonnet 5 está em promoção de
+   lançamento (US$ 2/10) e o código usava a tabela cheia (US$ 3/15).
+   ⚠ **A promoção acaba em 31/08/2026** — a virada é por data em
+   `lib/preco-ia.ts` e está testada dos dois lados.
+3. **A Meta conta BYTES, não letras.** A descrição do perfil recusava em
+   "492/512" porque cada acento ocupa 2 bytes. Pior em português que em inglês
+   — por isso não é problema conhecido.
+4. **A Meta devolve o remetente brasileiro SEM o nono dígito.** Saiu para
+   `5551993742002` e voltou `555193742002`: a busca não achou e o webhook criou
+   um contato DUPLICADO. Era a Lilian ao contrário, e teria duplicado toda
+   pessoa que respondesse.
+5. **`maxDuration` mora na PÁGINA** — regra escrita no `CLAUDE.md` que eu mesmo
+   violei. Declarei 300 na rota da API e deixei a página em 60: 8 de 20
+   mensagens saíram e a tela disse *"resposta inesperada do servidor"*.
+
+### ⚠ E DUAS VEZES EU AFIRMEI NÚMERO SEM CONFERIR DO QUE ELE ERA FEITO
+
+Em 27/ago eu disse que "44 mensagens saíram pelo motor sozinho, então o
+agendador já disparou". **O botão *Enviar agora* passa pelo MESMO `rodarMotor`
+e grava idêntico** (`created_by` nulo). Não havia evidência nenhuma de que o
+cron tivesse funcionado — e eu afirmei que havia.
+
+É a mesma classe do Analista dizendo que fazia 20 dias que ninguém usava o
+sistema. **Número que ninguém consegue contestar é o mais perigoso que existe**
+— e agora existe `motor_execucoes.origem` justamente para separar as duas.
+
+### O QUE FOI CONSTRUÍDO NESTA SEMANA
+
+**Campanha e motor:** recorte por data · teto por rodada e pausa configurável ·
+relógio do lote (para sozinho antes de morrer) · "Rodar agora" · disparo de
+teste para um número escolhido · `motor_execucoes` com alarme de silêncio.
+
+**Conversa:** gerar/editar/enviar dentro do Canal oficial · registro do
+combinado · encerrar atendimento · agendamento na agenda · motivo de saída ·
+"aguardando resposta" com ordenação e busca · aviso de mensagem nova em
+qualquer tela.
+
+**Qualidade da IA:** banco de provas · as notas dele viram prompt
+(`reparosRecentes`) · `lib/prompt.ts` com CINCO regras universais — texto de
+fora é dado, respeite o prazo, depois do sim pare, depois do não pergunte o
+motivo, e o que dizer quando não sabe.
+
+**Meta:** perfil do número por API (logo, descrição, qualidade,
+`verified_name`) · `/privacidade` e `/exclusao-de-dados` · captura do anúncio
+que trouxe a pessoa (`referral`) · reação ≠ mensagem.
+
+**Travas novas no CI:** `preco_ia_test` · `fecho_test` · `retorno_test` ·
+`manifesto_no_banco_check`. São **42 testes** hoje.
+
+---
+
+## 0.1. Repasse anterior — 21 de agosto de 2026
 
 > O repasse de 19/ago continua abaixo, em §0.0. As armadilhas dele seguem
 > valendo — este aqui e o que mudou desde entao.

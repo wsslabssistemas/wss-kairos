@@ -116,6 +116,59 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   índice parcial sem repetir o predicado, o PostgREST não sabe expressar isso,
   e **toda gravação falhava em silêncio**. O contato do cliente era criado e a
   frase dele sumia, com 200 devolvido à Meta e tudo verde por fora.
+- **⚠ AGENDADOR NÃO É GARANTIA — E ELE PULA EM SILÊNCIO.** O cron do GitHub
+  atrasa e às vezes **não executa**, sem avisar ninguém. Em 27/ago as 15
+  mensagens das 9h não saíram: produto no ar, modo em `auto`, 39 candidatos
+  esperando, nenhum erro em lugar nenhum. **"Não rodou" era indistinguível de
+  "não havia ninguém para falar"** — a assinatura desta casa, agora na peça que
+  gasta dinheiro sozinha. Toda rodada fica em `motor_execucoes`, com a ORIGEM
+  separada (agendador × botão), e a tela tem alarme de silêncio. **Toda peça
+  agendada precisa de registro da execução, não só do resultado.**
+- **⚠ A META CONTA BYTES, NÃO LETRAS.** O contador dela mostrou "492/512" e a
+  gravação falhou: em UTF-8 cada acento ocupa 2 bytes, e em português quase toda
+  frase tem acento. O erro dela diz "characters" e mede byte. **Funciona em
+  inglês e mente aqui** — produto brasileiro que copia limite de documentação
+  gringa herda o defeito. Ver `lib/perfil-canal.ts`.
+- **⚠ A META DEVOLVE O REMETENTE BRASILEIRO SEM O NONO DÍGITO.** Saiu para
+  `5551993742002` e voltou `555193742002`: a busca não achou o cadastro e o
+  webhook criou um contato DUPLICADO. É a Lilian com a direção invertida —
+  consertar um lado e não o outro faz o defeito voltar com outra cara.
+  `variantesArmazenadas` cobre os dois sentidos, e **fixo (8 dígitos começando
+  em 2-5) NÃO ganha o nono**.
+- **⚠ PREÇO DE API TEM DATA DE VALIDADE.** O custo da IA foi cobrado 1,5× a
+  mais por meses: o Sonnet 5 está em promoção de lançamento (US$ 2/10) e o
+  código usava a tabela cheia (US$ 3/15). ⚠ E **a promoção acaba em
+  31/08/2026** — fixar o preço novo faria mentir de novo, cobrando de MENOS,
+  que é pior: teto que não morde não protege ninguém. A virada é por data, em
+  `lib/preco-ia.ts`, testada dos dois lados.
+- **⚠ HORÁRIO GOVERNA QUEM INICIA CONVERSA, NUNCA QUEM RESPONDE.** A janela
+  (9h–19h) existe em UM lugar só: `lib/motor.ts`, o motor proativo. Responder a
+  quem perguntou não tem hora — lead que escreve às 2h de domingo está no
+  momento de intenção, e restringir a resposta ao horário comercial remove
+  exatamente as horas em que a automação ganha. Foi decisão do fundador, e o
+  código já era assim.
+- **⚠ A SIMULAÇÃO IGNORA A JANELA; O ENVIO NUNCA.** Quem confere a lista nome
+  por nome precisa poder fazer isso às 8h — com a janela valendo na simulação,
+  a conferência só começava quando a campanha já podia sair, o pior momento.
+  Simular não manda mensagem nenhuma.
+- **⚠ FECHAR CONVERSA POR ENGANO É O ERRO CARO.** Quem some da lista de
+  "aguardando" espera para sempre, e ninguém descobre. Por isso só fecha
+  sozinho o que NÃO PODE conter pergunta — texto **sem uma única letra** (emoji,
+  pontuação). "ok", "obrigada" e "combinado" são palavras: viram sugestão,
+  nunca decisão. E a regra é a ausência de letra, **não uma lista de emojis** —
+  lista de emoji nunca fica pronta.
+- **⚠ REAGIR NÃO É ESCREVER.** Reação com emoji vira `customer_reaction`: fica
+  no histórico porque é sinal, e não conta como mensagem esperando resposta. No
+  automático, responder a um 👍 é mensagem paga respondendo a um aceno.
+- **A PERGUNTA ERRADA COLETA MENTIRA.** "Por que você saiu?" soa como cobrança
+  e a resposta vira "falta de tempo" — a saída socialmente segura, que quase
+  nunca é verdade. O que muda a resposta é oferecer **alternativas concretas**:
+  escolher entre três opções custa menos que confessar. E nunca com oferta na
+  mesma mensagem, senão a pergunta vira isca.
+- **DEPOIS DO SIM, PARE DE VENDER; DEPOIS DO NÃO, PERGUNTE O MOTIVO.** As duas
+  regras dizem a mesma coisa: **a decisão é do cliente, não da agenda nem da
+  oferta.** Insistir depois do sim reabre o que já estava fechado, e quem se
+  sente empurrado não discute — some.
 - **⚠ EDITOU MANIFESTO? O BANCO NÃO SABE.** O manifesto que o sistema LÊ mora
   na tabela `skills`; o YAML é a fonte, e quem leva um ao outro é
   `node scripts/seed-skills.mjs <segmento>`, **rodado à mão**. Em 20/ago a
@@ -286,7 +339,7 @@ aplicação" enquanto o produto estava no ar.
 
 O mínimo para se situar (confira no `ESTADO_DO_PROJETO.md` antes de usar como
 verdade): aplicação Next.js no ar em `kairos.wsslabs.com.br`, migrations
-`0001`–`0050` aplicadas, **15 segmentos com 285 entradas curadas**, motor com IA
+`0001`–`0066` aplicadas, **canal oficial da Meta operando com campanha real**, **15 segmentos com 285 entradas curadas**, motor com IA
 e trava anti-invenção estrutural, e um módulo de curso com 45 lições.
 
 ## Invariantes de segurança conquistadas (não regredir)
