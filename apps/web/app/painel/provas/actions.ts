@@ -79,6 +79,11 @@ export async function proximaProva(): Promise<ProximaResult> {
     .select("id, contact_id, content, occurred_at")
     .eq("tenant_id", tenant.id)
     .eq("direction", "inbound")
+    // ⚠ BRIEFING NÃO É PROVA. O banco de provas julga se a IA responde bem ao
+    // que o CLIENTE escreveu; uma anotação interna ("faça uma proposta de
+    // retorno") não é pergunta de ninguém, e julgar a resposta a ela mede
+    // outra coisa. Ver `0068`.
+    .eq("input_kind", "customer_message")
     .order("occurred_at", { ascending: false })
     .limit(300);
 

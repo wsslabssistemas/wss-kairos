@@ -29,8 +29,11 @@ export async function logInteraction(formData: FormData) {
   };
 
   const rows: Record<string, unknown>[] = [];
+  // ⚠ `agent_note`: digitado pela equipe, não dito pela cliente. Ver `0068` —
+  // gravar briefing como fala do cliente fazia o tempo de resposta parecer
+  // melhor do que é, porque a pessoa respondia a si mesma em segundos.
   if (inbound)
-    rows.push({ ...base, direction: "inbound", input_kind: "customer_message", content: inbound });
+    rows.push({ ...base, direction: "inbound", input_kind: "agent_note", content: inbound });
   if (outbound)
     rows.push({ ...base, direction: "outbound", input_kind: "agent_briefing", content: outbound });
 

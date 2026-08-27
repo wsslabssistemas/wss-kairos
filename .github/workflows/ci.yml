@@ -209,6 +209,14 @@ jobs:
       # o modo automatico.
       - name: Correcao — o par sugerido x enviado
         run: node packages/db/tests/correcao_test.mjs
+      # ⚠ O BRIEFING DA EQUIPE ERA GRAVADO COMO FALA DO CLIENTE — 14% do
+      # inbound — e a pessoa respondia a si mesma em segundos, puxando o tempo
+      # de resposta para BAIXO. Metrica que erra a favor ninguem audita. Esta
+      # trava guarda a gravacao, a janela de 24h da Meta, o placar da equipe e
+      # o banco de provas; e guarda tambem o que NAO pode mudar: o briefing
+      # continua indo para o prompt.
+      - name: Briefing — anotacao da equipe nao e fala do cliente
+        run: node packages/db/tests/briefing_test.mjs
       # Quem pediu para nao receber mais. Honrar descadastro e exigencia da
       # LGPD e da politica do WhatsApp, e a marcacao e automatica porque a
       # janela entre "ele pediu" e "alguem viu" e onde a denuncia acontece.

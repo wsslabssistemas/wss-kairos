@@ -687,7 +687,16 @@ export async function saveInteraction(
     await supabase.from("interactions").insert({
       ...base,
       direction: "inbound",
-      input_kind: "customer_message",
+      // ⚠ `agent_note`, NÃO `customer_message`. Este texto foi DIGITADO por
+      // alguém da equipe — é briefing ("faça uma proposta de retorno para a
+      // aluna"), não fala da cliente. Gravá-lo como mensagem do cliente fazia
+      // a pessoa responder a si mesma em segundos, e isso entrava no tempo de
+      // resposta puxando a mediana para BAIXO: a métrica errava a favor, que é
+      // o erro que ninguém audita. Eram 14% de todo o inbound. Ver `0068`.
+      //
+      // ⚠ E ELE CONTINUA INDO PARA O PROMPT — o histórico da geração não
+      // filtra `input_kind`. Isto muda o que a MÉTRICA vê, não o que a IA lê.
+      input_kind: "agent_note",
       content: inbound.trim(),
     });
   }

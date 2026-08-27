@@ -91,9 +91,24 @@ export async function despacharToque(entrada: {
   // inbound. Usar a última interação de qualquer direção faria a nossa própria
   // mensagem reabrir a janela — e a Meta recusaria o texto livre seguinte com
   // um erro que se lê como "credencial errada".
+  //
+  // ⚠ E SÓ O QUE CHEGOU PELA META ABRE A JANELA DELA — `external_id` não nulo.
+  // A janela de 24h é um conceito da Meta: quem a abre é uma mensagem que
+  // passou pelo canal oficial. Duas coisas eram contadas aqui e não deveriam:
+  // o briefing que a equipe digita na aba Responder ("faça uma proposta de
+  // retorno para a aluna"), e a conversa que o vendedor teve no WhatsApp
+  // pessoal dele e registrou à mão. Nenhuma das duas abre nada no número do
+  // sistema — mas as duas faziam este código concluir que a janela estava
+  // aberta, mandar TEXTO LIVRE, e a Meta recusar.
+  //
+  // ⚠ E A RECUSA SE LÊ COMO "CREDENCIAL ERRADA", como diz a nota acima. Ou
+  // seja: uma anotação interna podia derrubar um envio e mandar quem fosse
+  // investigar olhar o token. Errar para o lado de "janela fechada" é seguro —
+  // manda modelo aprovado, que sempre passa.
   const { data: ultimaEntrada } = await supabase
     .from("interactions").select("occurred_at")
     .eq("tenant_id", tenantId).eq("contact_id", contactId).eq("direction", "inbound")
+    .not("external_id", "is", null)
     .order("occurred_at", { ascending: false }).limit(1).maybeSingle();
 
   const janela = janelaDeAtendimento((ultimaEntrada as { occurred_at: string } | null)?.occurred_at);

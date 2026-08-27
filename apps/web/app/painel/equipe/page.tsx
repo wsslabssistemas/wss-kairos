@@ -73,9 +73,9 @@ export default async function EquipePage({
     // ⚠ PAGINADO. O placar mostra o desempenho de UMA PESSOA para os colegas
     // dela. Cortar o array faz um vendedor aparecer com menos atendimento do
     // que teve — e ele nao tem como contestar um numero que o sistema afirma.
-    lerTudo<{ contact_id: string | null; direction: string; occurred_at: string }>((de, ate) => supabase
+    lerTudo<{ contact_id: string | null; direction: string; occurred_at: string; input_kind: string }>((de, ate) => supabase
       .from("interactions")
-      .select("contact_id, direction, occurred_at")
+      .select("contact_id, direction, occurred_at, input_kind")
       .eq("tenant_id", tenant.id)
       .gte("occurred_at", desde)
       .order("occurred_at", { ascending: true })
@@ -108,6 +108,17 @@ export default async function EquipePage({
   for (const i of ix) {
     if (!i.contact_id) continue;
     if (i.direction === "inbound") {
+      // ⚠ BRIEFING NÃO É ATENDIMENTO. O texto que a equipe digita no campo de
+      // mensagem ("faça uma proposta de retorno para a aluna") é `agent_note`
+      // desde a `0068`. Contá-lo aqui dava DUAS distorções na mesma linha: um
+      // atendimento a mais no placar de quem escreveu, e um tempo de resposta
+      // de segundos, porque a pessoa estava respondendo a si mesma.
+      //
+      // ⚠ E NUM PLACAR ISSO É PIOR, pelo motivo escrito no topo deste arquivo:
+      // o número aparece para os colegas, e ninguém tem como contestar um
+      // número que o sistema afirma. Aqui ele inflava a favor de quem usa mais
+      // a ferramenta, que é o oposto do que o placar deveria medir.
+      if (i.input_kind !== "customer_message") continue;
       // Só a PRIMEIRA de uma sequência: três mensagens seguidas do cliente são
       // um atendimento, não três, e contar três inflaria o volume de quem
       // atende gente ansiosa.
