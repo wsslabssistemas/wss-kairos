@@ -3,6 +3,7 @@
 import { getActiveTenant } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { rodarMotor } from "@/lib/motor-db";
+import { registrarRodada } from "@/lib/motor-registro";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -53,6 +54,8 @@ export async function rodarAgora(): Promise<RodadaResult> {
       limiteMs: 240_000,
     });
 
+    await registrarRodada({ tenantId: tenant.id, origem: "botao", resultado: r });
+
     // Os nomes de quem falhou. Sem eles a lista de falhas é uma lista de
     // identificadores, e ninguém liga para um identificador para pedir
     // desculpa nem para corrigir o telefone.
@@ -89,6 +92,8 @@ export async function rodarAgora(): Promise<RodadaResult> {
   } catch (e) {
     // O erro sobe INTEIRO. Um "rodar agora" que falha em silêncio é pior que
     // não ter botão: quem aperta conclui que não havia ninguém para falar.
-    return { ok: false, erro: e instanceof Error ? e.message : String(e) };
+    const erro = e instanceof Error ? e.message : String(e);
+    await registrarRodada({ tenantId: tenant.id, origem: "botao", erro });
+    return { ok: false, erro };
   }
 }

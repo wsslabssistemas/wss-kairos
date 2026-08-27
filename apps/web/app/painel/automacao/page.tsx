@@ -76,6 +76,47 @@ export default async function AutomacaoPage({
   const { data } = await supabase.from("tenants").select("settings").eq("id", tenant.id).maybeSingle();
   const a = readAutomation(data?.settings);
   const canEdit = ["owner", "admin"].includes(membership!.role);
+
+  // ⚠ AS ÚLTIMAS RODADAS DO MOTOR — o histórico que esta tela prometia e nunca
+  // teve. Em 27/ago o agendador pulou a execução das 9h e não havia onde ver
+  // isso: o produto estava no ar, o modo em `auto`, 39 candidatos esperando, e
+  // zero mensagem. "Não rodou" era indistinguível de "não havia ninguém".
+  //
+  // paginacao-ok: `.limit(10)` é decisão de produto — as dez últimas rodadas —
+  // com ORDER BY explícito.
+  const { data: rodadas } = await supabase
+    .from("motor_execucoes")
+    .select("id, origem, simulado, avaliados, enviadas, falhas, interrompido, porque, erro, occurred_at")
+    .eq("tenant_id", tenant.id)
+    .order("occurred_at", { ascending: false })
+    .limit(10);
+
+  type Rodada = {
+    id: string; origem: string; simulado: boolean; avaliados: number;
+    enviadas: number; falhas: number; interrompido: boolean;
+    porque: string | null; erro: string | null; occurred_at: string;
+  };
+  const execucoes = (rodadas as Rodada[] | null) ?? [];
+
+  /**
+   * ⚠ O ALARME DE SILÊNCIO. O cron do GitHub pula execução em horário de pico
+   * — é comportamento documentado dele — e não avisa ninguém. Sem este aviso,
+   * a campanha pode ficar parada dias com tudo configurado certo.
+   *
+   * Só vale em dia útil e depois das 9h: cobrar rodada às 7h de domingo seria
+   * alarme que toca à toa, e alarme que toca à toa é alarme desligado.
+   */
+  const agoraNaEmpresa = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }),
+  );
+  const diaUtil = agoraNaEmpresa.getDay() >= 1 && agoraNaEmpresa.getDay() <= 5;
+  const ultimaDoAgendador = execucoes.find((e) => e.origem === "agendador");
+  const horasSemAgendador = ultimaDoAgendador
+    ? (Date.now() - Date.parse(ultimaDoAgendador.occurred_at)) / 3_600_000
+    : null;
+  const agendadorMudo =
+    a.mode === "auto" && diaUtil && agoraNaEmpresa.getHours() >= 10 &&
+    (horasSemAgendador === null || horasSemAgendador > 26);
   const status = await statusDoCanal(tenant.id);
 
   const banner: Record<AutomationMode, { cls: string; txt: string }> = {
@@ -247,13 +288,61 @@ export default async function AutomacaoPage({
       {canEdit && <DisparoDeTeste />}
 
       <div className="card mt-16">
-        <p className="eyebrow" style={{ marginBottom: 8 }}>Histórico de execuções</p>
-        <p className="text-dim" style={{ margin: 0, fontSize: 14 }}>
-          Cada execução (mensagens geradas, bloqueadas, tokens e créditos) aparece aqui
-          quando o envio automático estiver ligado. Enquanto não estiver, o modo fica em{" "}
-          <strong>Desligado</strong> — e as regras acima já ficam guardadas e valem no dia
-          em que ligar.
-        </p>
+        <p className="eyebrow" style={{ marginBottom: 8 }}>Últimas rodadas do motor</p>
+
+        {/* ⚠ O ALARME DE SILÊNCIO vem ANTES da lista. Campanha parada com tudo
+            configurado certo é o pior estado possível: nada avisa, e cada dia
+            perdido é uma lista que não anda. */}
+        {agendadorMudo && (
+          <p className="badge badge-danger" style={{ whiteSpace: "normal", textAlign: "left" }}>
+            <strong>O agendador não roda desde{" "}
+            {ultimaDoAgendador
+              ? new Date(ultimaDoAgendador.occurred_at).toLocaleString("pt-BR", {
+                  day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                })
+              : "nunca"}.</strong>{" "}
+            Ele deveria rodar às 9h e às 17h, de segunda a sexta. O cron do GitHub pula
+            execuções em horário de pico e não avisa — use <strong>Enviar agora</strong> acima
+            e confira em <em>Actions → Motor proativo</em> no GitHub se a execução falhou ou
+            nem começou.
+          </p>
+        )}
+
+        {execucoes.length === 0 ? (
+          <p className="text-dim" style={{ margin: 0, fontSize: 14 }}>
+            Nenhuma rodada registrada ainda. Cada execução — do agendador ou do botão —
+            passa a aparecer aqui, <strong>inclusive as que não mandaram nada</strong>: é o
+            que distingue &ldquo;rodou e não tinha ninguém&rdquo; de &ldquo;não rodou&rdquo;.
+          </p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0" }}>
+            {execucoes.map((e, i) => (
+              <li key={e.id} style={{ padding: "8px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
+                <div className="row wrap" style={{ gap: 8, alignItems: "baseline" }}>
+                  <span className="text-faint" style={{ fontSize: 12, minWidth: 96 }}>
+                    {new Date(e.occurred_at).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                  <span className="badge">{e.origem === "agendador" ? "agendador" : "botão"}</span>
+                  {e.erro ? (
+                    <span className="badge badge-danger">falhou</span>
+                  ) : (
+                    <span className={e.enviadas > 0 ? "badge badge-success" : "badge"}>
+                      {e.enviadas} enviada(s)
+                    </span>
+                  )}
+                  {e.falhas > 0 && <span className="badge badge-danger">{e.falhas} não chegaram</span>}
+                  {e.simulado && <span className="badge badge-warn">simulação</span>}
+                  {e.interrompido && <span className="badge badge-warn">parou no meio</span>}
+                </div>
+                <p className="text-dim" style={{ fontSize: 12, margin: "2px 0 0 104px" }}>
+                  {e.erro ?? e.porque}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
     </main>

@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rodarMotor, type ResultadoDoMotor } from "@/lib/motor-db";
+import { registrarRodada } from "@/lib/motor-registro";
 import { lerTudo } from "@/lib/paginado";
 
 // A RODADA DE TODAS AS EMPRESAS — o que o agendador chama.
@@ -61,6 +62,11 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
         tenantNome: t.name,
         simular,
       });
+      // ⚠ A RODADA DO AGENDADOR FICA REGISTRADA — inclusive a que não mandou
+      // nada. Em 27/ago o cron do GitHub pulou a execução das 9h e ninguém
+      // soube: "não rodou" era indistinguível de "não havia ninguém".
+      await registrarRodada({ tenantId: t.id, origem: "agendador", resultado: r });
+
       enviadas += r.enviadas;
       falhas += r.falhas.length;
       detalhe.push({
@@ -79,6 +85,7 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
     } catch (e) {
       const erro = e instanceof Error ? e.message : String(e);
       console.error(`[motor] ${t.slug} FALHOU: ${erro}`);
+      await registrarRodada({ tenantId: t.id, origem: "agendador", erro });
       detalhe.push({ tenant: t.slug, ok: false, porque: "", enviadas: 0, falhas: 0, erro });
     }
   }
