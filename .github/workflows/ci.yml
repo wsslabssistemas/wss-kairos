@@ -202,6 +202,13 @@ jobs:
       # campanha por engano — em toda duvida ela libera.
       - name: Espacamento — a regra que permite bater sempre
         run: node packages/db/tests/espacamento_test.mjs
+      # ⚠ A CORRECAO DO VENDEDOR ERA JOGADA FORA em 183 das 203 mensagens de
+      # agosto, porque a aba Responder nao tinha campo para editar e gravava a
+      # sugestao da IA no lugar do que foi enviado. Esta trava guarda a regra
+      # que classifica aceita x editada x sem sugestao — a que autoriza ligar
+      # o modo automatico.
+      - name: Correcao — o par sugerido x enviado
+        run: node packages/db/tests/correcao_test.mjs
       # Quem pediu para nao receber mais. Honrar descadastro e exigencia da
       # LGPD e da politica do WhatsApp, e a marcacao e automatica porque a
       # janela entre "ele pediu" e "alguem viu" e onde a denuncia acontece.

@@ -21,6 +21,7 @@ import { reparosRecentes, blocoDeReparos } from "@/lib/correcoes";
 import { revalidatePath } from "next/cache";
 import { opcoesDeHorario, marcarCompromisso } from "../agenda/horarios-actions";
 import { lerTudo } from "@/lib/paginado";
+import { guardarCorrecao, origemDaMensagem } from "@/lib/correcoes";
 
 export type GerarResult =
   | { ok: true; data: AiAnswer }
@@ -644,11 +645,31 @@ Deixe "status_sugerido" vazio.`;
 
 // Salva a interação (pergunta do cliente + resposta) no histórico do contato.
 // Sem redirect — chamada direto pelo componente de IA.
+/**
+ * ⚠ O `sugerido` É O PARÂMETRO QUE FALTAVA, e a falta dele custava duas coisas.
+ *
+ * Até 27/ago esta função recebia `outbound = data.resposta_sugerida` — o texto
+ * da IA, não o que a pessoa mandou. A tela não tinha campo para editar, então
+ * quem atendia copiava, adaptava no WhatsApp e clicava em "Registrar". O
+ * sistema guardava a versão que NUNCA saiu, e a adaptação — que é um vendedor
+ * experiente corrigindo o modelo no contexto exato — evaporava.
+ *
+ * O tamanho medido em agosto: 183 mensagens por esta tela, 20 pelo Canal
+ * oficial (o único caminho que capturava), e CINCO lições em `ai_edits`. O
+ * sinal que o `CLAUDE.md` chama de "o mais rápido de qualidade da IA" estava
+ * sendo coletado em 6% dos envios — e é por isso que a amostra de `origem_ia`,
+ * que é o número que autoriza o modo automático, não saía do lugar.
+ *
+ * ⚠ E O HISTÓRICO MENTIA, que é pior que perder a lição. `interactions.content`
+ * é lido de volta como contexto da próxima geração: a IA passava a se basear
+ * em mensagens que ela mesma escreveu e ninguém enviou.
+ */
 export async function saveInteraction(
   contactId: string,
   inbound: string,
   outbound: string,
   technique?: string,
+  sugerido?: string,
 ): Promise<{ ok: boolean; id?: string }> {
   const membership = await getActiveTenant();
   const tenant = membership?.tenant;
@@ -681,11 +702,32 @@ export async function saveInteraction(
         input_kind: "agent_briefing",
         content: outbound.trim(),
         technique: technique?.trim() || null,
+        // ⚠ O NÚMERO QUE AUTORIZA O AUTOMÁTICO — a mesma marcação do Canal
+        // oficial (`conversas/actions.ts`). Sem ela, "aceitei a sugestão sem
+        // mexer" e "reescrevi tudo" viram a mesma linha `outbound`, e é
+        // exatamente essa diferença que decide se dá para tirar a pessoa do
+        // meio. `ai_edits` guarda só as editadas de propósito; para a DECISÃO,
+        // as idênticas é que são o sinal.
+        origem_ia: origemDaMensagem(sugerido, outbound),
       })
       .select("id")
       .single();
     if (error) return { ok: false };
     id = (data as { id: string }).id;
+
+    // ⚠ A LIÇÃO É GUARDADA AQUI, no instante em que ela existe. Best-effort e
+    // só grava quando houve mudança de verdade: mensagem registrada igualzinha
+    // é confirmação, não lição. Ver `lib/correcoes.ts`.
+    if (sugerido?.trim()) {
+      await guardarCorrecao({
+        tenantId: tenant.id,
+        contactId,
+        membershipId: membership!.membershipId,
+        contexto: inbound.trim() || "(abordagem iniciada por nós)",
+        sugerido,
+        enviado: outbound.trim(),
+      });
+    }
   }
 
   revalidatePath(`/painel/contatos/${contactId}`);

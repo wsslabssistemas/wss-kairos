@@ -1,4 +1,6 @@
 import "server-only";
+import { mesmaMensagem, origemDaMensagem } from "@/lib/origem-ia";
+export { mesmaMensagem, origemDaMensagem };
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // AS CORREÇÕES DO VENDEDOR — capturar, e devolver para o motor.
@@ -62,10 +64,7 @@ export async function guardarCorrecao(entrada: {
 }): Promise<void> {
   const { tenantId, contactId, membershipId, contexto, sugerido, enviado } = entrada;
 
-  const igual = (a: string, b: string) =>
-    a.replace(/\s+/g, " ").trim().toLowerCase() === b.replace(/\s+/g, " ").trim().toLowerCase();
-
-  if (!sugerido.trim() || !enviado.trim() || igual(sugerido, enviado)) return;
+  if (!sugerido.trim() || !enviado.trim() || mesmaMensagem(sugerido, enviado)) return;
 
   try {
     const admin = createAdminClient();

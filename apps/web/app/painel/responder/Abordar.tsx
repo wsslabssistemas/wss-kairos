@@ -17,6 +17,13 @@ export default function Abordar({
   const [limite, setLimite] = useState<string | null>(null);
   const [data, setData] = useState<AiAnswer | null>(null);
   const [saved, setSaved] = useState(false);
+  /**
+   * ⚠ O TEXTO QUE VAI DE FATO SAIR. Mesmo defeito do `GerarIA` e, aqui, com
+   * consequência maior: esta é a ABERTURA, a mensagem que mais é adaptada
+   * porque depende do que a pessoa sabe daquele cliente. Sem campo, a
+   * adaptação sumia e o histórico guardava a versão que nunca foi enviada.
+   */
+  const [textoFinal, setTextoFinal] = useState("");
 
   const run = async () => {
     setLoading(true);
@@ -70,10 +77,20 @@ export default function Abordar({
             </div>
           ) : (
             <div className="card" style={{ background: "var(--bg-elev)" }}>
-              <div className="eyebrow">Mensagem de abertura</div>
-              <p style={{ whiteSpace: "pre-line", marginTop: 10, lineHeight: 1.55 }}>{data.resposta_sugerida}</p>
+              <div className="eyebrow">Mensagem de abertura — pode editar antes de mandar</div>
+              <textarea
+                value={textoFinal || data.resposta_sugerida}
+                onChange={(e) => setTextoFinal(e.target.value)}
+                rows={Math.min(14, Math.max(4, Math.ceil((textoFinal || data.resposta_sugerida).length / 60) + 1))}
+                style={{ width: "100%", marginTop: 10, lineHeight: 1.55, resize: "vertical" }}
+              />
+              {textoFinal.trim() && textoFinal.trim() !== data.resposta_sugerida.trim() && (
+                <p className="text-dim" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                  ✏️ Você adaptou a abertura — ao registrar, isso vira lição para o sistema.
+                </p>
+              )}
               <div className="row wrap" style={{ gap: 10, marginTop: 8 }}>
-                <CopyButton text={data.resposta_sugerida} />
+                <CopyButton text={textoFinal || data.resposta_sugerida} />
                 {saved ? (
                   <span className="badge badge-success">Registrado ✓</span>
                 ) : (
@@ -81,7 +98,14 @@ export default function Abordar({
                     type="button"
                     className="btn btn-sm btn-ghost"
                     onClick={async () => {
-                      const r = await saveInteraction(contactId, "", data.resposta_sugerida, data.tecnica);
+                      // Grava o que saiu, com o par sugerido x enviado.
+                      const r = await saveInteraction(
+                        contactId,
+                        "",
+                        textoFinal || data.resposta_sugerida,
+                        data.tecnica,
+                        data.resposta_sugerida,
+                      );
                       setSaved(r.ok);
                     }}
                   >

@@ -134,14 +134,21 @@ export function Roteamento({
   );
 }
 
-/** As sugestões batem com os textos de `docs/blueprint/MODELOS_WHATSAPP.md`. */
+/**
+ * As sugestões batem com os textos de `docs/blueprint/MODELOS_WHATSAPP.md`.
+ *
+ * ⚠ SEM VOCABULÁRIO DE SEGMENTO. `reativacao` sugeria `reativacao_ex_aluno`
+ * para TODO ramo — um dono de barbearia lia "ex_aluno" num campo que ele vai
+ * copiar para o painel da Meta. É a Lei 1 vazando pela tela: o núcleo não
+ * conhece aluno, matrícula nem corte, e o nome sugerido aqui é núcleo.
+ */
 function sugestao(m: MotivoDaFila): string {
   const nomes: Partial<Record<MotivoDaFila, string>> = {
     combinado: "combinado_retorno",
     renovacao: "renovacao_vencimento",
     followup: "followup_retomada",
     recompra: "recompra_retorno",
-    reativacao: "reativacao_ex_aluno",
+    reativacao: "reativacao_cliente",
   };
   return nomes[m] ?? "";
 }

@@ -9,7 +9,7 @@ import { enviarPelaCloudAPI } from "@/lib/envio";
 import { gerarResposta } from "../responder/ai-actions";
 import { getSkillFormConfig } from "@/lib/skill";
 import { ajustarRetorno } from "@/lib/retorno";
-import { guardarCorrecao } from "@/lib/correcoes";
+import { guardarCorrecao, origemDaMensagem } from "@/lib/correcoes";
 import { paraE164BR } from "@/lib/phone";
 import { registrarEnvio } from "@/lib/custo_mensagem-db";
 import { revalidatePath } from "next/cache";
@@ -368,11 +368,7 @@ export async function responderPeloCanal(
     // `ai_edits` guarda só as EDITADAS, de propósito: mensagem idêntica não é
     // lição, e encheria o bloco do prompt de ruído. Mas para a DECISÃO, as
     // idênticas são o sinal — são elas que dizem que a IA acertou sozinha.
-    origem_ia: sugerido?.trim()
-      ? (sugerido.replace(/\s+/g, " ").trim() === limpo.replace(/\s+/g, " ").trim()
-          ? "aceita"
-          : "editada")
-      : null,
+    origem_ia: origemDaMensagem(sugerido, limpo),
   });
   if (error) {
     console.error(`[conversas] resposta ${envio.id} SAIU mas não registrou: ${error.message}`);

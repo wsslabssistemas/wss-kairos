@@ -38,6 +38,23 @@ export default function GerarIA({
   const [data, setData] = useState<AiAnswer | null>(null);
   const [applied, setApplied] = useState(false);
   const [usedMessage, setUsedMessage] = useState("");
+  /**
+   * ⚠ O TEXTO QUE A PESSOA VAI DE FATO MANDAR — e ele não existia.
+   *
+   * Até 27/ago esta tela mostrava a sugestão como parágrafo somente leitura,
+   * com *Copiar* e *Registrar no cliente*. Quem atendia copiava, adaptava no
+   * WhatsApp e mandava — e o "Registrar" gravava **a sugestão da IA**, não o
+   * que saiu. Duas consequências, e a segunda é pior:
+   *
+   *   • a correção do vendedor era jogada fora. Em agosto foram 183 mensagens
+   *     por esta tela contra 20 pelo Canal oficial, e `ai_edits` tinha CINCO
+   *     lições. O sinal que o produto mais persegue estava sendo coletado em
+   *     6% dos envios — e é por isso que a amostra de `origem_ia` não crescia.
+   *   • o histórico guardava uma mensagem que nunca foi enviada daquele jeito,
+   *     e esse histórico volta como contexto para a próxima geração. Ficção
+   *     que se realimenta.
+   */
+  const [textoFinal, setTextoFinal] = useState("");
   const [saved, setSaved] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [outcome, setOutcomeSel] = useState<string | null>(null);
@@ -114,10 +131,23 @@ export default function GerarIA({
             </div>
           ) : (
             <div className="card" style={{ borderColor: "var(--border-brand)", background: "var(--brand-gradient-soft)" }}>
-              <div className="eyebrow">Resposta sugerida (IA)</div>
-              <p style={{ whiteSpace: "pre-line", marginTop: 10, lineHeight: 1.55 }}>{data.resposta_sugerida}</p>
+              <div className="eyebrow">Resposta sugerida (IA) — pode editar antes de mandar</div>
+              {/* ⚠ CAMPO, NÃO PARÁGRAFO. Adaptar a mensagem é um vendedor
+                  experiente corrigindo o modelo no contexto exato, de graça —
+                  e era jogado fora porque não havia onde escrever. */}
+              <textarea
+                value={textoFinal || data.resposta_sugerida}
+                onChange={(e) => setTextoFinal(e.target.value)}
+                rows={Math.min(14, Math.max(4, Math.ceil((textoFinal || data.resposta_sugerida).length / 60) + 1))}
+                style={{ width: "100%", marginTop: 10, lineHeight: 1.55, resize: "vertical" }}
+              />
+              {textoFinal.trim() && textoFinal.trim() !== data.resposta_sugerida.trim() && (
+                <p className="text-dim" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                  ✏️ Você adaptou a mensagem — ao registrar, isso vira lição para o sistema.
+                </p>
+              )}
               <div className="row wrap" style={{ gap: 10, marginTop: 8 }}>
-                <CopyButton text={data.resposta_sugerida} />
+                <CopyButton text={textoFinal || data.resposta_sugerida} />
                 {contactId ? (
                   saved ? (
                     <span className="badge badge-success">Salvo no histórico ✓</span>
@@ -126,7 +156,15 @@ export default function GerarIA({
                       type="button"
                       className="btn btn-sm btn-ghost"
                       onClick={async () => {
-                        const r = await saveInteraction(contactId, usedMessage, data.resposta_sugerida, data.tecnica);
+                        // ⚠ GRAVA O QUE FOI ENVIADO, e manda junto o que a IA
+                        // sugeriu: é o par que vira lição. Ver `lib/correcoes.ts`.
+                        const r = await saveInteraction(
+                          contactId,
+                          usedMessage,
+                          textoFinal || data.resposta_sugerida,
+                          data.tecnica,
+                          data.resposta_sugerida,
+                        );
                         setSaved(r.ok);
                         setSavedId(r.id ?? null);
                       }}
