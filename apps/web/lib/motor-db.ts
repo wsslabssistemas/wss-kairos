@@ -72,9 +72,20 @@ const HORA = 3_600_000;
  * ⚠ E É COM VARIAÇÃO, não fixa. Intervalo constante é tão artificial quanto
  * intervalo nenhum — um relógio batendo de 6 em 6 segundos é padrão igual.
  */
-const PAUSA_MIN_MS = 4_000;
-const PAUSA_MAX_MS = 9_000;
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * A pausa desta empresa, com variação de ±40% em torno do configurado.
+ *
+ * ⚠ A VARIAÇÃO É O PONTO. Intervalo constante é tão artificial quanto
+ * intervalo nenhum: um relógio batendo de 6 em 6 segundos é padrão igual.
+ */
+function pausaMs(segundos: number): number {
+  const base = Math.max(0, segundos) * 1000;
+  if (base === 0) return 0;
+  const variacao = base * 0.4;
+  return Math.round(base - variacao + Math.random() * variacao * 2);
+}
 
 /**
  * Roda o motor de UMA empresa.
@@ -181,9 +192,7 @@ export async function rodarMotor(entrada: {
     // ⚠ A PAUSA VEM ANTES, E NÃO NA PRIMEIRA. Depois da última ela só
     // seguraria a função sem servir a ninguém — e função segurada à toa é
     // função que estoura o tempo com o trabalho já feito.
-    if (posicao > 0) {
-      await esperar(PAUSA_MIN_MS + Math.floor(Math.random() * (PAUSA_MAX_MS - PAUSA_MIN_MS)));
-    }
+    if (posicao > 0) await esperar(pausaMs(regras.pausa_entre_envios_seg));
 
     const r = await despacharToque({
       supabase: admin,

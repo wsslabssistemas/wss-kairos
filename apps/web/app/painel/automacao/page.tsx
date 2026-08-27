@@ -48,6 +48,10 @@ const FIELDS: { key: keyof ReturnType<typeof readAutomation>; label: string; hin
   // quanto nem quando: o `máx. por dia` fatia o acervo em semanas, mas manda
   // para todo mundo do mesmo jeito. Ver `lib/automation.ts`.
   { key: "reativacao_max_dias", label: "Reativação: só quem saiu nos últimos (dias)", hint: "Recorte da campanha de retorno. 0 = a base inteira, do mais antigo ao mais novo", min: 0, max: 3650 },
+  // ⚠ ESPALHAR O DISPARO É ESPALHAR O TRABALHO, não enganar a Meta. Resposta
+  // vem em onda: 40 de uma vez viram seis conversas simultâneas.
+  { key: "max_por_rodada", label: "Máx. por rodada", hint: "Fatia o teto do dia entre as rodadas (9h e 17h). 0 = manda tudo de uma vez", min: 0, max: 1000 },
+  { key: "pausa_entre_envios_seg", label: "Pausa entre mensagens (segundos)", hint: "Evita o padrão de rajada. Vai com variação automática — e pausa alta faz o lote não caber no tempo", min: 0, max: 120 },
   { key: "monthly_budget_credits", label: "Orçamento mensal (créditos)", hint: "0 = sem limite. Ao atingir, suspende até a virada do mês", min: 0, max: 100000000 },
 ];
 

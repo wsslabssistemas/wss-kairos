@@ -36,6 +36,8 @@ export async function saveAutomation(formData: FormData) {
       window_end: num("window_end"),
       stop_after_days: num("stop_after_days"),
       reativacao_max_dias: num("reativacao_max_dias"),
+      max_por_rodada: num("max_por_rodada"),
+      pausa_entre_envios_seg: num("pausa_entre_envios_seg"),
       monthly_budget_credits: num("monthly_budget_credits"),
     },
   });

@@ -38,6 +38,8 @@ const REGRAS = {
   mode: "auto", max_per_day: 30, min_hours_between: 24, max_no_reply: 3,
   cooldown_hours: 48, window_start: 9, window_end: 19, stop_after_days: 14,
   reativacao_max_dias: 90,
+  max_por_rodada: 0,
+  pausa_entre_envios_seg: 6,
 };
 
 const livre = (id) => ({
@@ -205,6 +207,34 @@ verifica("às 8h, enviando, continua barrado", plano({}, [livre("a")], 0, 8).ati
 verifica("e dentro da janela nada muda", plano({}, [livre("a")], 0, 10).enviar, ["a"]);
 verifica("dentro da janela, `foraDaJanela` é falso",
   plano({}, [livre("a")], 0, 10).foraDaJanela, false);
+
+// ---------------------------------------------------------------------
+// 5c. O TETO POR RODADA — espalhar o TRABALHO, não enganar a Meta
+// ---------------------------------------------------------------------
+//
+// ⚠ O teto do dia sozinho não espalha nada: com 40 no dia e duas rodadas
+// agendadas, a primeira mandava as 40 e a segunda não achava ninguém.
+//
+// E o motivo de espalhar não é a Meta — é que RESPOSTA VEM EM ONDA. 40 de uma
+// vez viram seis conversas simultâneas para quem estiver atendendo; 20 e 20
+// viram três de manhã e três à tarde.
+const cinco = ["a", "b", "c", "d", "e"].map(livre);
+
+verifica("sem teto de rodada, sai todo mundo que couber no dia",
+  plano({ max_per_day: 40 }, cinco).enviar.length, 5);
+verifica("com teto de 2 por rodada, saem 2",
+  plano({ max_per_day: 40, max_por_rodada: 2 }, cinco).enviar.length, 2);
+
+// ⚠ E QUEM FICA PRECISA SABER QUE VOLTA HOJE, não amanhã. "Fica para amanhã"
+// numa pessoa que sai às 17h é a tela mentindo sobre a própria regra.
+verifica("e os barrados sabem que voltam na próxima rodada",
+  plano({ max_per_day: 40, max_por_rodada: 2 }, cinco)
+    .vereditos.filter((v) => !v.enviar && v.motivo.includes("próxima rodada")).length, 3);
+
+// ⚠ O MENOR DOS DOIS MANDA. Teto de rodada maior que o do dia não pode furar
+// o teto do dia — que é o que protege o número.
+verifica("o teto do DIA continua sendo o limite duro",
+  plano({ max_per_day: 3, max_por_rodada: 10 }, cinco).enviar.length, 3);
 
 // ---------------------------------------------------------------------
 // 6. O RECORTE DA CAMPANHA — quem saiu HÁ QUANTO TEMPO entra no lote

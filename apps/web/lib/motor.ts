@@ -58,6 +58,8 @@ export type RegrasDoMotor = {
   stop_after_days: number;
   /** O recorte da reativação, em dias. 0 = sem recorte. Ver `automation.ts`. */
   reativacao_max_dias: number;
+  /** Teto de UMA rodada. 0 = só o teto do dia manda. */
+  max_por_rodada: number;
 };
 
 export type Veredito =
@@ -171,10 +173,17 @@ export function planejar(entrada: {
     );
   }
 
-  const resta = regras.max_per_day - enviadosHoje;
-  if (resta <= 0) {
+  const doDia = regras.max_per_day - enviadosHoje;
+  if (doDia <= 0) {
     return vazio(`O teto do dia (${regras.max_per_day}) já foi atingido: ${enviadosHoje} saíram.`);
   }
+
+  // ⚠ O MENOR DOS DOIS MANDA. O teto do dia protege o número; o da rodada
+  // espalha o TRABALHO — resposta vem em onda, e 40 de uma vez viram seis
+  // conversas simultâneas para quem estiver atendendo.
+  const resta = regras.max_por_rodada > 0
+    ? Math.min(doDia, regras.max_por_rodada)
+    : doDia;
 
   const vereditos: Veredito[] = [];
   const enviar: string[] = [];
@@ -252,7 +261,11 @@ export function planejar(entrada: {
     if (enviar.length >= resta) {
       // NÃO é recusa: é o teto do dia. O texto diz isso porque "bloqueado" e
       // "amanhã" são coisas diferentes para quem lê a tela.
-      nao(`Fica para amanhã: o teto de ${regras.max_per_day}/dia se esgota antes dele.`);
+      nao(
+        regras.max_por_rodada > 0 && resta === regras.max_por_rodada
+          ? `Fica para a próxima rodada: saem ${regras.max_por_rodada} por vez.`
+          : `Fica para amanhã: o teto de ${regras.max_per_day}/dia se esgota antes dele.`,
+      );
       continue;
     }
 
