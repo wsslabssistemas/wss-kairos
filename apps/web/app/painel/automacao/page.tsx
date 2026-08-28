@@ -14,6 +14,8 @@ import { PerfilDoNumero } from "./PerfilDoNumero";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 import { dataHoraLocal } from "@/lib/fuso";
+import { ultimaVerificacao } from "@/lib/vigia-canal";
+import { avaliarSaude } from "@/lib/saude-canal";
 
 // Chamada de rede para a Meta no teste de conexao. Ver a nota em
 // `fila/page.tsx`: tela que fala com servico externo declara o tempo.
@@ -173,6 +175,32 @@ export default async function AutomacaoPage({
     a.mode === "auto" && diaUtil && dentroDaJanela &&
     (minutosSemBatida === null || minutosSemBatida > 60);
   const status = await statusDoCanal(tenant.id);
+
+  /**
+   * ⚠ A SAÚDE DO CANAL, PERGUNTADA — não deduzida do silêncio.
+   *
+   * Todo o resto deste painel depende de EVENTO, e evento emudece exatamente
+   * quando o transporte morre: assinatura desativada, token vencido, número
+   * restringido. "Nenhuma mensagem hoje" fica idêntico a "canal fora do ar".
+   * Ver `lib/vigia-canal.ts` e a `0069`.
+   */
+  const vigia = await ultimaVerificacao(tenant.id);
+  const saude = vigia
+    ? avaliarSaude(
+        vigia.ok
+          ? {
+              ok: true,
+              quality_rating: vigia.quality_rating ?? undefined,
+              name_status: vigia.name_status ?? undefined,
+              messaging_limit_tier: vigia.messaging_limit_tier ?? undefined,
+              verified_name: vigia.verified_name ?? undefined,
+            }
+          : { ok: false, erro: vigia.erro ?? "sem detalhe" },
+      )
+    : null;
+  const minutosSemVigia = vigia
+    ? Math.floor((Date.now() - Date.parse(vigia.occurred_at)) / 60_000)
+    : null;
 
   const banner: Record<AutomationMode, { cls: string; txt: string }> = {
     off: { cls: "badge", txt: "A automação está desligada — nenhuma mensagem é gerada ou enviada." },
@@ -341,6 +369,50 @@ export default async function AutomacaoPage({
           perguntas que alguém faz antes de virar a chave, na ordem em que as
           faz. */}
       {canEdit && <DisparoDeTeste />}
+
+      {/* ⚠ A SAÚDE DO CANAL VEM ANTES DAS RODADAS. Motor perfeito com canal
+          fora do ar é o pior estado possível: tudo verde e ninguém recebendo.
+          E a linha aparece mesmo quando está tudo bem — "está tudo bem" tem que
+          ser uma afirmação com hora, não a ausência de notícia. */}
+      {status.configurado && (
+        <div className="card mt-16">
+          <p className="eyebrow" style={{ marginBottom: 8 }}>Saúde do canal oficial</p>
+          {!vigia || !saude ? (
+            <p className="text-dim" style={{ margin: 0, fontSize: 14 }}>
+              Ainda não perguntamos à Meta como está o número. A verificação roda junto com o
+              agendador — se ela não aparecer aqui em até uma hora, é sinal de que o agendador
+              não está batendo.
+            </p>
+          ) : (
+            <>
+              <p
+                className={
+                  saude.gravidade === "parado" ? "badge badge-danger"
+                  : saude.gravidade === "atencao" ? "badge badge-warn"
+                  : "badge badge-success"
+                }
+                style={{ whiteSpace: "normal", textAlign: "left" }}
+              >
+                {saude.resumo}
+              </p>
+              <p className="text-dim" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                Perguntado{" "}
+                {minutosSemVigia !== null && minutosSemVigia < 90
+                  ? `há ${minutosSemVigia} min`
+                  : `em ${dataHoraLocal(vigia.occurred_at)}`}
+                {vigia.messaging_limit_tier ? ` · degrau de envio ${vigia.messaging_limit_tier}` : ""}
+                {vigia.verified_name ? ` · quem recebe vê "${vigia.verified_name}"` : ""}
+              </p>
+              {minutosSemVigia !== null && minutosSemVigia > 180 && (
+                <p className="text-dim" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                  ⚠ Esta resposta tem mais de 3 horas. O vigia roda junto com o agendador — se ele
+                  parou, esta informação envelheceu junto.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       <div className="card mt-16">
         <p className="eyebrow" style={{ marginBottom: 8 }}>Últimas rodadas do motor</p>

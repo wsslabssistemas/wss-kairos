@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { rodarMotor, type ResultadoDoMotor } from "@/lib/motor-db";
 import { registrarRodada } from "@/lib/motor-registro";
 import { avaliarEspacamento } from "@/lib/espacamento";
+import { vigiarCanal } from "@/lib/vigia-canal";
 import { readAutomation } from "@/lib/automation";
 import { lerTudo } from "@/lib/paginado";
 
@@ -72,6 +73,17 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
     if (t.slug.startsWith("demo-")) continue;
 
     try {
+      // ⚠ O VIGIA RODA ANTES DO ESPAÇAMENTO E FORA DELE, de propósito. O
+      // espaçamento governa QUANTO se manda; a saúde do canal é outra
+      // pergunta, e ela precisa de resposta mesmo nas batidas em que nada sai.
+      // Se ele viesse depois do `continue` da recusa, o canal só seria vigiado
+      // duas vezes ao dia — nas rodadas que enviam —, que é exatamente o
+      // intervalo em que uma assinatura desativada passa despercebida.
+      //
+      // ⚠ E ELE É BEST-EFFORT: `vigiarCanal` engole o próprio erro. Falhar em
+      // vigiar não pode impedir uma mensagem de sair.
+      if (!simular) await vigiarCanal(t.id);
+
       // ⚠ O ESPAÇAMENTO É CONSULTADO ANTES DE QUALQUER TRABALHO. Ele lê a
       // última rodada DE VERDADE (não simulada, não pulada) desta empresa.
       //
