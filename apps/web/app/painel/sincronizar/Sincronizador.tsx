@@ -132,6 +132,12 @@ export function Sincronizador() {
     encerrou: { txt: "encerrou", cor: "badge-danger" },
     ajuste_de_data: { txt: "ajuste de data", cor: "badge" },
     vigencia_recuou: { txt: "conferir", cor: "badge-warn" },
+    // ⚠ SEM A LINHA ABAIXO, A TELA MOSTRAVA `sumiu_vigente` CRU. O rótulo caía
+    // no nome interno do evento, em snake_case, no meio de uma lista onde todo
+    // o resto está em português — e logo no grupo que existe para uma PESSOA
+    // ler e decidir. Chave de código na cara de quem opera é o tipo de detalhe
+    // que faz o produto parecer inacabado justo onde ele está sendo cuidadoso.
+    sumiu_vigente: { txt: "confirmar saída", cor: "badge-warn" },
   };
 
   return (
