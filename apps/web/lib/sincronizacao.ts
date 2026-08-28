@@ -93,6 +93,7 @@ export type TipoDeEvento =
   | "ajuste_de_data"
   | "vigencia_recuou"
   | "encerrou"
+  | "sumiu_vigente"
   | "reapareceu"
   | "sem_mudanca";
 
@@ -109,7 +110,12 @@ export type Resultado = {
   eventos: Evento[];
   /** Quando preenchido, NADA deve ser aplicado. Ver a trava abaixo. */
   bloqueio: string | null;
-  resumo: { naFonte: number; noBanco: number; entraram: number; renovaram: number; ajustaram: number; encerraram: number; reapareceram: number };
+  resumo: {
+    naFonte: number; noBanco: number; entraram: number; renovaram: number;
+    ajustaram: number; encerraram: number; reapareceram: number;
+    /** Sumiram da fonte com o contrato ainda correndo — não recebem baixa sozinhos. */
+    vigentesSumidos: number;
+  };
 };
 
 /**
@@ -211,6 +217,8 @@ export function comparar(
    * massa por planilha parcial.
    */
   etapaAtiva: string | null = null,
+  /** O "hoje" da empresa, para saber se a vigência ainda corre. Parâmetro por testabilidade. */
+  hoje: string = new Date().toISOString().slice(0, 10),
 ): Resultado {
   const naFonte = new Map(fonte.map((l) => [l.chave, l]));
   const noBanco = new Map(banco.map((b) => [b.chave, b]));
@@ -307,9 +315,36 @@ export function comparar(
   const sumidosForaDaEtapa = banco.filter(
     (b) => !b.encerrado && etapaAtiva && b.etapa !== etapaAtiva && !naFonte.has(b.chave),
   );
+  /**
+   * ⚠ SUMIR DA FONTE COM CONTRATO CORRENDO É CONTRADIÇÃO, NÃO ENCERRAMENTO.
+   *
+   * O DEFEITO DE 28/ago. A exportação de "plano ativo" da Be Fitness trouxe
+   * 304 pessoas e 27 sumiram — mas **20 delas tinham contrato até 2027**, uma
+   * até agosto. Conferidos três na fonte: um cancelou de verdade, um combinou
+   * pagar em duas parcelas, e **um tinha pago o ano inteiro à vista e não
+   * devia nada**. A exportação não era "quem é aluno": era, na prática, uma
+   * lista de cobrança em aberto.
+   *
+   * ⚠ E A TRAVA DOS 15% NÃO PEGA ISSO. Eram 27 de 307, 8,8% — dentro do
+   * limite, sem alarme nenhum. Ela conta QUANTOS somem; esta olha QUEM some.
+   * Contar não substitui conferir: 20 mensagens de "você parou de treinar,
+   * quer voltar?" para alunos pagantes é dano que nenhum percentual mede.
+   *
+   * ⚠ E NÃO DÁ PARA SIMPLESMENTE IGNORAR: cancelamento no meio do contrato
+   * existe (o caso do Jean, que se mudou). Por isso vira grupo SEPARADO, com o
+   * motivo escrito, e a baixa deles exige uma confirmação PRÓPRIA — nunca a
+   * mesma que autoriza passar do limite de 15%. Duas decisões diferentes com
+   * uma caixa só é como se aprende a marcar tudo sem ler.
+   */
+  const aindaVigente = (b: EstadoConhecido) => !!b.vigencia_ate && b.vigencia_ate >= hoje;
   for (const b of sumidos) {
+    if (aindaVigente(b)) {
+      eventos.push({ chave: b.chave, tipo: "sumiu_vigente", de: b.vigencia_ate ?? null,
+        descricao: `${b.nome ?? b.chave} sumiu da fonte, mas o contrato vai até ${b.vigencia_ate}. Pode ser cancelamento no meio do plano — ou filtro na exportação. NÃO recebe baixa sem você marcar.` });
+      continue;
+    }
     eventos.push({ chave: b.chave, tipo: "encerrou", de: b.vigencia_ate ?? null,
-      descricao: `${b.nome ?? b.chave} não está mais na fonte — contrato encerrado.` });
+      descricao: `${b.nome ?? b.chave} não está mais na fonte e a vigência já venceu${b.vigencia_ate ? ` em ${b.vigencia_ate}` : ""} — contrato encerrado.` });
   }
   for (const b of sumidosForaDaEtapa) {
     eventos.push({ chave: b.chave, tipo: "encerrou", de: b.vigencia_ate ?? null,
@@ -337,7 +372,8 @@ export function comparar(
       entraram: eventos.filter((e) => e.tipo === "entrou").length,
       renovaram: eventos.filter((e) => e.tipo === "renovou").length,
       ajustaram: eventos.filter((e) => e.tipo === "ajuste_de_data").length,
-      encerraram: sumidos.length,
+      encerraram: eventos.filter((e) => e.tipo === "encerrou").length,
+      vigentesSumidos: eventos.filter((e) => e.tipo === "sumiu_vigente").length,
       reapareceram: eventos.filter((e) => e.tipo === "reapareceu").length,
     },
   };

@@ -95,9 +95,17 @@ verifica("sem ciclo, o piso absoluto decide",
   ["ajuste_de_data", "renovou"]);
 
 // --------------------------------------------------- AUSÊNCIA VIRA HISTÓRICO
+//
+// ⚠ A VIGÊNCIA DESTES CASOS PASSOU A SER VENCIDA (28/ago). Antes o padrão do
+// `ativos()` era 2026-12-31 — futuro —, e a ausência da fonte virava "encerrou"
+// de qualquer jeito. Hoje ausência COM CONTRATO CORRENDO é contradição, não
+// encerramento, e vira `sumiu_vigente`. Estes testes descrevem o encerramento
+// legítimo — contrato que acabou —, então a data acompanha o que eles medem.
+
+const VENCIDO = "2026-06-30";
 
 // Um sumido em 20 ativos = 5%, abaixo do limite: aplica.
-const r3 = comparar(fonteDe(ativos(20)).slice(0, 19), ativos(20));
+const r3 = comparar(fonteDe(ativos(20, VENCIDO)).slice(0, 19), ativos(20, VENCIDO));
 verifica("quem sumiu da fonte encerrou", tipoDe(r3, "c19"), "encerrou");
 verifica("um sumido não bloqueia", r3.bloqueio, null);
 verifica("o resumo conta o encerramento", r3.resumo.encerraram, 1);
@@ -118,7 +126,7 @@ verifica("quem não existia entrou",
 
 // ⚠ O CASO QUE ESTA TRAVA EXISTE PARA IMPEDIR: planilha com filtro aplicado.
 // 5 de 20 sumidos = 25%, acima dos 15%. Nada pode ser aplicado.
-const parcial = comparar(fonteDe(ativos(20)).slice(0, 15), ativos(20));
+const parcial = comparar(fonteDe(ativos(20, VENCIDO)).slice(0, 15), ativos(20, VENCIDO));
 verifica("planilha parcial BLOQUEIA", parcial.bloqueio !== null, true);
 verifica("e a mensagem diz que nada foi gravado",
   parcial.bloqueio.includes("nada foi gravado"), true);
@@ -209,6 +217,62 @@ verifica("fonte vazia barra mesmo com etapa ativa",
 // erro e a mesma: cadastro contado como contrato.
 verifica("sem etapa declarada, o denominador volta a ser o antigo (todo mundo)",
   comparar(fonte304, banco1434, undefined, false, null).resumo.noBanco, 1430);
+
+// ================================ SUMIU COM CONTRATO CORRENDO (28/ago, tarde)
+//
+// ⚠ O SEGUNDO DEFEITO DO MESMO DIA, e a trava dos 15% nao pegava. Depois de
+// corrigido o denominador, a previsao ficou em 27 baixas sobre 307 ativos —
+// 8,8%, dentro do limite, sem alarme nenhum. Mas **20 daquelas 27 tinham
+// contrato correndo**, uma ate agosto de 2027.
+//
+// Conferidos tres na fonte, deram tres respostas diferentes:
+//   • um cancelou de verdade (mudou de cidade);
+//   • um combinou pagar o anual em duas parcelas, a segunda ainda por vencer;
+//   • um **tinha pago o ano inteiro a vista e nao devia nada**.
+// A exportacao de "plano ativo" nao era "quem e aluno": era, na pratica, uma
+// lista de cobranca em aberto.
+//
+// ⚠ CONTAR NAO SUBSTITUI CONFERIR. A trava de 15% mede QUANTOS somem; esta
+// olha QUEM some. Vinte mensagens de "voce parou de treinar, quer voltar?"
+// para alunos pagantes e dano que nenhum percentual mede — e o pior deles
+// tinha pago um ano adiantado.
+
+const HOJE = "2026-08-28";
+const bancoMisto = [
+  // venceu este mes: saida coerente, fecha sozinho
+  { chave: "v1", nome: "Venceu Um", etapa: "convertido", vigencia_ate: "2026-08-15" },
+  { chave: "v2", nome: "Venceu Dois", etapa: "convertido", vigencia_ate: "2026-08-20" },
+  // contrato correndo: contradicao, NAO fecha sozinho
+  { chave: "f1", nome: "Pagou O Ano", etapa: "convertido", vigencia_ate: "2027-06-06" },
+  { chave: "f2", nome: "Parcelou", etapa: "convertido", vigencia_ate: "2027-08-08" },
+  // continua na fonte
+  { chave: "ok", nome: "Segue", etapa: "convertido", vigencia_ate: "2027-01-01" },
+];
+const fonteMista = [{ chave: "ok", vigencia_ate: "2027-01-01" }];
+
+const r = comparar(fonteMista, bancoMisto, undefined, false, "convertido", HOJE);
+verifica("quem venceu vira 'encerrou'", r.resumo.encerraram, 2);
+verifica("quem tem contrato correndo vira 'sumiu_vigente'", r.resumo.vigentesSumidos, 2);
+
+// ⚠ OS DOIS GRUPOS APARECEM. Esconder o segundo trocaria uma baixa errada por
+// uma ausencia silenciosa — a pessoa precisa LER a lista para decidir.
+const vig = r.eventos.filter((e) => e.tipo === "sumiu_vigente");
+verifica("e o motivo vai escrito, com a data do contrato",
+  vig.every((e) => e.descricao.includes("contrato vai até")), true);
+verifica("o texto avisa que nao ha baixa sem marcar",
+  vig[0].descricao.includes("NÃO recebe baixa"), true);
+
+// ⚠ A BORDA: vigencia que termina HOJE ainda esta correndo. Fechar quem vence
+// hoje seria dar baixa em quem pode renovar amanha.
+const borda = comparar([], [{ chave: "b", etapa: "convertido", vigencia_ate: HOJE }],
+  undefined, true, "convertido", HOJE);
+verifica("contrato que termina hoje ainda conta como vigente", borda.resumo.vigentesSumidos, 1);
+
+// ⚠ SEM DATA DE VIGENCIA nao vira contradicao: nao ha contrato correndo para
+// contradizer. Fecha pelo caminho normal.
+const semData = comparar([], [{ chave: "s", etapa: "convertido", vigencia_ate: null }],
+  undefined, true, "convertido", HOJE);
+verifica("sem data de vigencia fecha normal", semData.resumo.encerraram, 1);
 
 console.log(falhas === 0 ? "\nOK — 20/20" : `\nFALHOU — ${falhas} de 20`);
 process.exit(falhas === 0 ? 0 : 1);

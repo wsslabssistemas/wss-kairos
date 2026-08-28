@@ -48,6 +48,14 @@ export function Sincronizador() {
    * está na tela.
    */
   const [confirmado, setConfirmado] = useState(false);
+  /**
+   * ⚠ CAIXA SEPARADA, e não é preciosismo. Ela autoriza dar baixa em quem
+   * sumiu da fonte COM CONTRATO CORRENDO — decisão diferente de "a exportação
+   * está completa". Em 28/ago, 20 dos 27 sumidos tinham contrato até 2027, e
+   * dois dos três conferidos eram alunos em dia (um com o ano pago à vista).
+   * Uma caixa só para as duas perguntas é como se aprende a marcar tudo sem ler.
+   */
+  const [baixarVigentes, setBaixarVigentes] = useState(false);
   const [carregando, setCarregando] = useState<null | "lendo" | "prever" | "aplicar">(null);
   const [feito, setFeito] = useState<string | null>(null);
 
@@ -98,13 +106,13 @@ export function Sincronizador() {
 
   const rodarPrevisao = async () => {
     setCarregando("prever"); setFeito(null);
-    try { setP(await prever(dados, confirmado)); } finally { setCarregando(null); }
+    try { setP(await prever(dados, confirmado, baixarVigentes)); } finally { setCarregando(null); }
   };
 
   const rodarAplicacao = async () => {
     setCarregando("aplicar");
     try {
-      const r = await aplicar(dados, confirmado);
+      const r = await aplicar(dados, confirmado, baixarVigentes);
       if (r.ok) {
         // A falha parcial vem junto do sucesso, de propósito: "1.500
         // atualizados" escondendo 48 recusas é o mesmo defeito de sempre.
@@ -249,8 +257,50 @@ export function Sincronizador() {
                   {!!p.resumo && p.resumo.reapareceram > 0 && <span className="badge badge-brand">voltaram: <strong>{p.resumo.reapareceram}</strong></span>}
                   {!!p.resumo && p.resumo.encerraram > 0 && <span className="badge badge-danger">encerraram: <strong>{p.resumo.encerraram}</strong></span>}
                   {!!p.resumo && p.resumo.ajustaram > 0 && <span className="badge">ajuste de data: <strong>{p.resumo.ajustaram}</strong></span>}
+                  {!!p.resumo && (p.resumo.vigentesSumidos ?? 0) > 0 && (
+                    <span className="badge badge-warn">
+                      sumiram com contrato correndo: <strong>{p.resumo.vigentesSumidos}</strong>
+                    </span>
+                  )}
                   {!!p.resumo && p.resumo.recuaram > 0 && <span className="badge badge-warn">conferir: <strong>{p.resumo.recuaram}</strong></span>}
                 </div>
+                {/* ⚠ A SEGUNDA DECISÃO, SEPARADA. Quem sumiu da fonte com contrato
+                    correndo é contradição, não encerramento: pode ser
+                    cancelamento no meio do plano, pode ser filtro na
+                    exportação. Em 28/ago eram 20 de 27, com contratos até 2027,
+                    e dois dos três conferidos eram alunos EM DIA — um deles com
+                    o ano inteiro pago à vista. Sem esta caixa, eles receberiam
+                    "você parou de treinar, quer voltar?". */}
+                {!!p.resumo && (p.resumo.vigentesSumidos ?? 0) > 0 && (
+                  <div className="card mt-16" style={{ borderColor: "var(--warn)" }}>
+                    <p style={{ margin: 0, fontSize: 14 }}>
+                      <strong>{p.resumo.vigentesSumidos} pessoa(s) sumiram da fonte, mas o
+                      contrato delas ainda está correndo.</strong>{" "}
+                      Isso pode ser cancelamento no meio do plano — ou a exportação ter um filtro
+                      que as deixou de fora (quem já pagou tudo, quem está com valor em aberto).
+                      Por padrão elas <strong>não recebem baixa</strong> e continuam onde estão.
+                    </p>
+                    <label className="row" style={{ gap: 8, alignItems: "flex-start", fontSize: 14, marginTop: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={baixarVigentes}
+                        onChange={(e) => { setBaixarVigentes(e.target.checked); setP(null); }}
+                        style={{ marginTop: 3 }}
+                      />
+                      <span>
+                        <strong>Conferi: essas pessoas cancelaram mesmo.</strong> Dar baixa nelas
+                        também, mesmo com contrato em aberto.
+                      </span>
+                    </label>
+                    {baixarVigentes && (
+                      <p className="text-faint" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                        Marcado. Clique em <strong>Ver o que vai acontecer</strong> de novo — a
+                        previsão é refeita no servidor antes de qualquer gravação.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <button type="button" className="btn btn-primary mt-16" disabled={carregando !== null} onClick={rodarAplicacao}>
                   {carregando === "aplicar" ? "gravando…" : "Aplicar essas mudanças"}
                 </button>

@@ -82,7 +82,9 @@ export type Previsao = {
    */
   fonteVazia?: boolean;
   entendeu?: { matriculas?: string; recebimentos?: string };
-  resumo?: { entraram: number; renovaram: number; ajustaram: number; encerraram: number; reapareceram: number; recuaram: number };
+  resumo?: { entraram: number; renovaram: number; ajustaram: number; encerraram: number; reapareceram: number; recuaram: number;
+    /** Sumiram da fonte com o contrato ainda correndo — só recebem baixa com confirmação própria. */
+    vigentesSumidos: number };
   eventos?: { chave: string; tipo: string; descricao: string }[];
   pagantes?: { total: number; comHabito: number; descartadas: string[] };
   /**
@@ -159,6 +161,13 @@ export async function prever(
    * servidor, não no browser.
    */
   confirmado = false,
+  /**
+   * ⚠ CONFIRMAÇÃO PRÓPRIA, SEPARADA DA DE CIMA. Autoriza dar baixa em quem
+   * sumiu da fonte COM CONTRATO CORRENDO. São duas decisões diferentes — "a
+   * exportação está completa" e "estes 20 cancelaram mesmo no meio do plano" —
+   * e uma caixa só para as duas é como se aprende a marcar tudo sem ler.
+   */
+  baixarVigentes = false,
 ): Promise<Previsao> {
   const m = await contexto();
   if (!m) return { ok: false, erro: "Só dono ou administrador pode sincronizar." };
@@ -206,6 +215,8 @@ export async function prever(
       confirmado,
       etapaAtiva,
     );
+    // ⚠ OS `sumiu_vigente` FICAM NA PREVISÃO SEMPRE — é a lista que a pessoa
+    // precisa ler para decidir. Quem filtra é `aplicar`, na hora de gravar.
     bloqueio = cmp.bloqueio;
     fonteVazia = mat.linhas.length === 0;
     resumo = {
@@ -213,6 +224,7 @@ export async function prever(
       ajustaram: cmp.resumo.ajustaram, encerraram: cmp.resumo.encerraram,
       reapareceram: cmp.resumo.reapareceram,
       recuaram: cmp.eventos.filter((e) => e.tipo === "vigencia_recuou").length,
+      vigentesSumidos: cmp.resumo.vigentesSumidos,
     };
     // "sem_mudanca" fica de fora da lista: são centenas de linhas que não
     // dizem nada e afogariam as poucas que dizem.
@@ -260,6 +272,8 @@ export async function aplicar(
   d: DadosLidos,
   /** A pessoa marcou "conferi a exportação" na tela. */
   confirmado = false,
+  /** A pessoa marcou "dar baixa também em quem tem contrato correndo". */
+  baixarVigentes = false,
 ): Promise<{ ok: boolean; erro?: string; gravados?: number; falhas?: number }> {
   const m = await contexto();
   if (!m) return { ok: false, erro: "Só dono ou administrador pode sincronizar." };
@@ -270,7 +284,7 @@ export async function aplicar(
   // previsto — por troca de aba, por clique duplo, ou por má-fé. Confiar na
   // previsão que o browser diz ter visto seria confiar no browser para decidir
   // uma gravação em massa. A trava tem que valer no servidor.
-  const p = await prever(d, confirmado);
+  const p = await prever(d, confirmado, baixarVigentes);
   if (!p.ok) return { ok: false, erro: p.erro };
   if (p.bloqueio) return { ok: false, erro: p.bloqueio };
 
@@ -362,8 +376,16 @@ export async function aplicar(
     // continua sendo carimbado e a etapa fica como está — o comportamento
     // seguro, porque mover gente de etapa por engano é pior que não mover.
     const etapaDeSaida = ended_stage;
+    // ⚠ QUEM TEM CONTRATO CORRENDO SÓ ENTRA SE AUTORIZADO À PARTE. Em 28/ago,
+    // 20 dos 27 "sumidos" tinham contrato até 2027 — e dois dos três
+    // conferidos eram alunos em dia, um deles com o ano pago à vista. Fechar
+    // por ausência na fonte teria mandado "você parou de treinar" para quem
+    // treina. A trava de 15% não pegou: eram 8,8%.
+    const tiposQueFecham = baixarVigentes
+      ? ["encerrou", "sumiu_vigente"]
+      : ["encerrou"];
     const encerrados = (p.eventos ?? [])
-      .filter((x) => x.tipo === "encerrou")
+      .filter((x) => tiposQueFecham.includes(x.tipo))
       .map((e) => indice.get(e.chave))
       .filter((a): a is Alvo => !!a);
 
