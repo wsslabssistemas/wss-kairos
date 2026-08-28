@@ -132,11 +132,15 @@ export async function rodarMotor(entrada: {
   // recorte da campanha usa. Vem de `carga.todos` porque a fila só carrega o
   // que a montagem precisou.
   const entrouNaEtapa = new Map(carga.todos.map((c) => [c.id, c.stage_entered_at]));
+  // ⚠ A VIGÊNCIA DO CONTRATO, para o veto que impede chamar de ex-aluno quem
+  // ainda é cliente. Ver `lib/motor.ts` — o caso da Lilian, 28/ago.
+  const vigenciaDe = new Map(carga.todos.map((c) => [c.id, c.contract_end ?? null]));
 
   const candidatos: Candidato[] = doCanal.map((f) => ({
     contactId: f.contactId,
     motivo: f.motivo,
     diasNaEtapa: diasDesde(entrouNaEtapa.get(f.contactId), agora),
+    contratoAte: vigenciaDe.get(f.contactId) ? String(vigenciaDe.get(f.contactId)).slice(0, 10) : null,
     horasDesdeUltimoContato: horasDesde(carga.ultimo[f.contactId], agora),
     semResposta: semRespostaDele(carga.interacoes, f.contactId),
     diasSemEngajamento: diasDesdeEntradaDele(carga.interacoes, f.contactId, agora),
@@ -158,6 +162,8 @@ export async function rodarMotor(entrada: {
     // janela de 9h–19h. A automação nunca rodaria à tarde, e rodaria às 6h da
     // manhã. Ver `lib/fuso.ts`.
     horaLocal: horaLocal(agora, fuso),
+    // O "hoje" da EMPRESA, nunca o do servidor — mesma razão da hora local.
+    hojeISO: diaLocalISO(agora, fuso),
     // ⚠ SÓ A SIMULAÇÃO IGNORA O HORÁRIO. Quem confere a lista precisa poder
     // conferir antes de a janela abrir; quem ENVIA continua preso a ela.
     ignorarJanela: simular,

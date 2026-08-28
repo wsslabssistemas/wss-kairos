@@ -308,5 +308,57 @@ verifica("e o padrão declarado é o mesmo",
 verifica("zero salvo é respeitado, não substituído pelo padrão",
   readAutomation({ automation: { reativacao_max_dias: 0 } }).reativacao_max_dias, 0);
 
+// ======================================= NAO CHAME DE EX-ALUNO QUEM E CLIENTE
+//
+// ⚠ O CASO LILIAN, 28/ago/2026. Saiu uma mensagem de reativacao — "voce
+// treinou com a gente e acabou parando" — para uma aluna com **contrato ate
+// 09/08/2027**. E para o Jeferson, com contrato ate janeiro. Nenhum dos dois
+// tinha parado nada; os dois pagam em dia.
+//
+// A etapa dizia `ex_aluno` e estava errada. Os dois foram importados como
+// ex-alunos, rematricularam depois, e a sincronizacao **atualiza a vigencia
+// mas nunca traz ninguem de volta para a etapa ativa**. Etapa que so anda para
+// um lado mente com o tempo — e ninguem procura erro numa etapa que ja foi
+// verdade.
+//
+// ⚠ ETAPA E INTERPRETACAO; CONTRATO CORRENDO E FATO. Por isso o veto mora
+// AQUI, no motor, e nao so na sincronizacao: consertar a origem do dado e
+// necessario e nao e suficiente. No dia em que a etapa estiver errada de novo,
+// por um caminho que ninguem previu, esta regra continua segurando a mensagem.
+//
+// ⚠ E ELE VEM ANTES DE TODOS OS OUTROS VETOS. As outras regras protegem o
+// NUMERO e apenas adiam; esta protege a RELACAO com um cliente pagante, e o
+// dano dela nao tem segunda chance.
+
+const HOJE = "2026-08-28";
+// Reusa os ajudantes do arquivo: `livre` ja monta um candidato limpo, e
+// `plano` aplica as REGRAS padrao. Ajudante duplicado diverge do original na
+// primeira mudanca — o mesmo motivo pelo qual `origemDaMensagem` virou funcao.
+const comContrato = (ate, over = {}) => ({ ...livre("lilian"), contratoAte: ate, ...over });
+const planoHoje = (c) => planejar({
+  candidatos: [c], regras: REGRAS, enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE,
+});
+
+const lilian = planoHoje(comContrato("2027-08-09"));
+verifica("ex-aluno com contrato ate 2027 NAO recebe reativacao", lilian.enviar.length, 0);
+verifica("e o motivo diz o porque, com a data",
+  lilian.vereditos[0].motivo.includes("2027-08-09"), true);
+
+// ⚠ A BORDA: contrato que termina HOJE ainda esta correndo. Mandar "voce
+// parou" para quem tem contrato ate hoje e o mesmo erro um dia mais cedo.
+verifica("contrato que vence HOJE ainda barra", planoHoje(comContrato(HOJE)).enviar.length, 0);
+
+// Vencido ontem: a saida e real, a reativacao e legitima.
+verifica("contrato vencido ontem LIBERA", planoHoje(comContrato("2026-08-27")).enviar.length, 1);
+
+// Sem vigencia registrada nao barra: "sem data" e problema de cadastro, nao
+// decisao de campanha — a mesma regra que o recorte ja seguia.
+verifica("sem data de contrato LIBERA", planoHoje(comContrato(null)).enviar.length, 1);
+
+// ⚠ E SO VALE PARA REATIVACAO. Na renovacao, contrato correndo e exatamente o
+// MOTIVO de falar — vetar ali desligaria a conversa mais valiosa que existe.
+const renov = planoHoje(comContrato("2027-08-09", { motivo: "renovacao" }));
+verifica("na renovacao, contrato correndo NAO barra", renov.enviar.length, 1);
+
 console.log(falhas === 0 ? "\nmotor: tudo certo." : `\nmotor: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

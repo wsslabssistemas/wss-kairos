@@ -357,7 +357,52 @@ export async function aplicar(
       // pode virar corromper.
       const patch: Record<string, unknown> = { custom };
       if (l.vigencia_ate) patch.contract_end = l.vigencia_ate;
+
+      // ⚠ QUEM ESTÁ NA FONTE COM CONTRATO CORRENDO VOLTA PARA A ETAPA ATIVA.
+      //
+      // O CASO LILIAN, 28/ago. Ela recebeu "você treinou com a gente e acabou
+      // parando" com **contrato até 09/08/2027**. E o Jeferson, com contrato
+      // até janeiro. Nenhum dos dois tinha parado; os dois pagam em dia.
+      //
+      // A causa: os dois entraram como ex-alunos na importação inicial,
+      // rematricularam depois, e esta função **atualizava a vigência deles a
+      // cada importação e nunca mexia na etapa**. A sincronização só sabia
+      // andar num sentido — tirar da etapa ativa quem sumiu — e o caminho de
+      // volta não existia. **Etapa que só anda para um lado mente com o
+      // tempo**, e é a mesma frase que já estava escrita algumas linhas abaixo
+      // sobre o `convertido` que nunca era revogado. O defeito era simétrico e
+      // só metade tinha sido consertada.
+      //
+      // ⚠ E SÓ COM CONTRATO CORRENDO. Estar na planilha com vigência vencida
+      // não prova rematrícula — pode ser a linha antiga do contrato que
+      // acabou. Trazer de volta por presença apenas ressuscitaria ex-aluno a
+      // cada importação, e o erro simétrico é tão ruim quanto o original.
+      const voltouAContratar =
+        !!active_stage &&
+        !!l.vigencia_ate &&
+        l.vigencia_ate >= hoje &&
+        alvo.journey_stage !== active_stage;
+      if (voltouAContratar) {
+        patch.journey_stage = active_stage;
+        patch.stage_entered_at = new Date().toISOString();
+      }
+
       await gravar(alvo.id, patch);
+
+      // O histórico da jornada é append-only: é ele que responde "desde quando
+      // ele voltou a ser cliente?" depois. Falha aqui não derruba a
+      // sincronização — o fato principal já foi gravado.
+      if (voltouAContratar) {
+        const { error } = await supabase.from("contact_stage_history").insert({
+          tenant_id: m.tenant!.id,
+          contact_id: alvo.id,
+          from_stage: alvo.journey_stage,
+          to_stage: active_stage,
+          reason: "Está na planilha de matrículas com contrato em vigência — voltou a ser cliente.",
+          triggered_by: "system",
+        });
+        if (error) console.error(`[sincronizar] historico de retorno de ${alvo.id}: ${error.message}`);
+      }
     });
 
     // O ENCERRAMENTO É O QUE A PLANILHA NÃO SABE CONTAR — ver `sincronizacao.ts`.

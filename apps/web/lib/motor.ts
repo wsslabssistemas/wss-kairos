@@ -45,6 +45,25 @@ export type Candidato = {
    * problema de cadastro, não decisão de campanha.
    */
   diasNaEtapa: number | null;
+  /**
+   * A data em que o contrato dele termina (`AAAA-MM-DD`), ou `null`.
+   *
+   * ⚠ ELA EXISTE POR CAUSA DA LILIAN. Em 28/ago saiu uma mensagem de
+   * reativação — *"você treinou com a gente e acabou parando"* — para uma
+   * aluna com **contrato até 09/08/2027**. E para o Jeferson, com contrato até
+   * janeiro. Nenhum dos dois tinha parado nada.
+   *
+   * A etapa dizia `ex_aluno` e estava errada: os dois foram importados como
+   * ex-alunos, rematricularam depois, e a sincronização **atualiza a vigência
+   * mas nunca traz ninguém de volta para a etapa ativa**. Etapa que só anda
+   * para um lado mente com o tempo.
+   *
+   * ⚠ ETAPA É INTERPRETAÇÃO; CONTRATO CORRENDO É FATO. Por isso a vigência
+   * veta aqui, no motor, e não só na sincronização: consertar a origem do dado
+   * é necessário e não é suficiente — o dia em que a etapa estiver errada de
+   * novo, por qualquer caminho, esta linha continua segurando a mensagem.
+   */
+  contratoAte?: string | null;
 };
 
 export type RegrasDoMotor = {
@@ -123,6 +142,8 @@ export function dentroDaJanela(hora: number, inicio: number, fim: number): boole
  * aparece na fatura — é a mesma lição de `cota-db.ts`.
  */
 export function planejar(entrada: {
+  /** O dia da EMPRESA (`AAAA-MM-DD`), para comparar com a vigência do contrato. */
+  hojeISO?: string;
   candidatos: Candidato[];
   regras: RegrasDoMotor;
   enviadosHoje: number;
@@ -158,6 +179,15 @@ export function planejar(entrada: {
   ignorarJanela?: boolean;
 }): PlanoDoMotor {
   const { candidatos, regras, enviadosHoje, horaLocal, ignorarJanela = false } = entrada;
+  /**
+   * O "hoje" para comparar com a vigência do contrato.
+   *
+   * ⚠ PARÂMETRO, e não `new Date()` dentro do laço: função pura é o que permite
+   * testar a borda (contrato que vence HOJE) sem depender do relógio de quem
+   * roda o teste. Quem chama passa o dia da EMPRESA (`lib/fuso.ts`), nunca o
+   * do servidor — foi o defeito de 20/ago e ele não volta por esta porta.
+   */
+  const hojeISO = entrada.hojeISO ?? new Date().toISOString().slice(0, 10);
   const vazio = (porque: string): PlanoDoMotor => ({
     ativo: false, porque, enviar: [], vereditos: [],
     simulado: regras.mode === "simulation", foraDaJanela: false,
@@ -196,6 +226,29 @@ export function planejar(entrada: {
     // veredito dizendo "cooldown" para alguém que saiu há três anos manda a
     // pessoa procurar um problema que não existe.
     //
+    // ⚠ NÃO CHAME DE EX-ALUNO QUEM TEM CONTRATO CORRENDO. Vem ANTES de todos
+    // os outros vetos porque é o único que protege a RELAÇÃO, não o número: as
+    // outras regras adiam uma mensagem, esta impede a mensagem errada.
+    //
+    // O caso de 28/ago: reativação enviada para quem tinha contrato até
+    // 2027 — e para quem paga em dia, "você acabou parando, quer voltar?" lê
+    // como a academia não saber quem ele é.
+    //
+    // ⚠ E O DEFEITO NÃO ESTAVA AQUI, estava na etapa. É de propósito: dado
+    // errado chega por caminhos que ninguém previu, e o veto de última hora é
+    // o que sobra quando a origem falha. Vale só para `reativacao` — na
+    // renovação, contrato correndo é exatamente o motivo de falar.
+    if (c.motivo === "reativacao" && c.contratoAte && c.contratoAte >= hojeISO) {
+      vereditos.push({
+        contactId: c.contactId,
+        enviar: false,
+        motivo:
+          `O contrato dele vai até ${c.contratoAte} — ainda é cliente. ` +
+          `Reativação é conversa de quem saiu, e a etapa está errada. Corrija o cadastro.`,
+      });
+      continue;
+    }
+
     // Vale SÓ para a reativação. A renovação também mede tempo de etapa, e ali
     // etapa antiga é o CLIENTE FIEL — barrá-lo seria o recorte fazendo o
     // oposto exato do que existe para fazer.
