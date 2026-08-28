@@ -145,6 +145,40 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   ⚠ E **agendador único continua sendo ponto único de falha.** As quatro
   camadas acima melhoram muito o GitHub; só um segundo relógio em outra
   infraestrutura tira ele do caminho crítico. Ver `scripts/agendador-reserva.sql`.
+- **⚠ TRANSIÇÃO DE ETAPA TEM QUE TER VOLTA.** Em 28/ago saiu *"você treinou com
+  a gente e acabou parando"* para uma aluna com **contrato até 2027**. A causa:
+  a sincronização sabia **tirar** da etapa ativa quem sumia da planilha e nunca
+  aprendeu a **trazer de volta** quem rematriculou — atualizava a vigência a
+  cada importação e deixava o rótulo velho. E a frase que explica já estava
+  escrita no mesmo arquivo, sobre o defeito espelhado: *"etapa que só avança
+  mente com o tempo"*. **Defeito simétrico, meia correção.** Ao escrever uma
+  transição, escreva a inversa ou anote por que ela não existe.
+- **⚠ FATO DO MUNDO VENCE RÓTULO DO SISTEMA — e o veto mora no fato.** Etapa é
+  interpretação nossa; contrato correndo é fato do cliente. Por isso a recusa de
+  mandar reativação para quem tem vigência futura ficou **no motor**, não só na
+  sincronização: consertar a origem do dado é necessário e nunca é suficiente,
+  porque dado errado chega por caminhos que ninguém previu. A regra geral:
+  quando existir um fato verificável que contradiz o rótulo, **verifique o fato
+  no momento de agir**, não só na hora de gravar.
+- **⚠ CONTAR NÃO SUBSTITUI CONFERIR.** A trava da sincronização mede QUANTOS
+  somem da planilha e passou tranquila em 8,8% — abaixo do limite de 15% —
+  enquanto **20 daqueles sumidos eram alunos em dia**, um deles com o ano pago à
+  vista. Trava de proporção pega planilha truncada; não pega erro de identidade.
+  Toda trava estatística precisa de uma companheira que olhe **quem**, e a
+  contradição entre duas fontes (sumiu da lista × contrato até 2027) tem que
+  aparecer na tela **antes** de gravar.
+- **⚠ A EXPORTAÇÃO DO CLIENTE NÃO É A REALIDADE — ela tem um filtro que ninguém
+  declarou.** "Relação de plano ativo" na Be Fitness era, na prática, uma lista
+  de **cobrança em aberto**: quem pagou o ano à vista sumia dela. Duas
+  exportações do "mesmo" relatório deram 304 e 362 pessoas. Antes de tratar um
+  arquivo como verdade, **confira três nomes na origem** — foi o que separou
+  "vinte cancelamentos" de "dois alunos em dia".
+- **⚠ O MESMO SINTOMA PODE TER CAUSAS OPOSTAS, e o aviso não pode chutar qual.**
+  Os dois barrados de 28/ago tinham contrato até 2027: uma havia rematriculado
+  (etapa errada), o outro abandonou sem cancelar (etapa certa). O texto dizia
+  *"corrija o cadastro"* — ação certa para ela, pedido absurdo para ele.
+  **Aviso que erra o diagnóstico é aviso que ninguém lê na próxima vez.**
+  Descreva o fato observado e nomeie as causas possíveis; não escolha uma.
 - **⚠ A META CONTA BYTES, NÃO LETRAS.** O contador dela mostrou "492/512" e a
   gravação falhou: em UTF-8 cada acento ocupa 2 bytes, e em português quase toda
   frase tem acento. O erro dela diz "characters" e mede byte. **Funciona em

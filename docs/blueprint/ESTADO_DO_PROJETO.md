@@ -203,6 +203,43 @@ que trouxe a pessoa (`referral`) · reação ≠ mensagem.
 
 ---
 
+## 0.05. ⚠ 28 DE AGOSTO — o dia em que a mensagem errada chegou ao cliente
+
+Duas mensagens de reativação saíram para contratos até 2027. **Este é o único
+erro desta semana que atingiu uma pessoa real do cliente**, e por isso ele está
+antes de tudo.
+
+**O que aconteceu, em ordem:** a exportação de "plano ativo" da academia era, na
+prática, uma lista de **cobrança em aberto** — quem pagou o ano à vista sumia
+dela. A sincronização leu ausência como encerramento. A trava de 15% passou em
+8,8%. E duas pessoas com etapa `ex_aluno` errada receberam a campanha.
+
+**As duas por motivos OPOSTOS, e a distinção é o aprendizado:**
+
+| | Situação real | Por que a etapa dizia ex-aluno |
+|---|---|---|
+| **Lilian Cabral Leão** | Aluna, em dia, contrato até 09/08/2027 | Rematriculou e a etapa **nunca voltou** |
+| **Jeferson Seleprim** | Abandonou, pagou 3 de 12 meses | A etapa estava **certa** — o contrato é que corre no papel |
+
+**Três camadas fecharam o caminho** (`efe190f`, `a511330`): o motor VETA
+reativação para vigência futura, antes de todos os outros vetos; a
+sincronização passou a TRAZER DE VOLTA quem está na fonte com contrato
+correndo; e o veredito descreve o fato sem chutar a causa.
+
+⚠ **CINCO PESSOAS AINDA ESTÃO COM A ETAPA ERRADA** (Lilian, Telmo, Claudia,
+Yasmin, Jeferson). O veto impede novas mensagens, mas o cadastro segue torto:
+elas contam como ex-alunas na carteira. Some com uma reimportação da mesma
+planilha, ou com a correção direta das 5 linhas.
+
+⚠ **E O TERCEIRO ESTADO GANHOU NOME.** O Jeferson **não é aluno ativo nem
+ex-aluno**: abandonou com contrato aberto e valor em atraso. Reativação ignora
+a dívida; renovação oferece renovar o que ele não terminou de pagar. Ele fica
+contado como aluno e falado por ninguém — melhor que a mensagem errada, e ainda
+não é certo. **Dimensionar exige a exportação de títulos em aberto**
+(`Codigo`, valor, vencimento), que ainda não existe no sistema.
+
+---
+
 ## 0.1. Repasse anterior — 21 de agosto de 2026
 
 > O repasse de 19/ago continua abaixo, em §0.0. As armadilhas dele seguem
