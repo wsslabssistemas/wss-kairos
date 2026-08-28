@@ -3,6 +3,7 @@ import { getActiveTenant } from "@/lib/auth";
 import { readAutomation, MODE_LABEL, MODE_HINT, type AutomationMode } from "@/lib/automation";
 import { saveAutomation } from "./actions";
 import { statusDoCanal } from "@/lib/credenciais";
+import { getSkillFormConfig } from "@/lib/skill";
 import { origemDoSite } from "@/lib/site";
 import { Canal } from "./Canal";
 import { Guia } from "./Guia";
@@ -15,6 +16,7 @@ import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 import { dataHoraLocal } from "@/lib/fuso";
 import { ultimaVerificacao } from "@/lib/vigia-canal";
+import { alcanceDaReativacao } from "@/lib/alcance";
 import { avaliarSaude } from "@/lib/saude-canal";
 
 // Chamada de rede para a Meta no teste de conexao. Ver a nota em
@@ -174,6 +176,19 @@ export default async function AutomacaoPage({
   const agendadorMudo =
     a.mode === "auto" && diaUtil && dentroDaJanela &&
     (minutosSemBatida === null || minutosSemBatida > 60);
+  /**
+   * ⚠ QUANTOS AINDA CABEM NO RECORTE. Em 28/ago saíram 10 mensagens com teto
+   * de 15, e o fundador não soube dizer se era defeito, teto ou fim da fila —
+   * as três pedem ações opostas. Eram 10 porque a faixa de 180 dias tinha
+   * acabado, e o sistema sabia disso sem contar a ninguém.
+   */
+  const { contract } = await getSkillFormConfig(tenant.skill_key);
+  const alcance = await alcanceDaReativacao(
+    tenant.id,
+    a.reativacao_max_dias,
+    contract?.ended_stage ?? null,
+  );
+
   const status = await statusDoCanal(tenant.id);
 
   /**
@@ -369,6 +384,46 @@ export default async function AutomacaoPage({
           perguntas que alguém faz antes de virar a chave, na ordem em que as
           faz. */}
       {canEdit && <DisparoDeTeste />}
+
+      {/* ⚠ O QUE FAZER DEPOIS — a pergunta que a tela não respondia.
+          "Saíram 10" é indistinguível de teto atingido, defeito no envio e fim
+          da fila, e as três pedem ações opostas: esperar, chamar suporte, ou
+          aumentar o recorte. O número sozinho transfere para a pessoa uma
+          investigação que o banco responde numa consulta. */}
+      {a.mode !== "off" && alcance && (
+        <div className="card mt-16">
+          <p className="eyebrow" style={{ marginBottom: 8 }}>Quem ainda falta falar</p>
+          {alcance.dentro > 0 ? (
+            <p style={{ margin: 0, fontSize: 14 }}>
+              Dentro do recorte de hoje{" "}
+              <strong>
+                {alcance.recorte > 0 ? `(saiu nos últimos ${alcance.recorte} dias)` : "(base inteira)"}
+              </strong>{" "}
+              ainda há <strong>{alcance.dentro} pessoa(s)</strong> para falar — com telefone e sem
+              nenhuma mensagem nossa pelo canal.
+            </p>
+          ) : (
+            <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left" }}>
+              <strong>O recorte de {alcance.recorte} dias acabou.</strong> Já falamos com todo mundo
+              que saiu nesse período. Enquanto ele não aumentar, o motor não tem com quem falar — e
+              vai continuar rodando sem mandar nada.
+            </p>
+          )}
+          {alcance.proximo && (
+            <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
+              Aumentando o recorte para{" "}
+              <strong>{alcance.proximo.dias === 0 ? "a base inteira" : `${alcance.proximo.dias} dias`}</strong>,
+              entram mais <strong>{alcance.proximo.destrava} pessoa(s)</strong>. O campo é{" "}
+              <em>“Reativação: só quem saiu nos últimos (dias)”</em>, logo acima.
+            </p>
+          )}
+          {!alcance.proximo && alcance.dentro === 0 && (
+            <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
+              E não há mais ninguém em nenhuma faixa: a base de reativação foi toda contatada.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ⚠ A SAÚDE DO CANAL VEM ANTES DAS RODADAS. Motor perfeito com canal
           fora do ar é o pior estado possível: tudo verde e ninguém recebendo.
