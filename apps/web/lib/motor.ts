@@ -230,9 +230,27 @@ export function planejar(entrada: {
     // os outros vetos porque é o único que protege a RELAÇÃO, não o número: as
     // outras regras adiam uma mensagem, esta impede a mensagem errada.
     //
-    // O caso de 28/ago: reativação enviada para quem tinha contrato até
-    // 2027 — e para quem paga em dia, "você acabou parando, quer voltar?" lê
-    // como a academia não saber quem ele é.
+    // O caso de 28/ago: reativação enviada para dois contratos até 2027, e os
+    // dois por motivos DIFERENTES — a distinção importa e o texto do veredito
+    // não pode escolher um lado.
+    //
+    //   • A Lilian rematriculou e a etapa não acompanhou: ela é aluna, paga em
+    //     dia, e "você acabou parando" lê como a academia não saber quem ela é.
+    //   • O Jeferson fez o anual, pagou três meses e abandonou sem cancelar: a
+    //     etapa estava CERTA, ele saiu mesmo. O contrato é que continua no
+    //     papel, com dívida junto.
+    //
+    // ⚠ O VETO SERVE AOS DOIS, O DIAGNÓSTICO NÃO. Para ela "corrija o
+    // cadastro" é a ação certa; para ele não há nada a corrigir, e mandar
+    // consertar o que está certo faz a pessoa desconfiar do aviso na próxima
+    // vez. Por isso o texto DESCREVE O FATO — o contrato corre — e nomeia as
+    // duas causas possíveis, sem afirmar qual é.
+    //
+    // ⚠ E O JEFERSON É UM TERCEIRO ESTADO QUE O PRODUTO AINDA NÃO TEM:
+    // abandonou com contrato aberto e valor em atraso. Ele não é aluno ativo
+    // nem ex-aluno, e a conversa dele é retomada + cobrança — nenhuma das duas
+    // réguas que existem. Enquanto esse estado não existir, ele fica visível
+    // no veredito da simulação e em nenhuma fila. Está anotado, não resolvido.
     //
     // ⚠ E O DEFEITO NÃO ESTAVA AQUI, estava na etapa. É de propósito: dado
     // errado chega por caminhos que ninguém previu, e o veto de última hora é
@@ -243,8 +261,9 @@ export function planejar(entrada: {
         contactId: c.contactId,
         enviar: false,
         motivo:
-          `O contrato dele vai até ${c.contratoAte} — ainda é cliente. ` +
-          `Reativação é conversa de quem saiu, e a etapa está errada. Corrija o cadastro.`,
+          `O contrato dele vai até ${c.contratoAte}. Reativação é conversa de quem ` +
+          `saiu, e no papel ele não saiu — pode ser rematrícula que a etapa não ` +
+          `acompanhou, ou plano abandonado sem cancelar. As duas pedem outra conversa.`,
       });
       continue;
     }

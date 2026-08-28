@@ -343,6 +343,16 @@ const lilian = planoHoje(comContrato("2027-08-09"));
 verifica("ex-aluno com contrato ate 2027 NAO recebe reativacao", lilian.enviar.length, 0);
 verifica("e o motivo diz o porque, com a data",
   lilian.vereditos[0].motivo.includes("2027-08-09"), true);
+// ⚠ O TEXTO DESCREVE O FATO E NAO CHUTA A CAUSA. Os dois barrados de 28/ago
+// tinham contrato ate 2027 por motivos OPOSTOS: a Lilian rematriculou e a
+// etapa nao acompanhou; o Jeferson fez o anual, pagou tres meses e abandonou
+// sem cancelar — a etapa dele estava certa. Mandar "corrija o cadastro" para
+// ele seria pedir para consertar o que esta certo, e aviso que erra o
+// diagnostico e aviso que ninguem le na proxima vez.
+verifica("o veredito NAO afirma que a etapa esta errada",
+  /etapa está errada|corrija o cadastro/i.test(lilian.vereditos[0].motivo), false);
+verifica("e nomeia as duas causas possiveis",
+  /rematr|abandonad/i.test(lilian.vereditos[0].motivo), true);
 
 // ⚠ A BORDA: contrato que termina HOJE ainda esta correndo. Mandar "voce
 // parou" para quem tem contrato ate hoje e o mesmo erro um dia mais cedo.
