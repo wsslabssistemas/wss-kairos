@@ -175,6 +175,26 @@ contract:
   # por engano é pior que deixar parado.
   ended_stage: ex_aluno
 
+  # DE ONDE ELE SAI — a etapa de quem tem contrato de pé.
+  #
+  # ⚠ ELA EXISTE PORQUE A TRAVA DA SINCRONIZAÇÃO MEDIA ERRADO. Sem esta linha,
+  # "contrato ativo" era toda pessoa com código do sistema que nunca passou por
+  # uma sincronização — e na Be Fitness isso somava 1.434, dos quais **996 já
+  # estavam em `ex_aluno` há meses**. A planilha correta, com 304 alunos, era
+  # comparada contra 1.434 e disparava "80% sumiram" em toda importação.
+  #
+  # ⚠ ALARME QUE TOCA SEMPRE É ALARME DESLIGADO. A trava nasceu para impedir
+  # baixa em massa por planilha parcial; medindo assim, ela ensinava a pessoa a
+  # clicar em "aplicar mesmo assim" sem ler — e no dia da planilha de verdade
+  # parcial, ninguém ia parar.
+  #
+  # ⚠ E ELA TAMBÉM DECIDE QUEM PODE SER MOVIDO. Só sai da etapa quem está NESTA
+  # etapa. Quem já está em `perdido`, `recusou` ou `ex_aluno` recebe o carimbo
+  # de encerrado e fica onde está — mover gente de etapa por engano é pior que
+  # não mover, e transformar quem disse NÃO em candidato a reativação com data
+  # de hoje contraria a regra de que a decisão é do cliente.
+  active_stage: convertido
+
   # ⚠ O QUE CADA NOME DE PLANO SIGNIFICA — lido da coluna `Plano` da planilha.
   #
   # A exportação da Be Fitness (20/ago) tem 393 linhas: ~331 são plano de

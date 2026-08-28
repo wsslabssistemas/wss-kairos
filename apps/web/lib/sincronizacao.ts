@@ -75,6 +75,16 @@ export type EstadoConhecido = {
   vigencia_ate?: string | null;
   /** Já foi baixado como encerrado numa sincronização anterior? */
   encerrado?: boolean;
+  /**
+   * A etapa em que a pessoa está HOJE.
+   *
+   * ⚠ ELA ENTROU PORQUE A TRAVA MEDIA ERRADO. "Contrato ativo" era toda pessoa
+   * com código do sistema que nunca passou por uma sincronização — e na Be
+   * Fitness isso somava 1.434, dos quais **996 já estavam em `ex_aluno` há
+   * meses**. Uma planilha CORRETA, com 304 alunos, era comparada contra 1.434
+   * e disparava "80% sumiram da fonte" em toda importação.
+   */
+  etapa?: string | null;
 };
 
 export type TipoDeEvento =
@@ -191,6 +201,16 @@ export function comparar(
    * nunca a realidade.
    */
   confirmado = false,
+  /**
+   * A etapa de quem tem contrato de pé, vinda do manifesto
+   * (`contract.active_stage`). Núcleo não conhece "convertido" nem "ex_aluno".
+   *
+   * ⚠ `null` MANTÉM O COMPORTAMENTO ANTIGO, de propósito: manifesto que não
+   * declara a etapa não pode ter a trava desligada por omissão. Sem ela, medir
+   * de menos seria pior que medir demais — a trava existe para impedir baixa em
+   * massa por planilha parcial.
+   */
+  etapaAtiva: string | null = null,
 ): Resultado {
   const naFonte = new Map(fonte.map((l) => [l.chave, l]));
   const noBanco = new Map(banco.map((b) => [b.chave, b]));
@@ -268,21 +288,42 @@ export function comparar(
   }
 
   // -------------------------------------------------- O QUE SUMIU (a informação)
-  const vivosNoBanco = banco.filter((b) => !b.encerrado);
-  const sumidos = vivosNoBanco.filter((b) => !naFonte.has(b.chave));
+  // ⚠ O DENOMINADOR CONTA QUEM TEM CONTRATO DE PÉ, não quem tem cadastro.
+  //
+  // Antes ele contava toda pessoa com código que nunca passou por uma
+  // sincronização — incluindo ex-alunos importados há meses. O efeito era uma
+  // trava que gritava "80% sumiram" diante de uma planilha correta, em TODA
+  // importação. **Alarme que toca sempre é alarme desligado:** ela ensinava a
+  // clicar em "aplicar mesmo assim" sem ler, e no dia da planilha de verdade
+  // parcial ninguém pararia.
+  const comContratoDePe = banco.filter(
+    (b) => !b.encerrado && (!etapaAtiva || b.etapa === etapaAtiva),
+  );
+  const sumidos = comContratoDePe.filter((b) => !naFonte.has(b.chave));
+
+  // ⚠ QUEM SUMIU E JÁ ESTAVA FORA CONTINUA SENDO REGISTRADO como encerrado —
+  // o carimbo é escrituração e não move ninguém. O que mudou é que ele saiu do
+  // DENOMINADOR do alarme, não do relatório.
+  const sumidosForaDaEtapa = banco.filter(
+    (b) => !b.encerrado && etapaAtiva && b.etapa !== etapaAtiva && !naFonte.has(b.chave),
+  );
   for (const b of sumidos) {
     eventos.push({ chave: b.chave, tipo: "encerrou", de: b.vigencia_ate ?? null,
       descricao: `${b.nome ?? b.chave} não está mais na fonte — contrato encerrado.` });
   }
+  for (const b of sumidosForaDaEtapa) {
+    eventos.push({ chave: b.chave, tipo: "encerrou", de: b.vigencia_ate ?? null,
+      descricao: `${b.nome ?? b.chave} não está na fonte — carimbado como encerrado. Já estava fora da etapa ativa, então NÃO muda de etapa nem de data.` });
+  }
 
   // ------------------------------------------------------------------ A TRAVA
   let bloqueio: string | null = null;
-  const proporcao = vivosNoBanco.length ? sumidos.length / vivosNoBanco.length : 0;
-  if (fonte.length === 0 && vivosNoBanco.length > 0) {
-    bloqueio = `A fonte veio VAZIA e o sistema conhece ${vivosNoBanco.length} contratos ativos. Isso daria baixa em todos. Nada foi aplicado.`;
+  const proporcao = comContratoDePe.length ? sumidos.length / comContratoDePe.length : 0;
+  if (fonte.length === 0 && comContratoDePe.length > 0) {
+    bloqueio = `A fonte veio VAZIA e o sistema conhece ${comContratoDePe.length} contratos ativos. Isso daria baixa em todos. Nada foi aplicado.`;
   } else if (proporcao > limite && !confirmado) {
     bloqueio =
-      `${sumidos.length} de ${vivosNoBanco.length} contratos ativos (${Math.round(proporcao * 100)}%) sumiram da fonte, ` +
+      `${sumidos.length} de ${comContratoDePe.length} contratos ativos (${Math.round(proporcao * 100)}%) sumiram da fonte, ` +
       `acima do limite de ${Math.round(limite * 100)}%. Planilha parcial ou filtro aplicado dariam exatamente este resultado. ` +
       `Confira a exportação antes de aplicar — nada foi gravado.`;
   }
@@ -292,7 +333,7 @@ export function comparar(
     bloqueio,
     resumo: {
       naFonte: fonte.length,
-      noBanco: vivosNoBanco.length,
+      noBanco: comContratoDePe.length,
       entraram: eventos.filter((e) => e.tipo === "entrou").length,
       renovaram: eventos.filter((e) => e.tipo === "renovou").length,
       ajustaram: eventos.filter((e) => e.tipo === "ajuste_de_data").length,

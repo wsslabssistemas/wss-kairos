@@ -73,6 +73,17 @@ export async function getSkillFormConfig(skillKey: string) {
          * deixar parado.
          */
         ended_stage?: string;
+        /**
+         * A etapa de quem tem contrato de pé.
+         *
+         * ⚠ Ela é o DENOMINADOR da trava da sincronização. Sem ela, "contrato
+         * ativo" virava "tem cadastro", ex-aluno importado há meses entrava na
+         * conta, e uma planilha correta disparava "80% sumiram" em toda
+         * importação — alarme que toca sempre é alarme desligado.
+         *
+         * É também quem pode ser MOVIDO: só sai da etapa quem está nela.
+         */
+        active_stage?: string;
       };
       churn_reasons?: { key: string; label: string; o_que_fazer?: string }[];
     } | null) ?? {};

@@ -123,11 +123,14 @@ async function estadoConhecido(tenantId: string): Promise<EstadoConhecido[]> {
   // PAGINADO: o PostgREST corta em 1.000 linhas sem avisar, e aqui o corte
   // seria catastrófico — quem ficasse de fora apareceria como "sumiu da
   // fonte" e levaria baixa. Silêncio que vira gravação é o pior caso.
-  const linhas = await lerTudo<{ name: string; custom: Record<string, unknown> | null; contract_end: string | null }>(
+  //
+  // ⚠ `journey_stage` vem junto desde 28/ago: sem ele a trava contava ex-aluno
+  // como contrato ativo e uma planilha CORRETA disparava "80% sumiram".
+  const linhas = await lerTudo<{ name: string; custom: Record<string, unknown> | null; contract_end: string | null; journey_stage: string | null }>(
     (de, ate) =>
       supabase
         .from("contacts")
-        .select("name, custom, contract_end")
+        .select("name, custom, contract_end, journey_stage")
         .eq("tenant_id", tenantId)
         .is("deleted_at", null)
         .order("id")
@@ -141,6 +144,7 @@ async function estadoConhecido(tenantId: string): Promise<EstadoConhecido[]> {
       nome: c.name,
       vigencia_ate: c.contract_end ? String(c.contract_end).slice(0, 10) : null,
       encerrado: c.custom?.["contrato_encerrado_em"] ? true : false,
+      etapa: c.journey_stage,
     }));
 }
 
@@ -191,7 +195,17 @@ export async function prever(
       tipo: tipoDaLinha(l.plano, regrasDePlano),
     }));
 
-    const cmp = comparar(linhasClassificadas, await estadoConhecido(m.tenant!.id), undefined, confirmado);
+    // ⚠ A ETAPA ATIVA VEM DO MANIFESTO, e é ela que faz a trava medir "contrato
+    // de pé" em vez de "tem cadastro". Sem ela, ex-aluno importado há meses
+    // entrava no denominador e uma planilha correta disparava "80% sumiram".
+    const etapaAtiva = (cfg.contract as { active_stage?: string } | null)?.active_stage ?? null;
+    const cmp = comparar(
+      linhasClassificadas,
+      await estadoConhecido(m.tenant!.id),
+      undefined,
+      confirmado,
+      etapaAtiva,
+    );
     bloqueio = cmp.bloqueio;
     fonteVazia = mat.linhas.length === 0;
     resumo = {
@@ -286,6 +300,7 @@ export async function aplicar(
   // A etapa de quem saiu vem do manifesto do ramo, nunca do núcleo (Lei 1).
   const { contract } = await getSkillFormConfig(m.tenant!.skill_key);
   const ended_stage = contract?.ended_stage ?? null;
+  const active_stage = contract?.active_stage ?? null;
 
   /** Contatos desta empresa indexados pelo código do sistema da academia. */
   const porCodigo = async () => {
@@ -359,7 +374,22 @@ export async function aplicar(
       // Só mexe na etapa se o manifesto disser qual é, e só se a pessoa ainda
       // não estiver lá — remover e reinserir na mesma etapa reiniciaria a
       // régua de reativação dela do zero a cada importação semanal.
-      if (etapaDeSaida && alvo.journey_stage !== etapaDeSaida) {
+      //
+      // ⚠ E SÓ SAI DA ETAPA QUEM ESTÁ NELA. Ausência da planilha de matrículas
+      // diz que o contrato acabou — não diz nada sobre quem já estava fora.
+      // Sem esta condição, 131 pessoas em `perdido`, `recusou` e
+      // `experimentacao` virariam `ex_aluno` **com a data de hoje**, entrando
+      // na régua de reativação como saída recente, que é a faixa de maior
+      // resposta e a mais cara de queimar.
+      //
+      // ⚠ E TRÊS DELAS TINHAM DITO NÃO. Transformar `recusou` em candidato a
+      // reativação contraria a regra de que a decisão é do cliente: depois do
+      // não, pergunta-se o motivo, não se recomeça a oferta.
+      //
+      // `active_stage` ausente mantém o comportamento antigo — manifesto que
+      // não declara não pode afrouxar a regra por omissão.
+      const naEtapaAtiva = !active_stage || alvo.journey_stage === active_stage;
+      if (etapaDeSaida && naEtapaAtiva && alvo.journey_stage !== etapaDeSaida) {
         patch.journey_stage = etapaDeSaida;
         patch.stage_entered_at = new Date().toISOString();
       }

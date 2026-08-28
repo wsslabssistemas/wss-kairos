@@ -156,5 +156,59 @@ verifica("a marcação é derivada do cruzamento",
 verifica("quem está no convênio e não na base vira órfão, não some",
   cruz.orfaos, [{ marcacao: "wellhub", chaves: ["zzz"] }]);
 
+// ============================================ O DENOMINADOR DA TRAVA (28/ago)
+//
+// ⚠ O CASO REAL DA BE FITNESS. O fundador exportou a relação de matriculados —
+// 304 pessoas, correta — e a trava respondeu "1148 de 1434 contratos ativos
+// (80%) sumiram da fonte". O numero 1.434 estava errado: ele contava toda
+// pessoa com codigo do sistema que nunca passara por uma sincronizacao, e
+// **996 dessas ja estavam em `ex_aluno` ha meses**. Sobravam 307 convertidos —
+// compativel com os 304 da planilha.
+//
+// ⚠ ALARME QUE TOCA SEMPRE E ALARME DESLIGADO. Medindo assim, a trava
+// dispararia em TODA importacao e ensinaria a clicar em "aplicar mesmo assim"
+// sem ler — e no dia da planilha de verdade parcial, ninguem pararia. A trava
+// existe justamente para esse dia.
+
+const ATIVA = "convertido";
+const banco1434 = [
+  ...Array.from({ length: 996 }, (_, i) => ({ chave: `ex${i}`, etapa: "ex_aluno" })),
+  ...Array.from({ length: 127 }, (_, i) => ({ chave: `pd${i}`, etapa: "perdido" })),
+  ...Array.from({ length: 307 }, (_, i) => ({ chave: `at${i}`, etapa: "convertido" })),
+];
+// A planilha correta: 304 dos 307 convertidos continuam la.
+const fonte304 = Array.from({ length: 304 }, (_, i) => ({ chave: `at${i}`, vigencia_ate: "2027-01-01" }));
+
+const antes = comparar(fonte304, banco1434, undefined, false, null);
+verifica(
+  "sem a etapa ativa, a trava BLOQUEIA uma planilha correta (o defeito)",
+  antes.bloqueio !== null,
+  true,
+);
+const depois = comparar(fonte304, banco1434, undefined, false, ATIVA);
+verifica("com a etapa ativa, a mesma planilha PASSA", depois.bloqueio, null);
+verifica("e o denominador vira 307, nao 1.434", depois.resumo.noBanco, 307);
+verifica("os que somem de verdade sao 3", depois.resumo.encerraram >= 3, true);
+
+// ⚠ MAS OS QUE ESTAO FORA DA ETAPA CONTINUAM SENDO REGISTRADOS. Eles saem do
+// DENOMINADOR do alarme, nunca do relatorio: quem some da planilha ganha o
+// carimbo de encerrado de qualquer forma — o que muda e que nao move ninguem.
+const encerrouTudo = depois.eventos.filter((e) => e.tipo === "encerrou").length;
+verifica("ex-aluno e perdido continuam aparecendo como encerrados", encerrouTudo > 1000, true);
+
+// ⚠ E A FONTE VAZIA CONTINUA BARRADA SEM SAIDA, com ou sem etapa declarada.
+// Nenhuma confirmacao torna razoavel dar baixa em todo mundo a partir de um
+// arquivo sem uma linha: isso e sempre exportacao quebrada, nunca a realidade.
+verifica("fonte vazia barra mesmo com etapa ativa",
+  comparar([], banco1434, undefined, true, ATIVA).bloqueio !== null, true);
+
+// ⚠ MANIFESTO SEM `active_stage` MANTEM O COMPORTAMENTO ANTIGO. Omissao nao
+// pode afrouxar trava: medir de menos e pior que medir demais aqui.
+// 996 + 127 + 307 = 1.430 neste cenario montado. Na Be Fitness real eram
+// 1.434 porque havia mais 4 em `recusou` e `experimentacao` — a natureza do
+// erro e a mesma: cadastro contado como contrato.
+verifica("sem etapa declarada, o denominador volta a ser o antigo (todo mundo)",
+  comparar(fonte304, banco1434, undefined, false, null).resumo.noBanco, 1430);
+
 console.log(falhas === 0 ? "\nOK — 20/20" : `\nFALHOU — ${falhas} de 20`);
 process.exit(falhas === 0 ? 0 : 1);
