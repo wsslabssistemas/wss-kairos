@@ -37,7 +37,18 @@ export async function logInteraction(formData: FormData) {
   if (outbound)
     rows.push({ ...base, direction: "outbound", input_kind: "agent_briefing", content: outbound });
 
-  if (rows.length) await supabase.from("interactions").insert(rows);
+  if (rows.length) {
+    const { error } = await supabase.from("interactions").insert(rows);
+    // ⚠ MESMA DEGRADAÇÃO DO `ai-actions`: antes da `0068` o banco recusa
+    // `agent_note` e o registro se perde em silêncio. Rótulo velho suja
+    // métrica; insert que falha perde a conversa.
+    if (error) {
+      console.error(`[responder] insert recusado (0068 nao aplicada?): ${error.message}`);
+      await supabase.from("interactions").insert(
+        rows.map((r) => (r.input_kind === "agent_note" ? { ...r, input_kind: "customer_message" } : r)),
+      );
+    }
+  }
 
   revalidatePath(`/painel/responder`);
   revalidatePath(`/painel/contatos/${contactId}`);

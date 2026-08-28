@@ -684,7 +684,17 @@ export async function saveInteraction(
   };
 
   if (inbound.trim()) {
-    await supabase.from("interactions").insert({
+    // ⚠ O BANCO PODE NÃO CONHECER `agent_note` AINDA. Ele só passa a aceitar
+    // com a `0068`; antes dela o CHECK recusa o insert, `saveInteraction`
+    // devolve `ok: false` e a tela NÃO MOSTRA NADA — o botão fica como estava.
+    // Foi exatamente o que aconteceu em 28/ago: o código subiu na Vercel, a
+    // migration não tinha sido aplicada, e "Registrar no cliente" parou de
+    // gravar sem uma linha de erro em lugar nenhum.
+    //
+    // O repositório andando na frente do banco é classe conhecida aqui, e a
+    // saída é a mesma: cair para o rótulo antigo e gritar no log. Rótulo velho
+    // suja métrica; insert que falha PERDE A CONVERSA.
+    const briefing = {
       ...base,
       direction: "inbound",
       // ⚠ `agent_note`, NÃO `customer_message`. Este texto foi DIGITADO por
@@ -698,7 +708,15 @@ export async function saveInteraction(
       // filtra `input_kind`. Isto muda o que a MÉTRICA vê, não o que a IA lê.
       input_kind: "agent_note",
       content: inbound.trim(),
-    });
+    };
+    const { error: eNota } = await supabase.from("interactions").insert(briefing);
+    if (eNota) {
+      console.error(`[responder] agent_note recusado (0068 nao aplicada?): ${eNota.message}`);
+      const { error: e2 } = await supabase
+        .from("interactions")
+        .insert({ ...briefing, input_kind: "customer_message" });
+      if (e2) console.error(`[responder] nem como customer_message: ${e2.message}`);
+    }
   }
 
   let id: string | undefined;
