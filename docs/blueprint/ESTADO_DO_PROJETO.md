@@ -257,6 +257,51 @@ dois primeiros.
 ⚠ **Falta no ambiente `preview` da Vercel** — o `vercel env add` não aceitou
 sem prompt. Não afeta nada: o agendador bate na URL de produção.
 
+### 🔴 O DEFEITO QUE TERIA ESVAZIADO A PRIMEIRA RODADA AUTÔNOMA (30/ago, à noite)
+
+**O motor agendado nunca montou fila. Nenhuma vez.** As 61 mensagens da
+campanha saíram todas do botão *Enviar agora*; as 11 rodadas com
+`origem = 'agendador'` têm todas `enviadas = 0` **e `avaliados = 0`**.
+
+**A causa.** `getSkillFormConfig` criava o PRÓPRIO cliente de sessão. Em toda
+tela isso está certo: existe usuário, e a policy `skills_read_installed` passa
+pelo vínculo do tenant. **No agendador não existe sessão.** A consulta saía como
+`anon`, a policy negava, `maybeSingle()` devolvia `null` **sem erro**, `stages`
+vinha vazio, `computeDueTouches` não achava a etapa de ninguém, e a fila saía
+vazia. O motor então registrava, muito bem comportado:
+
+> *"Nenhum candidato passou nas regras agora."*
+
+A frase que esta casa passa o tempo todo tentando distinguir de "está quebrado".
+É a classe escrita em letras garrafais no `CLAUDE.md` — **RLS que devolve vazio
+não é erro** — pela quarta vez, agora na peça que roda sozinha e gasta dinheiro
+do cliente.
+
+⚠ **E A PRIMEIRA EXPLICAÇÃO ESTAVA ERRADA.** Ao ver *"nenhum candidato"* eu
+escrevi, mais cedo nesta mesma seção, que era o recorte de 180 dias — plausível,
+aritmeticamente correto e falso. **Explicação plausível para um silêncio é o
+jeito mais rápido de arquivar um defeito.** O que separou as duas foi contar
+`avaliados`: zero avaliados não é "ninguém passou", é "ninguém foi olhado".
+
+**O que mudou:** `getSkillFormConfig(skillKey, cliente?)` — o cliente vem de
+quem chama, e `carregarFila` passa o seu (a regra que o cabeçalho do próprio
+arquivo já declarava). **Manifesto sem etapa agora ESTOURA**, com o erro
+nomeando as três causas possíveis sem escolher uma. E `skills_client_check.mjs`
+ganhou a terceira categoria — **`ambos`**, o leitor que serve tela E máquina:
+ele não escolhe cliente, ele recebe.
+
+**Conferido em produção depois do deploy**, com a simulação (que não manda nada):
+
+| | Antes | Depois |
+|---|---|---|
+| `avaliados` | **0** | **895** |
+| `escolhidos` | 0 | **15** |
+| `porque` | *"Nenhum candidato…"* | *"15 de 895 podem sair agora"* |
+
+⚠ **O método de novo:** isto foi achado SIMULANDO POR FORA DO PAINEL, não
+relendo código. O painel provava que o motor funcionava (é botão, tem sessão) e
+o agendador provava que não havia ninguém. Nenhum dos dois era verdade.
+
 ### 🟢 O RELÓGIO DO ESPAÇAMENTO FOI CORRIGIDO NA VÉSPERA (30/ago, à noite)
 
 A correção de 27/ago prometia, no `motor.yml`, neste arquivo e no próprio
@@ -317,21 +362,23 @@ com `enviadas = 0` e *"Nenhum candidato passou nas regras agora"* é um agendado
 funcionando e uma campanha parada — os dois casos que esta casa passa o tempo
 todo tentando distinguir. **Olhe `enviadas`, não a existência da linha.**
 
-**Conferido no banco em 30/ago, à noite** — os números que fazem a rodada de
-amanhã ter gente:
+**Conferido em produção em 30/ago, à noite, pela simulação** — que não manda
+mensagem nenhuma e ignora a janela de horário, de propósito:
 
 | Medida | Valor |
 |---|---|
+| Candidatos avaliados pelo motor | **895** |
+| Escolhidos para a rodada | **15** (o `max_por_rodada`) |
 | Ex-alunos ≤365 dias, com telefone, sem contrato correndo | 252 |
-| Destes, **sem nenhuma interação** (o público de amanhã) | **156** |
-| Os mesmos, com o recorte de **180** | **0** |
+| Destes, sem nenhuma interação | 156 |
 | `cron.job` → `motor-reserva` | ativo, `0,15,30,45 12-21 * * 1-5` |
 
-⚠ **E ISSO EXPLICA O TESTE DE 30/AGO ÀS 16h44**, que voltou *"Nenhum candidato
-passou nas regras agora"* e parecia defeito: com recorte de 180 o público sem
-contato prévio é **zero** — as 87 pessoas daquela faixa já tinham sido faladas.
-Foi a virada para 365 que criou os 156. Não era defeito, mas era
-indistinguível de um até alguém contar.
+⚠ **E O TESTE DE 30/AGO ÀS 16h44 ERA DEFEITO, SIM.** Ele voltou *"Nenhum
+candidato passou nas regras agora"*, e a primeira explicação — *"é o recorte de
+180, a faixa já foi toda falada"* — era plausível, aritmeticamente correta e
+**errada**. A causa real está na seção abaixo: o agendador não conseguia LER o
+manifesto. Explicação plausível para um silêncio é o jeito mais rápido de
+arquivar um defeito; o que separou as duas foi contar `avaliados`.
 
 ### 🟡 O NÚMERO QUE AUTORIZA A FASE 2 EXISTE, E AINDA É POUCO
 

@@ -64,9 +64,16 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
   `pg_cron` no Supabase, batendo em 0/15/30/45, deslocado do GitHub. O GitHub
   deixou de ser provedor único — para a campanha parar, os dois precisam falhar
   no mesmo dia.
+- **⚠ O AGENDADOR NUNCA TINHA ENTREGADO NADA — corrigido em 30/ago à noite.**
+  As 61 mensagens saíram todas do botão *Enviar agora*. O motor agendado não
+  conseguia LER o manifesto (a policy exige sessão, e no cron não há), então a
+  fila saía vazia e ele registrava *"Nenhum candidato passou nas regras agora"*.
+  Conferido depois do conserto, pela simulação: **895 avaliados, 15 escolhidos.**
 - **A LINHA EM `motor_execucoes` PROVA O RELÓGIO, NÃO A CAMPANHA.** Linha com
   `enviadas = 0` e *"Nenhum candidato passou nas regras agora"* é agendador vivo
   com campanha parada. Olhe **`enviadas`**, nunca a existência da linha.
+  ⚠ E **`avaliados = 0` é pior ainda**: não é "ninguém passou", é "ninguém foi
+  olhado" — ou seja, a fila nem foi montada.
   ⚠ **E o relógio do espaçamento foi corrigido em 30/ago**: ele media BATIDA e
   passou a medir **ENVIO** (`enviadas > 0`). Antes disso, uma batida que rodava
   e mandava zero — inclusive uma que estourava com exceção — comprava 240

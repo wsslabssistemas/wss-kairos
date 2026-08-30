@@ -170,6 +170,24 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   da consulta, fora da função — nenhum caso de borda o pegaria. A trava que
   fecha essa classe lê o **código do chamador** (`espacamento_test.mjs`), como
   `paginacao_check` e `tema_check` já fazem.
+- **⚠ LEITOR QUE SERVE TELA E MÁQUINA RECEBE O CLIENTE — NUNCA CRIA O DELE.**
+  Em 30/ago descobriu-se que **o motor agendado nunca montou fila**: as 61
+  mensagens da campanha saíram todas do botão, e as 11 rodadas do agendador
+  tinham `avaliados = 0`. `getSkillFormConfig` criava o próprio cliente de
+  sessão; no cron não há sessão, a policy `skills_read_installed` negava, o
+  `maybeSingle()` devolvia `null` **sem erro**, e a fila saía vazia. O motor
+  registrava *"Nenhum candidato passou nas regras agora"* — indistinguível de um
+  dia sem trabalho. Quarta ocorrência de **RLS que devolve vazio não é erro**, a
+  primeira numa peça que roda sozinha. `skills_client_check.mjs` tem a categoria
+  **`ambos`** para isso.
+  ⚠ E **manifesto sem etapa ESTOURA**, não segue: zero etapas é leitura
+  quebrada, nunca operação normal. Deixar seguir foi o que permitiu o defeito
+  sobreviver dias parecendo saúde.
+  ⚠ E **ZERO AVALIADOS NÃO É "NINGUÉM PASSOU", É "NINGUÉM FOI OLHADO".** Toda
+  lista vazia precisa separar as duas — e a primeira explicação que dei para o
+  silêncio (o recorte de 180 dias) era plausível, aritmeticamente correta e
+  errada. **Explicação plausível para um silêncio é o jeito mais rápido de
+  arquivar um defeito.** Só o contador de avaliados desempatou.
 - **⚠ TRANSIÇÃO DE ETAPA TEM QUE TER VOLTA.** Em 28/ago saiu *"você treinou com
   a gente e acabou parando"* para uma aluna com **contrato até 2027**. A causa:
   a sincronização sabia **tirar** da etapa ativa quem sumia da planilha e nunca
