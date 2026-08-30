@@ -203,74 +203,129 @@ que trouxe a pessoa (`referral`) · reação ≠ mensagem.
 
 ---
 
-## 0.00. ⚠ PONTO DE PAUSA — 30 de agosto de 2026
+## 0.00. ⚠ RETOMADA — estado em 30 de agosto de 2026, 17h
 
-> **Leia esta seção primeiro ao retomar.** O fundador pausou o Kairós para
-> tocar o site da Be Fitness. Isto é o que fica em aberto, com o porquê.
+> **Leia esta seção primeiro.** Ela substitui o "ponto de pausa" escrito na
+> manhã do mesmo dia, que ficou obsoleto em horas — as pendências dele foram
+> todas resolvidas à tarde.
 
-### 🔴 TRÊS MIGRATIONS ESCRITAS E NÃO APLICADAS
+### 🟢 O QUE MUDOU HOJE, E MUDA O QUE VOCÊ PODE FAZER
 
-`0067`, `0068` e `0069` estão no repositório, testadas, e **nunca rodaram no
-banco**. O código degrada sozinho — nada quebra —, mas três coisas ficam
-desarmadas:
+**Existe acesso administrativo ao Supabase e à Vercel.** Isto é novo e destrava
+trabalho que antes dependia do fundador:
 
-| | O que fica sem funcionar |
+| Ferramenta | Como usar |
 |---|---|
-| `0067` | O registro das batidas do agendador. Sem ele, "o cron morreu" volta a ser indistinguível de "não havia ninguém" |
-| `0068` | O briefing da equipe conta como fala do cliente. O tempo de resposta na Gestão continua **errado para o lado bonito** |
-| `0069` | O vigia do canal não grava. E **o freio de qualidade do motor fica desarmado** — ele lê a nota do vigia |
+| **Supabase (DDL, migrations)** | `SUPABASE_ACCESS_TOKEN` está em `apps/web/.env.local`. Rode SQL pela API de gerenciamento: `POST https://api.supabase.com/v1/projects/<ref>/database/query` |
+| **Vercel** | CLI autenticado como `wsslabssistemas`, projeto vinculado a `wss-vercel/wss-kairos`. `vercel env ls`, `vercel redeploy`, `vercel logs` |
 
-⚠ **O freio de qualidade é o caso mais caro.** Ele foi construído em 29/ago
-para o motor se moldar sozinho quando a Meta baixa a nota (média → metade do
-teto; baixa → para o proativo). Hoje o nível chega como `desconhecida` e ele
-não faz nada. É trabalho pronto esperando cinco minutos de SQL.
+⚠ **DUAS ARMADILHAS MEDIDAS, e as duas custam tempo se você não souber:**
 
-### 🔴 O AGENDADOR NUNCA VOLTOU
+1. **A API da Supabase recusa o User-Agent do Python.** `urllib` devolve **403
+   Forbidden**; a MESMA consulta por `curl` devolve 201. Passei meia hora
+   achando que era o formato do segredo. **Use `curl`** (ou mande um
+   `User-Agent` de navegador).
+2. **A Vercel não devolve segredo, nem pelo CLI.** As variáveis estão marcadas
+   como *Sensitive*: `vercel env pull` traz o valor **vazio**. Segredo perdido
+   é segredo perdido — o caminho é rotacionar nos dois lados.
 
-Última batida do cron: **28/08 às 02:18**, fora da janela — não mandou nada. As
-40 batidas diárias do cron novo não estão acontecendo. **Todo envio desde 27/08
-saiu porque alguém clicou no botão.**
+### 🟢 AS TRÊS MIGRATIONS FORAM APLICADAS
 
-`scripts/agendador-reserva.sql` está pronto e depende de ligar `pg_cron` e
-`pg_net` no painel do Supabase. Enquanto não existir, a campanha depende de
-alguém lembrar.
+`0067`, `0068` e `0069` rodaram em produção. Conferido no banco: coluna
+`pulada` existe, **187 briefings** reclassificados como `agent_note`, tabela
+`canal_verificacoes` criada.
 
-### 🟡 O NOME DE EXIBIÇÃO CONTINUA REJEITADO
+O tempo de resposta na Gestão passou de 2.827 para **2.636 eventos** — ficou
+honesto.
 
-Confirmado direto na Meta em 29/ago: `name_status: DECLINED`, exibindo
-**"Be Fitness2"**. Qualidade **GREEN**, degrau TIER_250, número
-`+55 51 9419-3412` (id `1202699839603007`). É a pendência mais antiga e a única
-que não depende de ninguém aqui — é caso no suporte da Meta.
+### 🟢 O AGENDADOR RESERVA ESTÁ NO AR
 
-### 🟡 O TERCEIRO ESTADO NÃO EXISTE
+`pg_cron` 1.6.4 e `pg_net` 0.20.4 instalados. Job **`motor-reserva`**, ativo,
+`0,15,30,45 12-21 * * 1-5` (UTC — conferido com `show timezone`, é 9h–18h de
+Brasília). Deslocado 7 minutos do GitHub, que bate em 7/22/37/52.
+
+**Testado de ponta a ponta em 30/ago:** a batida saiu do Postgres, o motor
+respondeu **HTTP 200**, e o vigia gravou a primeira leitura da Meta —
+`GREEN · TIER_250 · nome DECLINED · "Be Fitness2"`.
+
+⚠ **O `MOTOR_CRON_SECRET` FOI ROTACIONADO.** O antigo era irrecuperável. O novo
+foi gerado dentro do Postgres e está sincronizado em três lugares: **cofre do
+Supabase**, **Vercel produção** e **GitHub Actions**. Conferido por hash nos
+dois primeiros.
+⚠ **Falta no ambiente `preview` da Vercel** — o `vercel env add` não aceitou
+sem prompt. Não afeta nada: o agendador bate na URL de produção.
+
+### 🔴 31 DE AGOSTO É A PRIMEIRA RODADA AUTÔNOMA
+
+Segunda-feira, 9h07, o motor dispara **sem ninguém clicar** — a primeira vez
+desde 27/ago. Configuração: `auto` · 30/dia · 15/rodada · recorte **365 dias**
+· espaço 240 min · janela 9h–19h. Público: **156 ex-alunos** com telefone e sem
+contato prévio. Só `reativacao` sai pelo canal, com o modelo
+`reativacao_ex_aluno`.
+
+**Confira em `motor_execucoes`**: deve aparecer linha com `origem = 'agendador'`.
+O fundador pediu confirmação — ele vai perguntar "confere aí".
+
+### 🟡 O NÚMERO QUE AUTORIZA A FASE 2 EXISTE, E AINDA É POUCO
+
+`origem_ia`: **12 aceita · 4 editada = 75% de acerto**, em 16 casos. Mais 73
+julgamentos no banco de provas e 7 lições em `ai_edits`.
+
+⚠ **16 é amostra pequena** — o real pode estar entre 50% e 90%. A 25% de erro,
+são 7 mensagens estranhas por dia saindo no nome do cliente. **Não recomende
+ligar a resposta automática antes de ~50 casos.** A semana que começa produz
+essa amostra sozinha.
+
+**E faltam duas peças pequenas para a fase 2:** a pausa de 20–40s antes de
+responder, e o aviso de "decisão esperando humano" (hoje a recusa da trava
+aparece porque é gente que clica).
+
+### 🟡 O QUE JÁ É AUTOMÁTICO — e o que não é
+
+| | |
+|---|---|
+| Cadastrar quem escreve | ✅ o webhook cria o lead, com dono e o anúncio de origem guardado |
+| Enviar a campanha | ✅ a partir de 31/ago |
+| Vigiar a saúde do canal | ✅ e o **freio de qualidade está armado** (média → metade do teto; baixa → para o proativo) |
+| **Agendar** | 🟡 as peças existem — `lib/scheduling.ts` calcula vagas, a IA devolve `horario_escolhido`, `marcarCompromisso` grava. **Falta o clique** |
+| **Responder** | 🟡 a IA escreve, a tela mostra. **Falta o clique** |
+
+⚠ **Os dois amarelos são o MESMO clique.** Não falta funcionalidade: falta o
+laço que executa sem gente — e é a fase 2, que espera a amostra acima.
+
+### 🔴 O QUE AINDA DEPENDE DO FUNDADOR
+
+1. **O nome de exibição segue rejeitado** — `DECLINED`, exibindo "Be Fitness2",
+   número `+55 51 9419-3412`, id `1202699839603007`. Caso no suporte da Meta.
+   É a pendência mais antiga do projeto.
+2. **A exportação de títulos em aberto** (`Codigo`, valor, vencimento) — sem
+   ela não dá para dimensionar o terceiro estado.
+
+### 🟡 O TERCEIRO ESTADO CONTINUA SEM EXISTIR
 
 Quem **abandonou com contrato aberto e valor em atraso** não é aluno ativo nem
 ex-aluno. Reativação ignora a dívida; renovação oferece renovar o que ele não
-terminou de pagar. Hoje fica contado como aluno e falado por ninguém.
-**Dimensionar exige a exportação de títulos em aberto** (`Codigo`, valor,
-vencimento), que ainda não temos.
+terminou de pagar. Fica contado como aluno e falado por ninguém. O caso com
+nome é o **Jeferson Seleprim** — anual, pagou 3 de 12 meses, sumiu.
 
-### O QUE FOI CONSTRUÍDO ENTRE 27 E 29 DE AGOSTO
+### O QUE FOI CONSTRUÍDO EM 29 E 30 DE AGOSTO
 
-**Confiabilidade:** agendador batendo de 15 em 15 min com cadência no motor ·
-batida registrada · alarme de silêncio em 1h · vigia que PERGUNTA a saúde do
-canal · freio automático por qualidade.
+**Aparência e navegação:** tema claro com os três estados e trava
+(`tema_check`) · Archivo + Sora no lugar do Inter · **barra lateral agrupada
+por trabalho** no lugar de 20 abas horizontais · sub-abas na Automação (5) e no
+Canal oficial (3), agrupadas por **frequência de uso, não por assunto**.
 
-**Verdade dos dados:** o horário deixou de aparecer em UTC · briefing da equipe
-separado de fala do cliente · a trava da sincronização parou de contar ex-aluno
-como contrato ativo · quem some com contrato correndo pede confirmação própria
-· plano mensal parou de nascer "a vencer" · veto que impede reativação para
-quem tem contrato correndo.
+**Verdade e segurança:** erros da Meta em português com o que fazer, agrupados
+e sem inventar o desconhecido (`erro-meta`) · qualidade do número no topo do
+Canal · **freio automático por qualidade** no motor · plano mensal parou de
+nascer "a vencer" · o registro na fila passou a se anunciar · a aba Follow-up
+declarou que é consulta.
 
-**Aprendizado:** campo de edição em Responder e Abordar, com o par
-sugerido × enviado virando lição — antes coletado em 6% dos envios.
+**Venda:** o **extrator de DNA** — cola um texto e o sistema separa nos campos,
+com a pessoa confirmando. É o ataque ao gargalo do primeiro dia, e o que
+destrava Darvil e Feltros.
 
-**Aparência e navegação:** tema claro com os três estados · Archivo + Sora no
-lugar do Inter · barra lateral agrupada por trabalho no lugar de 20 abas
-horizontais · sub-abas na Automação e no Canal oficial · erros da Meta em
-português com o que fazer · qualidade do número no topo do Canal.
-
-**48 travas no CI**, contra 42 em 27/ago.
+**49 travas no CI**, contra 42 em 27/ago.
 
 ---
 

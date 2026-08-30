@@ -26,30 +26,27 @@ envia → ela responde de novo.
 
 ---
 
-## ❌ O QUE FALTA — dele
+## ❌ O QUE FALTA — dele (só duas, e nenhuma é técnica)
 
 | # | O quê | Onde |
 |---|---|---|
-| 1 | **Nome de exibição rejeitado** — sai "Seja Fitness2" | Caso no suporte da Meta, com o erro 1675034 e o identificador |
-| 2 | **Campanha nova no Meta** apontando para o número novo | Não dá para trocar telefone de campanha rodando |
-| 3 | **Segundo modelo aprovado**, para quem saiu há mais de um ano | Aprovação leva dias — pedir cedo |
-| 4 | **SMTP próprio no Supabase** | Resend ou Brevo, ~10 min. Destrava o alerta por e-mail |
-| 5 | Subir o teto global de IA na aba Fabricante | Está R$ 130; a soma das 4 empresas é R$ 195 |
-| 6 | Decidir sobre `teste-a@exemplo.com` (owner com acesso real) | Tela de Equipe |
-| 7 | **Aplicar a migration `0067`** (antes do deploy — ver abaixo) | SQL Editor do Supabase |
-| 8 | **Agendador reserva**: ligar `pg_cron` e `pg_net` e rodar `scripts/agendador-reserva.sql` | É o que tira o GitHub de ponto único de falha |
+| 1 | **Nome de exibição rejeitado** — sai "Be Fitness2" | Caso no suporte da Meta, com o erro 1675034 e o id `1202699839603007` |
+| 2 | **Exportação de títulos em aberto** (`Codigo`, valor, vencimento) | Sem ela não dá para dimensionar quem abandonou devendo |
+
+⚠ **Tudo o mais que dependia dele foi feito em 30/ago:** as três migrations
+aplicadas, o agendador reserva instalado, o segredo rotacionado e sincronizado,
+e o acesso administrativo ao Supabase e à Vercel liberado.
 
 ## ❌ O QUE FALTA — minhas, e o que cada uma espera
 
 | O quê | Espera |
 |---|---|
-| **Fase 2: a IA responde sozinha** | O número de `origem_ia` — quantas sugestões saem sem edição |
-| Pausa de 20–40s antes da resposta automática | Nada, é pequeno |
+| **Fase 2: a IA responde e agenda sozinha** | Amostra de `origem_ia`. Hoje **75% em 16 casos** — pouco. Esperar ~50 |
+| Pausa de 20–40s antes da resposta automática | Vem junto da fase 2 |
 | Aviso de "decisão esperando humano" | Vem junto da fase 2 |
-| Lembrete de atualizar a base | Registrar a data da última sincronização |
+| **Terceiro estado** (abandonou com contrato aberto) | A exportação de títulos em aberto |
+| Fonte de captação por webhook | Nada — dá para fazer, e conecta com o site novo |
 | Clima no envio | **Parado de propósito**: com 30 mensagens/dia não há como medir |
-
----
 
 ## ⚠ AS ARMADILHAS DESTA SEMANA — leia antes de mexer no canal
 

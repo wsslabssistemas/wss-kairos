@@ -124,6 +124,17 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   gasta dinheiro sozinha. Toda rodada fica em `motor_execucoes`, com a ORIGEM
   separada (agendador × botão), e a tela tem alarme de silêncio. **Toda peça
   agendada precisa de registro da execução, não só do resultado.**
+- **⚠ EXISTE ACESSO ADMINISTRATIVO — e ele tem duas armadilhas medidas.**
+  `SUPABASE_ACCESS_TOKEN` mora em `apps/web/.env.local`: dá para aplicar
+  migration sozinho por `POST /v1/projects/<ref>/database/query`. E o CLI da
+  Vercel está autenticado, com o projeto vinculado.
+  ⚠ **A API da Supabase recusa o User-Agent do Python** — `urllib` devolve 403
+  e a MESMA consulta por `curl` devolve 201. Meia hora foi gasta em 30/ago
+  procurando defeito no conteúdo quando o problema era o cabeçalho.
+  ⚠ **A Vercel não devolve segredo nem pelo CLI**: variável marcada como
+  *Sensitive* volta VAZIA em `vercel env pull`. Segredo que só existe lá é
+  segredo perdido — o caminho é rotacionar, nunca "recuperar". E toda troca de
+  variável exige **redeploy** para valer.
 - **⚠ TIQUE AGENDADO É PROBABILIDADE, NÃO COMPROMISSO — E O MINUTO `:00` É O
   PIOR DE TODOS.** No mesmo 27/ago o GitHub perdeu as DUAS execuções do dia, e
   a investigação mostrou que nunca tinha sido pontual: em 8 execuções o tique
