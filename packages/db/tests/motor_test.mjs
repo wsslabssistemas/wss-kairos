@@ -370,5 +370,58 @@ verifica("sem data de contrato LIBERA", planoHoje(comContrato(null)).enviar.leng
 const renov = planoHoje(comContrato("2027-08-09", { motivo: "renovacao" }));
 verifica("na renovacao, contrato correndo NAO barra", renov.enviar.length, 1);
 
+// ================================ O MOTOR SE MOLDA A QUALIDADE (29/ago)
+//
+// ⚠ A IDEIA E DO FUNDADOR: *"o sistema da automacao ir trabalhando normalmente
+// e ele mesmo conferir quando perde a qualidade alta e se moldar, para evitar
+// restricao"*.
+//
+// O vigia ja PERGUNTAVA a nota a cada 15 minutos e a tela ja dizia o que fazer
+// — "PARE de ampliar", "PARE a campanha". So que isso dependia de alguem abrir
+// a tela e reagir, e queda de qualidade acontece num sabado, num feriado, as
+// 22h. Quando a pessoa ve, a Meta ja restringiu.
+
+const regrasQ = { ...REGRAS, max_per_day: 30, reativacao_max_dias: 0 };
+const planQ = (qualidade, enviadosHoje = 0) => planejar({
+  candidatos: Array.from({ length: 40 }, (_, i) => livre("c" + i)),
+  regras: regrasQ, enviadosHoje, horaLocal: 10, qualidade,
+});
+
+// Alta: nada muda — o freio so sabe frear.
+verifica("qualidade ALTA nao mexe no teto", planQ("alta").enviar.length, 30);
+
+// ⚠ MEDIA CORTA PELA METADE. E como a fila ja ordena "quem saiu ha menos tempo
+// primeiro", cortar pela metade entrega sozinho a outra metade da recomendacao
+// da Meta: falar com quem esfriou ha menos tempo, que bloqueia menos.
+verifica("qualidade MEDIA corta o teto pela metade", planQ("media").enviar.length, 15);
+
+// ⚠ BAIXA PARA TUDO — e o motivo vai escrito, senao vira "nao saiu nada" sem
+// explicacao, que e o defeito que esta casa passa o tempo todo fechando.
+const baixa = planQ("baixa");
+verifica("qualidade BAIXA para o envio proativo", baixa.enviar.length, 0);
+verifica("e diz por que, com a palavra que a pessoa procura",
+  /qualidade do n[uú]mero para BAIXA/i.test(baixa.porque), true);
+// ⚠ E DIZ O QUE CONTINUA FUNCIONANDO. "Parou tudo" assusta e faz desligar o
+// produto; "parou o proativo, responder continua" e a verdade e mantem a
+// operacao de pe — responder e justamente o que RECUPERA a nota.
+verifica("e avisa que responder continua normal", /[Rr]esponder.*continua/.test(baixa.porque), true);
+
+// ⚠ DESCONHECIDA NAO FREIA. Numero novo, `0069` nao aplicada ou Meta fora do
+// ar caem aqui — barrar por ausencia de informacao calaria a campanha sem
+// defeito nenhum, mesma classe do recorte que barra por falta de dado.
+verifica("qualidade DESCONHECIDA nao freia", planQ("desconhecida").enviar.length, 30);
+verifica("e ausente tambem nao freia", planQ(null).enviar.length, 30);
+
+// ⚠ O FREIO SO SABE FREAR, NUNCA ACELERAR. Subir o teto sozinho seria a
+// maquina decidindo gastar mais dinheiro do cliente.
+verifica("alta nao ultrapassa o teto configurado",
+  planQ("alta").enviar.length <= regrasQ.max_per_day, true);
+
+// O teto cortado tambem conta o que ja saiu no dia.
+const meiaCheia = planQ("media", 15);
+verifica("com metade do teto ja gasta, nao sai mais nada", meiaCheia.enviar.length, 0);
+verifica("e o motivo cita a metade, nao o teto cheio",
+  /teto do dia caiu para 15/.test(meiaCheia.porque), true);
+
 console.log(falhas === 0 ? "\nmotor: tudo certo." : `\nmotor: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

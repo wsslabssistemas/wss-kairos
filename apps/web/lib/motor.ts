@@ -144,6 +144,25 @@ export function dentroDaJanela(hora: number, inicio: number, fim: number): boole
 export function planejar(entrada: {
   /** O dia da EMPRESA (`AAAA-MM-DD`), para comparar com a vigência do contrato. */
   hojeISO?: string;
+  /**
+   * A NOTA DA META SOBRE O NÚMERO — e o motor se molda a ela sozinho.
+   *
+   * ⚠ POR QUE AUTOMÁTICO. O vigia já PERGUNTA a qualidade a cada 15 minutos e
+   * a tela já diz o que fazer ("PARE de ampliar", "PARE a campanha"). Mas isso
+   * dependia de alguém abrir a tela e reagir — e a queda de qualidade acontece
+   * num sábado, num feriado, às 22h. Quando a pessoa vê, a Meta já restringiu.
+   *
+   * ⚠ ELE SÓ SABE FREAR, NUNCA ACELERAR. Qualidade alta não aumenta nada além
+   * do que foi configurado: subir o teto sozinho seria a máquina decidindo
+   * gastar mais dinheiro do cliente. Frear é prudência; acelerar é decisão de
+   * gente.
+   *
+   * ⚠ E `desconhecida` NÃO FREIA. Número novo, vigia sem registro ou Meta fora
+   * do ar caem aí — barrar por ausência de informação calaria a campanha sem
+   * defeito nenhum, que é a mesma classe do recorte que barra por falta de
+   * dado. Sem saber, vale o que a pessoa configurou.
+   */
+  qualidade?: "alta" | "media" | "baixa" | "desconhecida" | null;
   candidatos: Candidato[];
   regras: RegrasDoMotor;
   enviadosHoje: number;
@@ -188,10 +207,36 @@ export function planejar(entrada: {
    * do servidor — foi o defeito de 20/ago e ele não volta por esta porta.
    */
   const hojeISO = entrada.hojeISO ?? new Date().toISOString().slice(0, 10);
+
   const vazio = (porque: string): PlanoDoMotor => ({
     ativo: false, porque, enviar: [], vereditos: [],
     simulado: regras.mode === "simulation", foraDaJanela: false,
   });
+
+  /**
+   * ⚠ O FREIO DA QUALIDADE, aplicado ANTES de qualquer conta de teto.
+   *
+   *   baixa  → não sai NADA de proativo. E note o que continua: RESPONDER a
+   *            quem escreveu segue livre, porque responder é justamente o que
+   *            RECUPERA a nota. Calar a resposta junto com a campanha pioraria
+   *            o problema que o freio existe para resolver.
+   *   média  → metade do teto do dia. E como a fila já ordena "quem saiu há
+   *            menos tempo primeiro", cortar pela metade entrega sozinho a
+   *            outra metade da recomendação da Meta: falar com quem esfriou há
+   *            menos tempo, que bloqueia menos.
+   */
+  const nivel = entrada.qualidade ?? "desconhecida";
+  if (nivel === "baixa") {
+    return vazio(
+      "A Meta baixou a qualidade do número para BAIXA. O envio proativo está " +
+      "parado sozinho até a nota melhorar — insistir agora é o caminho para " +
+      "perder o número. Responder a quem escreveu continua normal, e é o que " +
+      "recupera a nota.",
+    );
+  }
+  const tetoDoDia = nivel === "media"
+    ? Math.floor(regras.max_per_day / 2)
+    : regras.max_per_day;
 
   if (regras.mode === "off") return vazio("A automação está desligada.");
 
@@ -203,9 +248,13 @@ export function planejar(entrada: {
     );
   }
 
-  const doDia = regras.max_per_day - enviadosHoje;
+  const doDia = tetoDoDia - enviadosHoje;
   if (doDia <= 0) {
-    return vazio(`O teto do dia (${regras.max_per_day}) já foi atingido: ${enviadosHoje} saíram.`);
+    return vazio(
+      nivel === "media"
+        ? `Qualidade MÉDIA: o teto do dia caiu para ${tetoDoDia} (metade de ${regras.max_per_day}) e já foi atingido — ${enviadosHoje} saíram.`
+        : `O teto do dia (${tetoDoDia}) já foi atingido: ${enviadosHoje} saíram.`,
+    );
   }
 
   // ⚠ O MENOR DOS DOIS MANDA. O teto do dia protege o número; o da rodada

@@ -6,6 +6,8 @@ import { readAutomation } from "@/lib/automation";
 import { lerRoteamento } from "@/lib/roteamento";
 import { planejar, type Candidato, type PlanoDoMotor } from "@/lib/motor";
 import { lerFuso, horaLocal, diaLocalISO } from "@/lib/fuso";
+import { nivelDeQualidade } from "@/lib/saude-canal";
+import { ultimaVerificacao } from "@/lib/vigia-canal";
 import type { MotivoDaFila } from "@/lib/fila";
 
 // O EXECUTOR DO MOTOR — lê, decide, e (só no automático) manda.
@@ -153,6 +155,11 @@ export async function rodarMotor(entrada: {
   // reputação do número do sistema.
   const enviadosHoje = saidasDoCanalHoje(carga.interacoes, agora, fuso);
 
+  // A última resposta da Meta sobre a saúde do número. Best-effort: falhar em
+  // ler a nota não pode impedir o envio — só faz o motor operar sem o freio.
+  let ultima: Awaited<ReturnType<typeof ultimaVerificacao>> = null;
+  try { ultima = await ultimaVerificacao(tenantId); } catch { ultima = null; }
+
   const plano = planejar({
     candidatos,
     regras: simular ? { ...regras, mode: "simulation" } : regras,
@@ -164,6 +171,10 @@ export async function rodarMotor(entrada: {
     horaLocal: horaLocal(agora, fuso),
     // O "hoje" da EMPRESA, nunca o do servidor — mesma razão da hora local.
     hojeISO: diaLocalISO(agora, fuso),
+    // ⚠ A NOTA DA META, para o motor se moldar sozinho. Vem do vigia (`0069`);
+    // sem registro fica `desconhecida`, que NÃO freia — barrar por ausência de
+    // informação calaria a campanha sem defeito nenhum.
+    qualidade: nivelDeQualidade(ultima?.ok ? ultima.quality_rating : null),
     // ⚠ SÓ A SIMULAÇÃO IGNORA O HORÁRIO. Quem confere a lista precisa poder
     // conferir antes de a janela abrir; quem ENVIA continua preso a ela.
     ignorarJanela: simular,

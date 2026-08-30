@@ -113,3 +113,26 @@ export const QUALIDADE: Record<string, { txt: string; cls: string; oque: string 
 export function lerQualidade(nota: string | null | undefined) {
   return QUALIDADE[(nota ?? "UNKNOWN").toUpperCase()] ?? QUALIDADE.UNKNOWN;
 }
+
+export type NivelDeQualidade = "alta" | "media" | "baixa" | "desconhecida";
+
+/**
+ * A NOTA DA META REDUZIDA A UMA DECISÃO.
+ *
+ * ⚠ TRÊS NÍVEIS E UM QUARTO ESTADO, e o quarto é o que evita o pior erro:
+ * "desconhecida" não é "alta". Número novo, `0069` não aplicada, Meta fora do
+ * ar — nos três casos não se sabe, e tratar isso como boa notícia faria o
+ * motor acelerar justamente quando está cego.
+ *
+ * ⚠ E "desconhecida" TAMBÉM NÃO É "baixa". Barrar a campanha por falta de
+ * informação seria a trava calando o produto sem defeito nenhum — a mesma
+ * classe do recorte que barra por ausência de dado. Sem saber, vale o que a
+ * pessoa configurou.
+ */
+export function nivelDeQualidade(nota: string | null | undefined): NivelDeQualidade {
+  const n = (nota ?? "").toUpperCase();
+  if (n === "GREEN" || n === "HIGH") return "alta";
+  if (n === "YELLOW" || n === "MEDIUM") return "media";
+  if (n === "RED" || n === "FLAGGED") return "baixa";
+  return "desconhecida";
+}
