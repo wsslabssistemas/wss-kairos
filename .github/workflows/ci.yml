@@ -236,6 +236,13 @@ jobs:
       # — o segundo e o aviso que vem ANTES de a Meta restringir o numero.
       - name: Erro da Meta — traduzir sem inventar
         run: node packages/db/tests/erro_meta_test.mjs
+      # ⚠ O RISCO DO EXTRATOR DE DNA NAO E EXTRAIR DE MENOS, E EXTRAIR DEMAIS.
+      # Modelo prestativo inventa campo que o manifesto nao tem e preenche com
+      # "nao informado" o que nao achou — e as duas coisas viram FATO DECLARADO
+      # para a trava anti-invencao, que passa a afirmar preco com a confianca de
+      # dado conferido.
+      - name: Extrator de DNA — so o que o manifesto declara
+        run: node packages/db/tests/dna_extrator_test.mjs
       # Quem pediu para nao receber mais. Honrar descadastro e exigencia da
       # LGPD e da politica do WhatsApp, e a marcacao e automatica porque a
       # janela entre "ele pediu" e "alguem viu" e onde a denuncia acontece.

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Extrair } from "./Extrair";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/auth";
 import { dataLocal } from "@/lib/fuso";
@@ -90,6 +91,12 @@ export default async function DnaPage() {
           <strong>{prontas}/{sections.length} seções preenchidas</strong>
           <span className="brand-text" style={{ fontWeight: 700 }}>{pct}%</span>
         </div>
+
+      {/* ⚠ O ATALHO DE QUEM ESTÁ COMEÇANDO. Trinta campos vazios é a tela que
+          faz alguém fechar o produto no primeiro dia — e é o que mantém Darvil
+          e Feltros paradas. Colar um texto e conferir dez campos é outra
+          tarefa. */}
+      {["owner", "admin", "manager"].includes(membership!.role) && <Extrair />}
         <div className="bar-track">
           <div className="bar-fill" style={{ width: `${pct}%`, transition: "width .4s ease" }} />
         </div>

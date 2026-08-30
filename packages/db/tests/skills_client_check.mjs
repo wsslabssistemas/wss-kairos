@@ -55,6 +55,9 @@ const INVENTARIO = {
   "app/painel/admin/acesso/page.tsx": "catalogo",
   "app/painel/contatos/[id]/page.tsx": "proprio",
   "app/painel/dna/editar/page.tsx": "proprio",
+  // O extrator le as `dna_sections` do manifesto da Skill JA INSTALADA para
+  // saber quais campos existem — vinculo do tenant, cliente do usuario basta.
+  "app/painel/dna/extrair-actions.ts": "proprio",
   "app/painel/dna/page.tsx": "proprio",
   "app/painel/fila/actions.ts": "proprio",
   "app/painel/funil/page.tsx": "proprio",
