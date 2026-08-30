@@ -203,6 +203,77 @@ que trouxe a pessoa (`referral`) · reação ≠ mensagem.
 
 ---
 
+## 0.00. ⚠ PONTO DE PAUSA — 30 de agosto de 2026
+
+> **Leia esta seção primeiro ao retomar.** O fundador pausou o Kairós para
+> tocar o site da Be Fitness. Isto é o que fica em aberto, com o porquê.
+
+### 🔴 TRÊS MIGRATIONS ESCRITAS E NÃO APLICADAS
+
+`0067`, `0068` e `0069` estão no repositório, testadas, e **nunca rodaram no
+banco**. O código degrada sozinho — nada quebra —, mas três coisas ficam
+desarmadas:
+
+| | O que fica sem funcionar |
+|---|---|
+| `0067` | O registro das batidas do agendador. Sem ele, "o cron morreu" volta a ser indistinguível de "não havia ninguém" |
+| `0068` | O briefing da equipe conta como fala do cliente. O tempo de resposta na Gestão continua **errado para o lado bonito** |
+| `0069` | O vigia do canal não grava. E **o freio de qualidade do motor fica desarmado** — ele lê a nota do vigia |
+
+⚠ **O freio de qualidade é o caso mais caro.** Ele foi construído em 29/ago
+para o motor se moldar sozinho quando a Meta baixa a nota (média → metade do
+teto; baixa → para o proativo). Hoje o nível chega como `desconhecida` e ele
+não faz nada. É trabalho pronto esperando cinco minutos de SQL.
+
+### 🔴 O AGENDADOR NUNCA VOLTOU
+
+Última batida do cron: **28/08 às 02:18**, fora da janela — não mandou nada. As
+40 batidas diárias do cron novo não estão acontecendo. **Todo envio desde 27/08
+saiu porque alguém clicou no botão.**
+
+`scripts/agendador-reserva.sql` está pronto e depende de ligar `pg_cron` e
+`pg_net` no painel do Supabase. Enquanto não existir, a campanha depende de
+alguém lembrar.
+
+### 🟡 O NOME DE EXIBIÇÃO CONTINUA REJEITADO
+
+Confirmado direto na Meta em 29/ago: `name_status: DECLINED`, exibindo
+**"Be Fitness2"**. Qualidade **GREEN**, degrau TIER_250, número
+`+55 51 9419-3412` (id `1202699839603007`). É a pendência mais antiga e a única
+que não depende de ninguém aqui — é caso no suporte da Meta.
+
+### 🟡 O TERCEIRO ESTADO NÃO EXISTE
+
+Quem **abandonou com contrato aberto e valor em atraso** não é aluno ativo nem
+ex-aluno. Reativação ignora a dívida; renovação oferece renovar o que ele não
+terminou de pagar. Hoje fica contado como aluno e falado por ninguém.
+**Dimensionar exige a exportação de títulos em aberto** (`Codigo`, valor,
+vencimento), que ainda não temos.
+
+### O QUE FOI CONSTRUÍDO ENTRE 27 E 29 DE AGOSTO
+
+**Confiabilidade:** agendador batendo de 15 em 15 min com cadência no motor ·
+batida registrada · alarme de silêncio em 1h · vigia que PERGUNTA a saúde do
+canal · freio automático por qualidade.
+
+**Verdade dos dados:** o horário deixou de aparecer em UTC · briefing da equipe
+separado de fala do cliente · a trava da sincronização parou de contar ex-aluno
+como contrato ativo · quem some com contrato correndo pede confirmação própria
+· plano mensal parou de nascer "a vencer" · veto que impede reativação para
+quem tem contrato correndo.
+
+**Aprendizado:** campo de edição em Responder e Abordar, com o par
+sugerido × enviado virando lição — antes coletado em 6% dos envios.
+
+**Aparência e navegação:** tema claro com os três estados · Archivo + Sora no
+lugar do Inter · barra lateral agrupada por trabalho no lugar de 20 abas
+horizontais · sub-abas na Automação e no Canal oficial · erros da Meta em
+português com o que fazer · qualidade do número no topo do Canal.
+
+**48 travas no CI**, contra 42 em 27/ago.
+
+---
+
 ## 0.05. ⚠ 28 DE AGOSTO — o dia em que a mensagem errada chegou ao cliente
 
 Duas mensagens de reativação saíram para contratos até 2027. **Este é o único
