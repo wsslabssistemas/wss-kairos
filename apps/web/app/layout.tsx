@@ -71,6 +71,31 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={`${archivo.variable} ${sora.variable}`}>
+      <head>
+        {/*
+          ⚠ O TEMA É APLICADO ANTES DE PINTAR, e é por isso que ele é um script
+          cru no `<head>` em vez de um `useEffect`.
+
+          Com `useEffect` a página pinta primeiro no tema padrão e corrige
+          depois: quem escolheu claro vê um flash escuro em CADA navegação. Não
+          é detalhe estético — é o tipo de tremida que faz o produto parecer
+          malfeito, e aparece justamente para quem se deu ao trabalho de
+          escolher.
+
+          ⚠ E ELE FALHA CALADO DE PROPÓSITO. Em janela anônima, com cookies
+          bloqueados ou na captura de miniatura, `localStorage` lança. Tema é
+          conforto; conforto que derruba a tela é pior que tela sem conforto —
+          então o `catch` vazio aqui é decisão, não descuido.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('kairos-tema');" +
+              "if(t==='claro')document.documentElement.setAttribute('data-theme','light');" +
+              "else if(t==='escuro')document.documentElement.setAttribute('data-theme','dark');}catch(e){}",
+          }}
+        />
+      </head>
       <body>
         {children}
         <PwaRegister />

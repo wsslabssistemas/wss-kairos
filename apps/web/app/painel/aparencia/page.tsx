@@ -4,6 +4,7 @@ import { getActiveTenant } from "@/lib/auth";
 import { lerAparencia } from "@/lib/aparencia";
 import { BRAND_NAME } from "@/lib/brand";
 import { salvarAparencia } from "./actions";
+import { Tema } from "./Tema";
 
 export const metadata = { title: "Aparência" };
 
@@ -29,6 +30,8 @@ export default async function AparenciaPage({
         A cor e a logo da sua empresa no painel. Quem trabalha aqui todo dia vê a
         marca da casa, não a do fornecedor.
       </p>
+
+      <div className="mt-24"><Tema /></div>
 
       {ok && <p className="badge badge-success mt-16">Aparência salva.</p>}
       {erro && <p className="badge badge-danger mt-16">{erro}</p>}

@@ -117,7 +117,7 @@ export default async function FollowUpPage({
         Quem está esperando uma resposta sua. A maior parte das vendas não se
         perde por preço — se perde por silêncio.
       </p>
-      <p className="badge" style={{ whiteSpace: "normal", textAlign: "left", marginTop: 10 }}>
+      <p className="nota" style={{ marginTop: 10 }}>
         <strong>Esta tela é para consultar, não para executar.</strong> Todo mundo que
         aparece aqui já está na <Link href="/painel/fila">Fila de envio</Link>, com mensagem
         pronta e registro. Use esta aqui para enxergar quem está esquecido há mais tempo.

@@ -102,5 +102,47 @@ const layout = fs.readFileSync(path.join(ROOT, "apps/web/app/layout.tsx"), "utf8
 verifica("o layout nao usa Inter", !/from "next\/font\/google"[\s\S]{0,120}\bInter\b/.test(layout));
 verifica("e declara as duas familias escolhidas", /Archivo/.test(layout) && /Sora/.test(layout));
 
+// ============================== O USO, NAO SO A DECLARACAO (reforco de 29/ago)
+//
+// ⚠ ESTA TRAVA JA EXISTIA E DEIXOU PASSAR O PRIMEIRO DEFEITO REAL. Ela conferia
+// que todo token do escuro existia no claro — e passou. Mas `.appbar` tinha
+// `rgba(8, 11, 20, .72)` CHUMBADO e `.nav a.active` tinha `#fff`: no tema claro
+// a barra superior virou uma faixa escura com links cinza-escuro em cima,
+// praticamente ilegiveis, e a aba ativa sumiu.
+//
+// A licao: **conferir a declaracao nao e conferir o uso.** Token perfeito nao
+// serve de nada se a regra escreve a cor na mao ao lado dele. E o defeito nao
+// aparece em teste nenhum — aparece no print de quem abriu.
+//
+// A regra: das regras de componente para baixo, nao se escreve cor literal. Se
+// precisar de uma cor que NAO muda com o tema, ela vira token com o motivo.
+
+const fimDosTemas = css.indexOf("* {");
+const componentes = fimDosTemas > 0 ? css.slice(fimDosTemas) : "";
+
+// ⚠ O QUE PODE FICAR LITERAL, com motivo:
+//   • #25D366 e #0b2e13 sao a cor oficial do WhatsApp — marca DELES, nao
+//     acompanha tema nenhum.
+const PERMITIDOS = /#25d366|#0b2e13/i;
+const linhasComCor = componentes
+  .split("\n")
+  .filter((l) => /#[0-9a-fA-F]{3,8}\b|rgba?\(\s*\d/.test(l))
+  .filter((l) => !PERMITIDOS.test(l))
+  .filter((l) => !/^\s*\/\*|^\s*\*/.test(l))
+  .map((l) => l.trim());
+
+verifica(
+  "nenhuma regra de componente escreve cor literal",
+  linhasComCor.length === 0,
+  `usam cor chumbada e quebram num dos temas:\n        ${linhasComCor.slice(0, 10).join("\n        ")}`,
+);
+
+// ⚠ A BARRA SUPERIOR TEM TOKEN PROPRIO — foi ela que quebrou, entao a trava
+// nomeia o caso para ele nao voltar por distracao.
+verifica(
+  "a barra superior usa token, nao cor chumbada",
+  /--appbar-bg/.test(base ?? "") && /background:\s*var\(--appbar-bg\)/.test(css),
+);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

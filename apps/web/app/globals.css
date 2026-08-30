@@ -83,6 +83,29 @@
      marca. Antes era `#04101f` solto em três lugares, sem ninguém explicar por
      que aquela cor não invertia. */
   --on-brand: #04101f;
+  /* ⚠ A BARRA SUPERIOR TAMBEM E TEMA. Ela ficou com `rgba(8,11,20,.72)`
+     chumbado e, no tema claro, virou uma faixa escura com links cinza-escuro
+     em cima — praticamente ilegiveis. Foi o primeiro defeito que apareceu na
+     tela real, e a trava `tema_check` nao pegou porque conferia os TOKENS e
+     nao o USO deles. */
+  --appbar-bg: rgba(255, 255, 255, 0.82);
+  --nav-active-text: #ffffff;
+
+  /* ⚠ OS FUNDOS SUAVES DOS AVISOS TAMBEM SAO TEMA. Eles estavam chumbados com
+     a paleta ESCURA — no claro ficavam fora do sistema, com fundo pensado para
+     fundo preto. Sao derivados de `--warn`, `--danger` e `--success`, e mudam
+     junto com eles. */
+  --warn-soft: rgba(154, 100, 18, 0.10);
+  --warn-line: rgba(154, 100, 18, 0.30);
+  --danger-soft: rgba(178, 59, 54, 0.09);
+  --danger-line: rgba(178, 59, 54, 0.28);
+  --success-soft: rgba(43, 122, 63, 0.09);
+  --success-line: rgba(43, 122, 63, 0.28);
+  --selecao: rgba(31, 111, 208, 0.22);
+  --brilho-1: rgba(46, 141, 242, 0.07);
+  --brilho-2: rgba(139, 211, 43, 0.05);
+  /* Texto de link/botao no hover: no claro escurece, no escuro clareia. */
+  --text-hover: #05101f;
 }
 
 /* O ESCURO — para quem não escolheu nada e usa o sistema em modo escuro.
@@ -113,6 +136,18 @@
     --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
     --shadow-brand: 0 8px 30px rgba(46, 141, 242, 0.25);
     --ring: 0 0 0 3px rgba(46, 141, 242, 0.35);
+    --appbar-bg: rgba(8, 11, 20, 0.72);
+    --nav-active-text: #ffffff;
+    --warn-soft: rgba(234, 181, 77, 0.10);
+    --warn-line: rgba(234, 181, 77, 0.30);
+    --danger-soft: rgba(242, 99, 95, 0.10);
+    --danger-line: rgba(242, 99, 95, 0.30);
+    --success-soft: rgba(123, 212, 90, 0.10);
+    --success-line: rgba(123, 212, 90, 0.30);
+    --selecao: rgba(55, 193, 232, 0.30);
+    --brilho-1: rgba(46, 141, 242, 0.12);
+    --brilho-2: rgba(139, 211, 43, 0.08);
+    --text-hover: #ffffff;
   }
 }
 
@@ -141,6 +176,18 @@
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
   --shadow-brand: 0 8px 30px rgba(46, 141, 242, 0.25);
   --ring: 0 0 0 3px rgba(46, 141, 242, 0.35);
+  --appbar-bg: rgba(8, 11, 20, 0.72);
+  --nav-active-text: #ffffff;
+  --warn-soft: rgba(234, 181, 77, 0.10);
+  --warn-line: rgba(234, 181, 77, 0.30);
+  --danger-soft: rgba(242, 99, 95, 0.10);
+  --danger-line: rgba(242, 99, 95, 0.30);
+  --success-soft: rgba(123, 212, 90, 0.10);
+  --success-line: rgba(123, 212, 90, 0.30);
+  --selecao: rgba(55, 193, 232, 0.30);
+  --brilho-1: rgba(46, 141, 242, 0.12);
+  --brilho-2: rgba(139, 211, 43, 0.08);
+  --text-hover: #ffffff;
 }
 
 * {
@@ -160,8 +207,8 @@ body {
   color: var(--text);
   background: var(--bg);
   background-image:
-    radial-gradient(1100px 620px at 80% -10%, rgba(46, 141, 242, 0.12), transparent 60%),
-    radial-gradient(900px 560px at 5% 8%, rgba(139, 211, 43, 0.08), transparent 55%);
+    radial-gradient(1100px 620px at 80% -10%, var(--brilho-1), transparent 60%),
+    radial-gradient(900px 560px at 5% 8%, var(--brilho-2), transparent 55%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -189,7 +236,7 @@ a {
   text-decoration: none;
 }
 a:hover {
-  color: #fff;
+  color: var(--text-hover);
 }
 code {
   font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
@@ -200,7 +247,7 @@ code {
   padding: 1px 6px;
 }
 ::selection {
-  background: rgba(55, 193, 232, 0.3);
+  background: var(--selecao);
 }
 
 /* --- Rótulo sobrescrito (eyebrow) --- */
@@ -297,7 +344,7 @@ code {
 .btn:hover {
   background: var(--surface-hover);
   border-color: var(--border-strong);
-  color: #fff;
+  color: var(--text-hover);
 }
 .btn:active {
   transform: translateY(1px);
@@ -400,6 +447,24 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   color: var(--text-dim);
   white-space: nowrap;
 }
+/* ⚠ AVISO EM FRASE NAO E `.badge`, e o print de 29/ago mostrou por que.
+   `.badge` e `inline-flex`: cada filho vira ITEM DE FLEX, entao uma frase com
+   `<strong>` e um link no meio quebrou em quatro colunas lado a lado, ilegivel.
+   `.badge` serve para rotulo curto de UMA palavra ou duas. Explicacao usa
+   `.nota`, que e um paragrafo de verdade. */
+.nota {
+  display: block;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+.nota strong { color: var(--text); font-weight: 600; }
+.nota a { color: var(--brand-blue); }
+
 .badge-brand {
   background: var(--brand-gradient-soft);
   border-color: var(--border-brand);
@@ -407,18 +472,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .badge-warn {
   color: var(--warn);
-  border-color: rgba(234, 181, 77, 0.3);
-  background: rgba(234, 181, 77, 0.1);
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
 }
 .badge-danger {
   color: var(--danger);
-  border-color: rgba(242, 99, 95, 0.3);
-  background: rgba(242, 99, 95, 0.1);
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
 }
 .badge-success {
   color: var(--success);
-  border-color: rgba(123, 212, 90, 0.3);
-  background: rgba(123, 212, 90, 0.1);
+  border-color: var(--success-line);
+  background: var(--success-soft);
 }
 
 /* --- Tabela --- */
@@ -544,7 +609,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: 20px;
   padding: 0 20px;
-  background: rgba(8, 11, 20, 0.72);
+  background: var(--appbar-bg);
   backdrop-filter: saturate(140%) blur(14px);
   border-bottom: 1px solid var(--border);
 }
@@ -562,27 +627,103 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   height: 30px;
   width: auto;
 }
-.nav {
+/* ============================ A BARRA LATERAL ============================
+   Vinte destinos nao cabem numa linha. A partir de dez itens o padrao de todo
+   produto complexo e lateral agrupada — e o ganho medido em rastreamento
+   ocular e de 20 a 30% no tempo de achar, porque varrer de cima para baixo e
+   mais rapido que da esquerda para a direita.
+   ========================================================================= */
+
+.painel-corpo {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  align-items: start;
+  gap: 0;
+}
+
+.lateral {
+  position: sticky;
+  top: var(--nav-h);
+  max-height: calc(100dvh - var(--nav-h));
+  overflow-y: auto;
+  padding: 18px 12px 40px;
+  border-right: 1px solid var(--border);
   display: flex;
-  align-items: center;
-  gap: 2px;
+  flex-direction: column;
+  gap: 18px;
 }
-.nav a {
-  font-size: 14px;
+
+.lateral-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lateral-titulo {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 6px 10px;
+}
+
+.lateral-item {
+  font-size: 13.5px;
   color: var(--text-dim);
-  padding: 7px 12px;
-  border-radius: 8px;
-  transition: color 0.15s ease, background 0.15s ease;
-  white-space: nowrap;
+  padding: 7px 10px;
+  border-radius: 7px;
+  transition: color 0.12s ease, background 0.12s ease;
+  line-height: 1.3;
 }
-.nav a:hover {
+.lateral-item:hover {
   color: var(--text);
   background: var(--surface-2);
 }
-.nav a.active {
-  color: #fff;
+
+/* ⚠ O ATIVO USA BARRA DE MARCA, NAO FUNDO CHEIO. Fundo com gradiente atras de
+   texto pequeno reduz contraste e cansa; a barra diz "voce esta aqui" sem
+   competir com a leitura. */
+.lateral-item.ativo {
+  color: var(--text);
   background: var(--surface-2);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 0 var(--brand-cyan);
 }
+
+.nav-abrir {
+  display: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .painel-corpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nav-abrir {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* Gaveta: escondida ate alguem pedir. Lateral fixa em 375px comeria metade
+     da tela, e a faixa que rola era o problema que isto resolve. */
+  .lateral {
+    display: none;
+    position: fixed;
+    inset: var(--nav-h) auto 0 0;
+    width: min(78vw, 280px);
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border-strong);
+    box-shadow: var(--shadow);
+    z-index: 45;
+  }
+  .lateral-aberta {
+    display: flex;
+  }
+}
+
 .linklike {
   font: inherit;
   background: none;
@@ -601,13 +742,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     flex-wrap: wrap;
     padding: 12px 16px;
     gap: 10px;
-  }
-  .nav {
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
   }
 }
 

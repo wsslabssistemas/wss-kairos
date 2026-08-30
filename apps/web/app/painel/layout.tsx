@@ -9,7 +9,7 @@ import { BRAND_NAME, MAKER } from "@/lib/brand";
 import { carregarAparencia } from "@/lib/aparencia-db";
 import { estadoDoTeste } from "@/lib/teste";
 import { variaveisDaMarca } from "@/lib/aparencia";
-import PainelNav from "./PainelNav";
+import PainelNav, { type Grupo } from "./PainelNav";
 import TenantSwitcher from "./TenantSwitcher";
 import { signOut } from "./actions";
 
@@ -77,47 +77,73 @@ export default async function PainelLayout({
   // Agenda para quem ainda nao criou empresa oferece dez portas que respondem
   // todas "sem empresa vinculada" — e faz a pessoa procurar o defeito em vez
   // de fazer a unica coisa que falta.
-  const nav = !membership?.tenant
-    ? [{ href: "/painel/nova-empresa", label: "Criar minha empresa" }]
+  /**
+   * ⚠ AGRUPADO POR TRABALHO, NÃO POR TELA. Eram vinte itens numa linha
+   * horizontal que rolava para o lado — a pessoa procurava "Sincronizar" numa
+   * lista que não cabia. A pesquisa é clara: barra superior serve para 3 a 6
+   * áreas; a partir de dez, lateral agrupada, com 20–30% menos tempo para
+   * achar (rastreamento ocular).
+   *
+   * ⚠ E A ORDEM DOS GRUPOS É A DO DIA DE TRABALHO. O fundador disse que os
+   * vendedores usam **estritamente a Fila de envio** — ela é o segundo item da
+   * tela inteira, e nada de gestão aparece antes. Agrupar por semelhança
+   * técnica devolveria a mesma lista de vinte, só que com títulos.
+   */
+  const grupos: Grupo[] = !membership?.tenant
+    ? [{ titulo: null, itens: [{ href: "/painel/nova-empresa", label: "Criar minha empresa" }] }]
     : [
-    { href: "/painel", label: "Início" },
-    { href: "/painel/responder", label: "Responder" },
-    { href: "/painel/contatos", label: "Contatos" },
-    // A FILA vem antes do Follow-up: ela junta os quatro motivos numa lista
-    // só e já traz a mensagem pronta. O Follow-up continua, porque é a visão
-    // por cadência — quem quer entender a régua vai lá.
-    { href: "/painel/fila", label: "Fila de envio" },
-    { href: "/painel/followup", label: "Follow-up" },
-    { href: "/painel/funil", label: "Funil" },
-    { href: "/painel/agenda", label: "Agenda" },
-    ...moduleNav,
-    ...(temCatalogo ? [{ href: "/painel/catalogo", label: "Catálogo" }] : []),
-    ...(showManager ? [{ href: "/painel/gestao", label: "Gestão" }] : []),
-    { href: "/painel/equipe", label: "Equipe" },
-    { href: "/painel/dna", label: "DNA" },
-    { href: "/painel/automacao", label: "Automação" },
-    // COLADA na Automação de propósito: é ali que o canal é ligado, e é aqui
-    // que se vê se ele está entregando. Configurar e conferir o resultado são
-    // a mesma tarefa em dois momentos.
-    { href: "/painel/conversas", label: "Canal oficial" },
-    // Colada no Canal oficial: as duas respondem "o sistema está indo bem?",
-    // uma pela entrega e a outra pela qualidade do texto.
-    ...(showManager ? [{ href: "/painel/correcoes", label: "O que a IA aprendeu" }] : []),
-    // ⚠ COLADA NAS DUAS ACIMA, e ela responde a pergunta que as outras nao
-    // respondem: "a IA pode responder SOZINHA?". "O que a IA aprendeu" depende
-    // de alguem corrigir; o banco de provas nao depende de ninguem alem de
-    // quem julga — e foi feito justamente porque a correcao do vendedor pode
-    // nunca chegar.
-    ...(showManager ? [{ href: "/painel/provas", label: "Banco de provas" }] : []),
-    { href: "/painel/tutorial", label: "Tutorial" },
-    ...(showManager ? [{ href: "/painel/sincronizar", label: "Sincronizar" }] : []),
-    // Fica COLADA na Sincronizar de propósito: é ali que as contradições
-    // nascem e é ali que o gestor está quando pensa em dado de origem.
-    ...(showManager ? [{ href: "/painel/contradicoes", label: "Conferir" }] : []),
-    ...(showManager ? [{ href: "/painel/aparencia", label: "Aparência" }] : []),
-    ...(showAdmin ? [{ href: "/painel/admin", label: "Fabricante" }] : []),
-  ];
-
+        { titulo: null, itens: [{ href: "/painel", label: "Início" }] },
+        {
+          titulo: "Atender",
+          itens: [
+            { href: "/painel/fila", label: "Fila de envio" },
+            { href: "/painel/responder", label: "Responder" },
+            { href: "/painel/conversas", label: "Canal oficial" },
+            { href: "/painel/agenda", label: "Agenda" },
+          ],
+        },
+        {
+          titulo: "Clientes",
+          itens: [
+            { href: "/painel/contatos", label: "Contatos" },
+            { href: "/painel/funil", label: "Funil" },
+            { href: "/painel/followup", label: "Follow-up" },
+            ...(temCatalogo ? [{ href: "/painel/catalogo", label: "Catálogo" }] : []),
+            ...moduleNav,
+          ],
+        },
+        ...(showManager
+          ? [{
+              titulo: "Inteligência",
+              itens: [
+                { href: "/painel/gestao", label: "Gestão" },
+                { href: "/painel/correcoes", label: "O que a IA aprendeu" },
+                { href: "/painel/provas", label: "Banco de provas" },
+              ],
+            }]
+          : []),
+        {
+          titulo: "Configurar",
+          itens: [
+            { href: "/painel/dna", label: "DNA" },
+            { href: "/painel/automacao", label: "Automação" },
+            { href: "/painel/equipe", label: "Equipe" },
+            ...(showManager ? [{ href: "/painel/sincronizar", label: "Sincronizar" }] : []),
+            ...(showManager ? [{ href: "/painel/contradicoes", label: "Conferir" }] : []),
+            ...(showManager ? [{ href: "/painel/aparencia", label: "Aparência" }] : []),
+          ],
+        },
+        {
+          titulo: "Aprender",
+          itens: [
+            { href: "/painel/curso", label: "Curso" },
+            { href: "/painel/tutorial", label: "Tutorial" },
+          ],
+        },
+        ...(showAdmin
+          ? [{ titulo: "Fabricante", itens: [{ href: "/painel/admin", label: "Fabricante" }] }]
+          : []),
+      ];
 
   return (
     <div style={marca}>
@@ -131,7 +157,6 @@ export default async function PainelLayout({
           )}
           <span>{membership?.tenant?.name ?? BRAND_NAME}</span>
         </Link>
-        <PainelNav items={nav} />
         <div className="row" style={{ marginLeft: "auto", gap: 14 }}>
           <TenantSwitcher
             empresas={empresas.map((m) => ({ id: m.tenant!.id, name: m.tenant!.name }))}
@@ -173,8 +198,15 @@ export default async function PainelLayout({
           <Link href="/painel/contratar" style={{ fontWeight: 600 }}>Contratar →</Link>
         </div>
       )}
-      <div className="container" style={{ padding: "28px 1.25rem 64px" }}>
-        {children}
+      {/* ⚠ A LATERAL E O CONTEÚDO SÃO IRMÃOS, não pai e filho. A barra precisa
+          grudar na altura da tela enquanto o conteúdo rola; aninhá-la dentro do
+          container faria ela rolar junto e sumir na primeira tela longa — que é
+          exatamente o que a lateral existe para evitar. */}
+      <div className="painel-corpo">
+        <PainelNav grupos={grupos} />
+        <div className="container" style={{ padding: "28px 1.25rem 64px" }}>
+          {children}
+        </div>
       </div>
 
       {/* O RODAPÉ NÃO É PERSONALIZÁVEL, e é decisão. Marca branca completa
