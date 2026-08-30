@@ -155,7 +155,21 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   correção.
   ⚠ E **agendador único continua sendo ponto único de falha.** As quatro
   camadas acima melhoram muito o GitHub; só um segundo relógio em outra
-  infraestrutura tira ele do caminho crítico. Ver `scripts/agendador-reserva.sql`.
+  infraestrutura tira ele do caminho crítico. Ver `scripts/agendador-reserva.sql`
+  — **instalado e testado em 30/ago**, `pg_cron` no Supabase.
+  ⚠ E **O RELÓGIO DO ESPAÇAMENTO MEDE ENVIO, NUNCA BATIDA.** A correção acima
+  nasceu com o defeito dentro: ela media a última rodada "não simulada e não
+  pulada", e rodada que ACONTECE e manda zero grava exatamente essa linha — a
+  que estoura com exceção também, porque o `catch` registra com `pulada` no
+  padrão `false`. **Uma batida vazia comprava 240 minutos de silêncio**, e as
+  "16 chances" só valiam para o tique que o GitHub descarta. Hoje o filtro é
+  `enviadas > 0` e o parâmetro se chama `ultimoEnvioISO`. A regra geral:
+  **trava de cadência conta trabalho FEITO, nunca visita recebida** — a mesma
+  família do "cadência conta toques dados, não datas vencidas".
+  ⚠ E **função pura não enxerga `select` errado.** O defeito morava no filtro
+  da consulta, fora da função — nenhum caso de borda o pegaria. A trava que
+  fecha essa classe lê o **código do chamador** (`espacamento_test.mjs`), como
+  `paginacao_check` e `tema_check` já fazem.
 - **⚠ TRANSIÇÃO DE ETAPA TEM QUE TER VOLTA.** Em 28/ago saiu *"você treinou com
   a gente e acabou parando"* para uma aluna com **contrato até 2027**. A causa:
   a sincronização sabia **tirar** da etapa ativa quem sumia da planilha e nunca

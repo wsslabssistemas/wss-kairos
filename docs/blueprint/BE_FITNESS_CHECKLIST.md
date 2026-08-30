@@ -1,7 +1,7 @@
 # Be Fitness — o checklist único
 
 > **Este é o arquivo para olhar agora.** Escopo: **a Be Fitness operando o
-> canal oficial.** Atualizado: **27 de agosto de 2026.**
+> canal oficial.** Atualizado: **30 de agosto de 2026, à noite.**
 >
 > A campanha saiu do papel nesta semana. O que segue é o estado real, e o
 > `ESTADO_DO_PROJETO.md` §0 tem o detalhe de cada peça construída.
@@ -14,9 +14,11 @@
 |---|---|
 | Mensagens enviadas pela Meta | **61** · 7 falhas · **13 pessoas responderam** |
 | Qualidade do número | **Alta**, degrau 250/dia |
-| Modo | `auto` · 30/dia · 15 por rodada · recorte 180 dias |
+| Modo | `auto` · 30/dia · 15 por rodada · recorte **365 dias** |
 | Alunos vigentes | **300** (meta: 400) |
 | Ex-alunos ainda não contatados | **920** |
+| Destes, elegíveis no recorte de 365 (conferido em 30/ago) | **156** |
+| Os mesmos, no recorte de 180 | **0** — a faixa já foi toda falada |
 | Banco de provas | 39 julgadas · **0 erro grave** |
 | Gasto de IA no mês | R$ 80,55 |
 
@@ -42,6 +44,7 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
 | O quê | Espera |
 |---|---|
 | **Fase 2: a IA responde e agenda sozinha** | Amostra de `origem_ia`. Hoje **75% em 16 casos** — pouco. Esperar ~50 |
+| ~~Relógio do espaçamento medindo batida~~ | **Feito em 30/ago**, na véspera da primeira rodada autônoma |
 | Pausa de 20–40s antes da resposta automática | Vem junto da fase 2 |
 | Aviso de "decisão esperando humano" | Vem junto da fase 2 |
 | **Terceiro estado** (abandonou com contrato aberto) | A exportação de títulos em aberto |
@@ -56,9 +59,19 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
   ⚠ **Corrigido em 27/ago:** ele passou a bater de 15 em 15 minutos (nunca no
   minuto `:00`, que é o pior), a cadência virou ajuste do motor, e a tela agora
   mostra *"agendador vivo — última batida há N min"* mesmo quando está tudo
-  certo. O alarme toca em **1 hora**, não em 26. **Ainda falta o agendador
-  reserva** (`scripts/agendador-reserva.sql`) — sem ele o GitHub continua
-  provedor único.
+  certo. O alarme toca em **1 hora**, não em 26.
+  ⚠ **E em 30/ago o reserva entrou no ar** (`scripts/agendador-reserva.sql`):
+  `pg_cron` no Supabase, batendo em 0/15/30/45, deslocado do GitHub. O GitHub
+  deixou de ser provedor único — para a campanha parar, os dois precisam falhar
+  no mesmo dia.
+- **A LINHA EM `motor_execucoes` PROVA O RELÓGIO, NÃO A CAMPANHA.** Linha com
+  `enviadas = 0` e *"Nenhum candidato passou nas regras agora"* é agendador vivo
+  com campanha parada. Olhe **`enviadas`**, nunca a existência da linha.
+  ⚠ **E o relógio do espaçamento foi corrigido em 30/ago**: ele media BATIDA e
+  passou a medir **ENVIO** (`enviadas > 0`). Antes disso, uma batida que rodava
+  e mandava zero — inclusive uma que estourava com exceção — comprava 240
+  minutos de silêncio, com a tela dizendo "agendador vivo". Guardado por
+  `espacamento_test.mjs`, que lê o código do chamador.
 - **A Meta conta BYTES, não letras** — cada acento vale 2. "492/512" recusa.
 - **A Meta devolve o remetente sem o nono dígito.** `variantesArmazenadas`
   cobre os dois sentidos; não mexer sem rodar `telefone_test`.

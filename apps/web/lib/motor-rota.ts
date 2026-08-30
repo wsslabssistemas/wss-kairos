@@ -30,6 +30,13 @@ import { lerTudo } from "@/lib/paginado";
 // ⚠ E A RECUSA VIRA LINHA NO BANCO. Sem isso, uma tabela com duas linhas por
 // dia seria idêntica à de um agendador morto, e o defeito que a `0066` fechou
 // voltaria pela porta da própria correção.
+//
+// ⚠ E O RELÓGIO DO ESPAÇAMENTO MEDE ENVIO, NÃO BATIDA (30/ago/2026). Até aqui
+// ele lia a última linha "não simulada e não pulada" — e rodada que ACONTECE e
+// manda zero grava exatamente essa linha, a que estoura com exceção também.
+// Uma batida vazia comprava 240 minutos de silêncio, e as "16 chances de
+// acontecer" viravam uma só para todo tique que não fosse DESCARTADO pelo
+// GitHub. Ver `lib/espacamento.ts`.
 
 export type RodadaDoMotor = {
   quando: string;
@@ -84,8 +91,10 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
       // vigiar não pode impedir uma mensagem de sair.
       if (!simular) await vigiarCanal(t.id);
 
-      // ⚠ O ESPAÇAMENTO É CONSULTADO ANTES DE QUALQUER TRABALHO. Ele lê a
-      // última rodada DE VERDADE (não simulada, não pulada) desta empresa.
+      // ⚠ O ESPAÇAMENTO É CONSULTADO ANTES DE QUALQUER TRABALHO. Ele lê o
+      // ÚLTIMO ENVIO desta empresa — a última rodada que mandou mensagem de
+      // verdade (`enviadas > 0`, não simulada, não pulada), nunca a última
+      // batida que passou por aqui.
       //
       // ⚠ E A SIMULAÇÃO NUNCA É BARRADA, pelo mesmo motivo pelo qual ela
       // ignora a janela de horário: simular não manda mensagem nenhuma, e quem
@@ -98,14 +107,58 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
           .maybeSingle();
         const regras = readAutomation((t0 as { settings?: unknown } | null)?.settings ?? null);
 
-        // paginacao-ok: `.limit(1)` com ORDER BY — é a última rodada, não uma
+        // ⚠ EMPRESA DESLIGADA SAI AQUI, ANTES DE CARREGAR FILA. Com o relógio
+        // medindo ENVIO, quem nunca envia nunca tem relógio — e sem esta saída
+        // as 40 batidas do dia carregariam a fila inteira de toda empresa em
+        // teste grátis, todo dia, para descobrir de novo que ela está `off`.
+        //
+        // E ela vira batida PULADA, não rodada: o agendador bateu e não houve
+        // rodada nenhuma. É mais honesto do que a linha de rodada vazia que
+        // ficava aqui antes — e é ela que alimenta o "agendador vivo há N min".
+        if (regras.mode === "off") {
+          await registrarRodada({
+            tenantId: t.id,
+            origem: "agendador",
+            pulada: true,
+            porque: "A automação está desligada.",
+          });
+          detalhe.push({
+            tenant: t.slug,
+            ok: true,
+            porque: "A automação está desligada.",
+            enviadas: 0,
+            falhas: 0,
+            pulada: true,
+          });
+          continue;
+        }
+
+        // ⚠ `enviadas > 0` É O CORAÇÃO DESTA TRAVA, e ela é o que impede a
+        // correção de 27/ago de reintroduzir o silêncio que ela veio fechar.
+        //
+        // O relógio pergunta "quando saiu a última mensagem", nunca "quando o
+        // agendador passou por aqui". Rodada que aconteceu e mandou zero — por
+        // exceção, por falta de candidato, por qualquer motivo transitório —
+        // não gastou cota do dia e por isso não pode gastar tempo do dia: a
+        // batida seguinte, quinze minutos depois, tenta de novo.
+        //
+        // ⚠ E ISSO CUSTA CARGAS DE FILA DEPOIS QUE O TETO DO DIA FECHA: das 13h
+        // às 18h45 cada batida vai montar a fila para ouvir "o teto já foi
+        // atingido". É leitura, é uma empresa, e é o preço de não ter buraco de
+        // quatro horas invisível. Quem for otimizar isto um dia: NÃO volte a
+        // deixar a batida vazia reiniciar o relógio — o atalho barato é
+        // exatamente o defeito. E tem um ganho junto: subir o `max_per_day` no
+        // meio da tarde volta a valer em 15 minutos, não em quatro horas.
+        //
+        // paginacao-ok: `.limit(1)` com ORDER BY — é o último envio, não uma
         // leitura de acervo.
         const consulta = (filtrarPuladas: boolean) => {
           let q = admin
             .from("motor_execucoes")
             .select("occurred_at")
             .eq("tenant_id", t.id)
-            .eq("simulado", false);
+            .eq("simulado", false)
+            .gt("enviadas", 0);
           if (filtrarPuladas) q = q.eq("pulada", false);
           return q.order("occurred_at", { ascending: false }).limit(1).maybeSingle();
         };
@@ -121,20 +174,20 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
         // repositório andando na frente do banco. Aqui a saída é barata —
         // antes da `0067` não existe linha pulada, então a consulta sem o
         // filtro devolve exatamente a mesma coisa.
-        let ultima: { occurred_at?: string } | null = null;
+        let ultimoEnvio: { occurred_at?: string } | null = null;
         const comFiltro = await consulta(true);
         if (comFiltro.error) {
           console.warn(
             `[motor] coluna 'pulada' ausente (0067 nao aplicada?) — espacamento sem o filtro: ${comFiltro.error.message}`,
           );
           const semFiltro = await consulta(false);
-          ultima = (semFiltro.data as { occurred_at?: string } | null) ?? null;
+          ultimoEnvio = (semFiltro.data as { occurred_at?: string } | null) ?? null;
         } else {
-          ultima = (comFiltro.data as { occurred_at?: string } | null) ?? null;
+          ultimoEnvio = (comFiltro.data as { occurred_at?: string } | null) ?? null;
         }
 
         const esp = avaliarEspacamento({
-          ultimaRodadaISO: ultima?.occurred_at ?? null,
+          ultimoEnvioISO: ultimoEnvio?.occurred_at ?? null,
           agora: new Date(),
           minMinutos: regras.min_minutos_entre_rodadas,
         });
@@ -185,6 +238,12 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
         );
       }
     } catch (e) {
+      // ⚠ A RODADA QUE ESTOURA NÃO PODE COMPRAR SILÊNCIO. Ela fica registrada
+      // com `enviadas = 0`, e é por isso que o relógio do espaçamento filtra
+      // `enviadas > 0`: antes de 30/ago uma exceção às 9h valia como rodada e
+      // calava a campanha até as 13h, com a tela dizendo "agendador vivo". A
+      // batida das 9h15 tenta de novo — que é o comportamento que as 40
+      // batidas por dia existem para dar.
       const erro = e instanceof Error ? e.message : String(e);
       console.error(`[motor] ${t.slug} FALHOU: ${erro}`);
       await registrarRodada({ tenantId: t.id, origem: "agendador", erro });

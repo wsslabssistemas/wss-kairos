@@ -131,6 +131,8 @@ vezes ao dia. Perder um tique custava meio dia de campanha.
    (`min_minutos_entre_rodadas`, padrão 240). Com 30/dia e 15 por rodada dá as
    **mesmas duas rodadas de hoje** — o que muda não é o que sai, é que cada
    rodada tem 16 chances de acontecer em vez de 1.
+   ⚠ **Isto só passou a ser verdade em 30/ago**: até lá o relógio media batida,
+   e uma rodada vazia queimava as 16 chances. Ver §0.00.
 3. A **batida recusada vira linha** (`motor_execucoes.pulada`). Sem ela, duas
    linhas por dia seriam idênticas a um agendador morto — a `0066` desfeita
    pela própria correção.
@@ -255,16 +257,81 @@ dois primeiros.
 ⚠ **Falta no ambiente `preview` da Vercel** — o `vercel env add` não aceitou
 sem prompt. Não afeta nada: o agendador bate na URL de produção.
 
+### 🟢 O RELÓGIO DO ESPAÇAMENTO FOI CORRIGIDO NA VÉSPERA (30/ago, à noite)
+
+A correção de 27/ago prometia, no `motor.yml`, neste arquivo e no próprio
+teste: *"cada rodada passa a ter 16 chances de acontecer em vez de 1"*.
+**A promessa não era verdadeira** — e o defeito estava dentro da correção.
+
+O relógio media **batida**, não **envio**. `motor-rota.ts` procurava a última
+linha "não simulada e não pulada" e chamava aquilo de rodada de verdade. Só que
+rodada que ACONTECE e manda zero grava exatamente essa linha — e a que estoura
+com exceção também, porque o `catch` registra com `pulada` no padrão `false`.
+As linhas de 28/ago provam, todas com `pulada = false`: *"Fora da janela de
+horário"* e *"A automação está desligada"*.
+
+**Consequência: uma batida vazia comprava 240 minutos de silêncio.** As 16
+chances só existiam para o tique que o GitHub DESCARTA; para o tique que
+acontece e volta vazio — por exceção, por candidato nenhum, por qualquer coisa
+transitória — a chance continuava sendo uma, e o buraco de quatro horas passava
+com a tela dizendo "agendador vivo". A `0067` reintroduzindo, por dentro, o
+silêncio que ela existe para fechar.
+
+**O que mudou:**
+
+1. O relógio filtra **`enviadas > 0`**. Ele pergunta "quando saiu a última
+   mensagem", nunca "quando o agendador passou por aqui". O parâmetro se chama
+   `ultimoEnvioISO` — o nome é parte da trava.
+2. Empresa com automação `off` **sai antes de montar fila**, como batida
+   `pulada`. Sem isso, quem nunca envia nunca teria relógio, e as 40 batidas do
+   dia carregariam a fila inteira de toda empresa em teste grátis.
+3. **A trava é de código-fonte**, em `espacamento_test.mjs`: função pura não
+   enxerga `select` errado do lado de fora. Ela falha se o filtro sumir, se o
+   nome velho voltar ou se o curto-circuito do `off` for removido — conferido
+   apagando o filtro e vendo o teste ficar vermelho.
+
+⚠ **O custo aceito, escrito para ninguém "otimizar" de volta:** depois que o
+teto do dia fecha, cada batida monta a fila para ouvir *"o teto já foi
+atingido"* — são ~23 leituras por dia útil, de uma empresa. É o preço de não ter
+buraco de quatro horas invisível. E tem um ganho junto: subir o `max_per_day` no
+meio da tarde volta a valer em 15 minutos, não em quatro horas.
+
 ### 🔴 31 DE AGOSTO É A PRIMEIRA RODADA AUTÔNOMA
 
-Segunda-feira, 9h07, o motor dispara **sem ninguém clicar** — a primeira vez
+Segunda-feira, **9h00**, o motor dispara **sem ninguém clicar** — a primeira vez
 desde 27/ago. Configuração: `auto` · 30/dia · 15/rodada · recorte **365 dias**
 · espaço 240 min · janela 9h–19h. Público: **156 ex-alunos** com telefone e sem
 contato prévio. Só `reativacao` sai pelo canal, com o modelo
 `reativacao_ex_aluno`.
 
+⚠ **É O RESERVA QUE BATE PRIMEIRO, ÀS 9h00** — o `pg_cron` está em 0/15/30/45 e
+o GitHub em 7/22/37/52. Quem chegar primeiro leva; os dois gravam
+`origem = 'agendador'`, de propósito. Se for preciso saber QUAL, a resposta está
+em `cron.job_run_details`, não em `motor_execucoes`.
+
 **Confira em `motor_execucoes`**: deve aparecer linha com `origem = 'agendador'`.
 O fundador pediu confirmação — ele vai perguntar "confere aí".
+
+⚠ **E A LINHA SOZINHA NÃO É PROVA DE CAMPANHA.** Ela prova o RELÓGIO. Uma linha
+com `enviadas = 0` e *"Nenhum candidato passou nas regras agora"* é um agendador
+funcionando e uma campanha parada — os dois casos que esta casa passa o tempo
+todo tentando distinguir. **Olhe `enviadas`, não a existência da linha.**
+
+**Conferido no banco em 30/ago, à noite** — os números que fazem a rodada de
+amanhã ter gente:
+
+| Medida | Valor |
+|---|---|
+| Ex-alunos ≤365 dias, com telefone, sem contrato correndo | 252 |
+| Destes, **sem nenhuma interação** (o público de amanhã) | **156** |
+| Os mesmos, com o recorte de **180** | **0** |
+| `cron.job` → `motor-reserva` | ativo, `0,15,30,45 12-21 * * 1-5` |
+
+⚠ **E ISSO EXPLICA O TESTE DE 30/AGO ÀS 16h44**, que voltou *"Nenhum candidato
+passou nas regras agora"* e parecia defeito: com recorte de 180 o público sem
+contato prévio é **zero** — as 87 pessoas daquela faixa já tinham sido faladas.
+Foi a virada para 365 que criou os 156. Não era defeito, mas era
+indistinguível de um até alguém contar.
 
 ### 🟡 O NÚMERO QUE AUTORIZA A FASE 2 EXISTE, E AINDA É POUCO
 
@@ -325,7 +392,11 @@ declarou que é consulta.
 com a pessoa confirmando. É o ataque ao gargalo do primeiro dia, e o que
 destrava Darvil e Feltros.
 
-**49 travas no CI**, contra 42 em 27/ago.
+**Agendador:** o relógio do espaçamento passou a medir **envio**, não batida —
+a correção da véspera, com trava de código-fonte. Ver o bloco 🟢 acima.
+
+**49 travas no CI**, contra 42 em 27/ago — e a de espaçamento ganhou 5
+verificações novas, 4 delas lendo o código do chamador.
 
 ---
 
@@ -352,10 +423,11 @@ reativação para vigência futura, antes de todos os outros vetos; a
 sincronização passou a TRAZER DE VOLTA quem está na fonte com contrato
 correndo; e o veredito descreve o fato sem chutar a causa.
 
-⚠ **CINCO PESSOAS AINDA ESTÃO COM A ETAPA ERRADA** (Lilian, Telmo, Claudia,
-Yasmin, Jeferson). O veto impede novas mensagens, mas o cadastro segue torto:
-elas contam como ex-alunas na carteira. Some com uma reimportação da mesma
-planilha, ou com a correção direta das 5 linhas.
+⚠ ~~**CINCO PESSOAS AINDA ESTÃO COM A ETAPA ERRADA**~~ **RESOLVIDO — conferido
+no banco em 30/ago.** Lilian, Telmo, Claudia e Yasmin voltaram para a etapa
+certa. Sobrou **uma** linha de `ex_aluno` com contrato correndo: o **Jeferson**
+— e a dele **está certa**. Ele abandonou mesmo; o contrato é que corre no papel.
+Não há cadastro a consertar, há um estado que o produto não tem (abaixo).
 
 ⚠ **E O TERCEIRO ESTADO GANHOU NOME.** O Jeferson **não é aluno ativo nem
 ex-aluno**: abandonou com contrato aberto e valor em atraso. Reativação ignora
