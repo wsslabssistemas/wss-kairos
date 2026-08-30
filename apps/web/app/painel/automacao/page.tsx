@@ -11,6 +11,7 @@ import { Roteamento } from "./Roteamento";
 import { Simulacao } from "./Simulacao";
 import { DisparoDeTeste } from "./DisparoDeTeste";
 import { RodarAgora } from "./RodarAgora";
+import { Abas } from "./Abas";
 import { PerfilDoNumero } from "./PerfilDoNumero";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
@@ -242,319 +243,371 @@ export default async function AutomacaoPage({
       {canal === "desligado" && <p className="badge mt-16">Canal desligado — o envio voltou para o link humano.</p>}
       {erro && <p className="badge badge-danger mt-16">{erro}</p>}
 
-      <form action={saveAutomation} className="card mt-24">
-        <p className="eyebrow">Modo de operação</p>
-        <div className="seg mt-8" role="radiogroup" aria-label="Modo de operação">
-          {(["off", "simulation", "auto"] as AutomationMode[]).map((m) => (
-            <label key={m}>
-              <input type="radio" name="mode" value={m} defaultChecked={a.mode === m} disabled={!canEdit} />
-              {MODE_LABEL[m]}
-            </label>
-          ))}
-        </div>
-        <p className="text-faint mt-8" style={{ fontSize: 13 }}>{MODE_HINT[a.mode]}</p>
+      {/* ⚠ AGRUPADAS POR FREQUENCIA DE USO, nao por assunto — e essa foi a
+          decisao que mais mudou o desenho. "Canal" e "Roteamento" sao assunto
+          parecido, e um se toca todo dia enquanto o outro se toca uma vez por
+          trimestre. Agrupar por semelhanca devolveria a mesma pilha de quinze
+          blocos com titulos em cima, que e o erro que a barra lateral acabou
+          de corrigir.
+          "Operacao" e o que se abre todo dia — vem primeiro e por padrao. */}
+      <Abas
+        abas={[
+          {
+            id: "operacao",
+            titulo: "Operação",
+            conteudo: (
+              <>
+            {/* ⚠ CONTEXTO ANTES DE AÇÃO, e a ordem mudou por isso. Antes o botão
+                de disparar vinha antes de "quem ainda falta falar" e da saúde do
+                canal — ou seja, a pessoa apertava e SÓ DEPOIS descobria que a
+                fila tinha acabado ou que o canal estava mudo. As duas perguntas
+                que decidem se vale apertar vêm primeiro; elas estão logo abaixo,
+                e o botão vem em seguida. */}
 
-        <hr className="divider" />
-        <p className="eyebrow" style={{ marginBottom: 14 }}>Regras anti-bloqueio</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-          {FIELDS.map((f) => (
-            <div key={f.key}>
-              <label className="label" htmlFor={f.key}>{f.label}</label>
-              <input
-                id={f.key}
-                name={f.key}
-                type="number"
-                min={f.min}
-                max={f.max}
-                defaultValue={a[f.key]}
-                disabled={!canEdit}
-              />
-              <p className="text-faint" style={{ fontSize: 12, marginTop: 4 }}>{f.hint}</p>
-            </div>
-          ))}
-        </div>
+            {/* ⚠ O QUE FAZER DEPOIS — a pergunta que a tela não respondia.
+                "Saíram 10" é indistinguível de teto atingido, defeito no envio e fim
+                da fila, e as três pedem ações opostas: esperar, chamar suporte, ou
+                aumentar o recorte. O número sozinho transfere para a pessoa uma
+                investigação que o banco responde numa consulta. */}
+            {a.mode !== "off" && alcance && (
+              <div className="card mt-16">
+                <p className="eyebrow" style={{ marginBottom: 8 }}>Quem ainda falta falar</p>
+                {alcance.dentro > 0 ? (
+                  <p style={{ margin: 0, fontSize: 14 }}>
+                    Dentro do recorte de hoje{" "}
+                    <strong>
+                      {alcance.recorte > 0 ? `(saiu nos últimos ${alcance.recorte} dias)` : "(base inteira)"}
+                    </strong>{" "}
+                    ainda há <strong>{alcance.dentro} pessoa(s)</strong> para falar — com telefone e sem
+                    nenhuma mensagem nossa pelo canal.
+                  </p>
+                ) : (
+                  <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left" }}>
+                    <strong>O recorte de {alcance.recorte} dias acabou.</strong> Já falamos com todo mundo
+                    que saiu nesse período. Enquanto ele não aumentar, o motor não tem com quem falar — e
+                    vai continuar rodando sem mandar nada.
+                  </p>
+                )}
+                {alcance.proximo && (
+                  <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
+                    Aumentando o recorte para{" "}
+                    <strong>{alcance.proximo.dias === 0 ? "a base inteira" : `${alcance.proximo.dias} dias`}</strong>,
+                    entram mais <strong>{alcance.proximo.destrava} pessoa(s)</strong>. O campo é{" "}
+                    <em>“Reativação: só quem saiu nos últimos (dias)”</em>, logo acima.
+                  </p>
+                )}
+                {/* ⚠ A PERGUNTA "VAMOS ALCANÇAR OS ANTIGOS ALGUM DIA?" tem resposta
+                    aritmética, e ela precisa estar na tela. A fila põe quem saiu há
+                    menos tempo primeiro — numa base onde entram mais pessoas do que
+                    o teto alcança, os antigos ficariam para sempre no fim. Aqui não
+                    ficam, e o número mostra por quê. */}
+                {alcance.diasParaOAcervo !== null && alcance.acervo > alcance.dentro && (
+                  <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
+                    Somando todas as faixas são <strong>{alcance.acervo} pessoas</strong> — cerca de{" "}
+                    <strong>{alcance.diasParaOAcervo} dias úteis</strong> para falar com todas, no teto
+                    de {a.max_per_day}/dia. Quem saiu há menos tempo vem primeiro, porque responde mais;
+                    os mais antigos entram na sequência, não ficam de fora.
+                  </p>
+                )}
+                {!alcance.proximo && alcance.dentro === 0 && (
+                  <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
+                    E não há mais ninguém em nenhuma faixa: a base de reativação foi toda contatada.
+                  </p>
+                )}
+              </div>
+            )}
 
-        {canEdit ? (
-          <button type="submit" className="btn btn-primary mt-24">Salvar regras</button>
-        ) : (
-          <p className="text-faint mt-16" style={{ fontSize: 13 }}>
-            Só quem é dono ou admin da empresa pode alterar estas regras.
-          </p>
-        )}
-      </form>
+            {/* ⚠ A SAÚDE DO CANAL VEM ANTES DAS RODADAS. Motor perfeito com canal
+                fora do ar é o pior estado possível: tudo verde e ninguém recebendo.
+                E a linha aparece mesmo quando está tudo bem — "está tudo bem" tem que
+                ser uma afirmação com hora, não a ausência de notícia. */}
+            {status.configurado && (
+              <div className="card mt-16">
+                <p className="eyebrow" style={{ marginBottom: 8 }}>Saúde do canal oficial</p>
+                {!vigia || !saude ? (
+                  <p className="text-dim" style={{ margin: 0, fontSize: 14 }}>
+                    Ainda não perguntamos à Meta como está o número. A verificação roda junto com o
+                    agendador — se ela não aparecer aqui em até uma hora, é sinal de que o agendador
+                    não está batendo.
+                  </p>
+                ) : (
+                  <>
+                    <p
+                      className={
+                        saude.gravidade === "parado" ? "badge badge-danger"
+                        : saude.gravidade === "atencao" ? "badge badge-warn"
+                        : "badge badge-success"
+                      }
+                      style={{ whiteSpace: "normal", textAlign: "left" }}
+                    >
+                      {saude.resumo}
+                    </p>
+                    <p className="text-dim" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                      Perguntado{" "}
+                      {minutosSemVigia !== null && minutosSemVigia < 90
+                        ? `há ${minutosSemVigia} min`
+                        : `em ${dataHoraLocal(vigia.occurred_at)}`}
+                      {vigia.messaging_limit_tier ? ` · degrau de envio ${vigia.messaging_limit_tier}` : ""}
+                      {vigia.verified_name ? ` · quem recebe vê "${vigia.verified_name}"` : ""}
+                    </p>
+                    {minutosSemVigia !== null && minutosSemVigia > 180 && (
+                      <p className="text-dim" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                        ⚠ Esta resposta tem mais de 3 horas. O vigia roda junto com o agendador — se ele
+                        parou, esta informação envelheceu junto.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
-      {/* O QUE FALTA PARA LIGAR, EM PORTUGUÊS.
-          Antes esta tela dizia só "quando estiver ligado" — e não dizia o que
-          é preciso para ligar, quem faz cada parte, nem quanto custa. Painel
-          que promete um botão sem dizer o caminho até ele vira promessa. */}
-      <div className="card mt-24" style={{ borderColor: "var(--border-brand)" }}>
-        <p className="eyebrow" style={{ marginBottom: 8 }}>Como funciona HOJE, sem automação</p>
-        <p style={{ marginTop: 0, fontSize: 14 }}>
-          O sistema já decide <strong>quem</strong> procurar e escreve <strong>o que</strong>{" "}
-          dizer — é a <a href="/painel/fila">Fila de envio</a>. O que ele não faz é
-          apertar o botão: você lê, ajusta e envia pelo WhatsApp com um clique.
-        </p>
-        <p className="text-dim" style={{ marginBottom: 0, fontSize: 14 }}>
-          <strong>Isso não é uma limitação temporária.</strong> Envio automático exige a
-          API oficial da Meta; qualquer atalho por provedor não oficial arrisca{" "}
-          <strong>banir o número da sua empresa</strong>, e o número é o ativo. Por isso
-          a fila existe: entrega quase tudo da automação sem esse risco.
-        </p>
-      </div>
+            {/* A ORDEM É A DA CABEÇA DE QUEM VAI DISPARAR: quem sairia
+                (simulação) e quem sai de verdade agora (rodar). */}
+            {canEdit && <Simulacao modo={a.mode} />}
 
-      <div className="card mt-16">
-        <p className="eyebrow" style={{ marginBottom: 8 }}>O que é preciso para ligar o envio automático</p>
-        <ol className="text-dim" style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.9 }}>
-          <li>
-            <strong>Conta Meta Business</strong> (business.facebook.com). Não precisa de
-            página do Facebook com conteúdo, mas precisa do portfólio de negócios. Se você
-            já tem Instagram profissional, provavelmente ele já existe.
-          </li>
-          <li>
-            <strong>Verificação da empresa</strong> na Meta — CNPJ, comprovante de endereço
-            e, às vezes, telefone fixo. É a etapa mais demorada: costuma levar dias.
-          </li>
-          <li>
-            <strong>Um número dedicado</strong> ao WhatsApp Business API. Ele{" "}
-            <strong>não pode</strong> estar em uso no WhatsApp comum — e migrar um número
-            que já tem conversas é caminho sem volta.
-          </li>
-          <li>
-            <strong>Modelos de mensagem aprovados</strong> pela Meta para falar com quem
-            não escreveu nas últimas 24 horas. Cada modelo passa por revisão.
-          </li>
-          <li>
-            <strong>Credenciais</strong>: ID da conta WhatsApp Business, ID do número e um
-            token permanente. É isso que a WSS Labs cadastra para a sua empresa.
-          </li>
-        </ol>
-        <p className="text-faint" style={{ fontSize: 13, marginTop: 12, marginBottom: 0 }}>
-          <strong>As credenciais não são digitadas aqui, e isso é decisão de segurança.</strong>{" "}
-          Token da Meta em campo de tela fica salvo no banco e visível para quem tem acesso
-          ao painel; o lugar certo dele é o cofre de variáveis do servidor. Quando você tiver
-          os três dados acima, mande para a WSS Labs — o cadastro é feito uma vez e não
-          aparece em tela nenhuma.
-        </p>
-      </div>
+            {canEdit && <RodarAgora modo={a.mode} />}
 
-      <div className="card mt-16">
-        <p className="eyebrow" style={{ marginBottom: 8 }}>Custo, para decidir com número</p>
-        <p className="text-dim" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
-          A Meta cobra <strong>por conversa iniciada</strong> pela empresa, não por mensagem,
-          e o valor muda por país e por categoria (utilidade, marketing, serviço). Conversa
-          iniciada pelo cliente costuma ser gratuita numa janela de 24 horas. Some isso ao
-          custo de IA por resposta, que o seu painel já mede em{" "}
-          <a href="/painel/admin/cotas">Cota de IA</a> — o teto de gasto continua valendo
-          igual com a automação ligada.
-        </p>
-      </div>
+            <div className="card mt-16">
+              <p className="eyebrow" style={{ marginBottom: 8 }}>Últimas rodadas do motor</p>
 
-      {canEdit && (
-        <Canal
-          configurado={status.configurado}
-          phoneId={status.phoneId}
-          temVerifyToken={status.temVerifyToken}
-          temAppSecret={status.temAppSecret}
-          atualizadoEm={status.atualizadoEm}
-          urlDoWebhook={`${await origemDoSite()}/api/whatsapp/webhook`}
-        />
-      )}
-
-      {canEdit && (
-        <Roteamento
-          roteamento={lerRoteamento(data?.settings)}
-          modelos={lerModelos(data?.settings)}
-          temCredencial={status.configurado}
-          tetoCents={lerTetoDeMensagens(data?.settings)}
-        />
-      )}
-
-      {/* A ORDEM É A DA CABEÇA DE QUEM VAI DISPARAR: quem sairia (simulação),
-          quem sai de verdade agora (rodar), e um número escolhido a dedo
-          (teste). As três perguntas, na sequência em que se fazem. */}
-      {canEdit && <Simulacao modo={a.mode} />}
-
-      {canEdit && <RodarAgora modo={a.mode} />}
-
-      {/* Colado no disparo: antes de mandar mais gente, o que ela vê ao tocar
-          no nome importa tanto quanto o texto. */}
-      {canEdit && status.configurado && <PerfilDoNumero />}
-
-      {/* COLADO NA SIMULAÇÃO de propósito: uma mostra quem sairia sem mandar
-          nada, o outro manda de verdade para um número escolhido. As duas
-          perguntas que alguém faz antes de virar a chave, na ordem em que as
-          faz. */}
-      {canEdit && <DisparoDeTeste />}
-
-      {/* ⚠ O QUE FAZER DEPOIS — a pergunta que a tela não respondia.
-          "Saíram 10" é indistinguível de teto atingido, defeito no envio e fim
-          da fila, e as três pedem ações opostas: esperar, chamar suporte, ou
-          aumentar o recorte. O número sozinho transfere para a pessoa uma
-          investigação que o banco responde numa consulta. */}
-      {a.mode !== "off" && alcance && (
-        <div className="card mt-16">
-          <p className="eyebrow" style={{ marginBottom: 8 }}>Quem ainda falta falar</p>
-          {alcance.dentro > 0 ? (
-            <p style={{ margin: 0, fontSize: 14 }}>
-              Dentro do recorte de hoje{" "}
-              <strong>
-                {alcance.recorte > 0 ? `(saiu nos últimos ${alcance.recorte} dias)` : "(base inteira)"}
-              </strong>{" "}
-              ainda há <strong>{alcance.dentro} pessoa(s)</strong> para falar — com telefone e sem
-              nenhuma mensagem nossa pelo canal.
-            </p>
-          ) : (
-            <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left" }}>
-              <strong>O recorte de {alcance.recorte} dias acabou.</strong> Já falamos com todo mundo
-              que saiu nesse período. Enquanto ele não aumentar, o motor não tem com quem falar — e
-              vai continuar rodando sem mandar nada.
-            </p>
-          )}
-          {alcance.proximo && (
-            <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
-              Aumentando o recorte para{" "}
-              <strong>{alcance.proximo.dias === 0 ? "a base inteira" : `${alcance.proximo.dias} dias`}</strong>,
-              entram mais <strong>{alcance.proximo.destrava} pessoa(s)</strong>. O campo é{" "}
-              <em>“Reativação: só quem saiu nos últimos (dias)”</em>, logo acima.
-            </p>
-          )}
-          {/* ⚠ A PERGUNTA "VAMOS ALCANÇAR OS ANTIGOS ALGUM DIA?" tem resposta
-              aritmética, e ela precisa estar na tela. A fila põe quem saiu há
-              menos tempo primeiro — numa base onde entram mais pessoas do que
-              o teto alcança, os antigos ficariam para sempre no fim. Aqui não
-              ficam, e o número mostra por quê. */}
-          {alcance.diasParaOAcervo !== null && alcance.acervo > alcance.dentro && (
-            <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
-              Somando todas as faixas são <strong>{alcance.acervo} pessoas</strong> — cerca de{" "}
-              <strong>{alcance.diasParaOAcervo} dias úteis</strong> para falar com todas, no teto
-              de {a.max_per_day}/dia. Quem saiu há menos tempo vem primeiro, porque responde mais;
-              os mais antigos entram na sequência, não ficam de fora.
-            </p>
-          )}
-          {!alcance.proximo && alcance.dentro === 0 && (
-            <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
-              E não há mais ninguém em nenhuma faixa: a base de reativação foi toda contatada.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ⚠ A SAÚDE DO CANAL VEM ANTES DAS RODADAS. Motor perfeito com canal
-          fora do ar é o pior estado possível: tudo verde e ninguém recebendo.
-          E a linha aparece mesmo quando está tudo bem — "está tudo bem" tem que
-          ser uma afirmação com hora, não a ausência de notícia. */}
-      {status.configurado && (
-        <div className="card mt-16">
-          <p className="eyebrow" style={{ marginBottom: 8 }}>Saúde do canal oficial</p>
-          {!vigia || !saude ? (
-            <p className="text-dim" style={{ margin: 0, fontSize: 14 }}>
-              Ainda não perguntamos à Meta como está o número. A verificação roda junto com o
-              agendador — se ela não aparecer aqui em até uma hora, é sinal de que o agendador
-              não está batendo.
-            </p>
-          ) : (
-            <>
-              <p
-                className={
-                  saude.gravidade === "parado" ? "badge badge-danger"
-                  : saude.gravidade === "atencao" ? "badge badge-warn"
-                  : "badge badge-success"
-                }
-                style={{ whiteSpace: "normal", textAlign: "left" }}
-              >
-                {saude.resumo}
-              </p>
-              <p className="text-dim" style={{ fontSize: 12, margin: "8px 0 0" }}>
-                Perguntado{" "}
-                {minutosSemVigia !== null && minutosSemVigia < 90
-                  ? `há ${minutosSemVigia} min`
-                  : `em ${dataHoraLocal(vigia.occurred_at)}`}
-                {vigia.messaging_limit_tier ? ` · degrau de envio ${vigia.messaging_limit_tier}` : ""}
-                {vigia.verified_name ? ` · quem recebe vê "${vigia.verified_name}"` : ""}
-              </p>
-              {minutosSemVigia !== null && minutosSemVigia > 180 && (
-                <p className="text-dim" style={{ fontSize: 12, margin: "6px 0 0" }}>
-                  ⚠ Esta resposta tem mais de 3 horas. O vigia roda junto com o agendador — se ele
-                  parou, esta informação envelheceu junto.
+              {/* ⚠ O ALARME DE SILÊNCIO vem ANTES da lista. Campanha parada com tudo
+                  configurado certo é o pior estado possível: nada avisa, e cada dia
+                  perdido é uma lista que não anda. */}
+              {agendadorMudo && (
+                <p className="badge badge-danger" style={{ whiteSpace: "normal", textAlign: "left" }}>
+                  <strong>O agendador não bate há{" "}
+                  {minutosSemBatida === null
+                    ? "nunca bateu"
+                    : minutosSemBatida >= 120
+                      ? `${Math.floor(minutosSemBatida / 60)} horas`
+                      : `${minutosSemBatida} minutos`}.</strong>{" "}
+                  Ele bate de 15 em 15 minutos, das {a.window_start}h às {a.window_end}h, de segunda
+                  a sexta — quatro batidas perdidas seguidas não são atraso normal. O{" "}
+                  <code>schedule</code> do GitHub descarta execuções sob carga e não avisa ninguém.{" "}
+                  <strong>Use Enviar agora</strong> acima: isso não depende do agendador. Depois
+                  confira em <em>Actions → Motor proativo</em> no GitHub se as execuções pararam de
+                  ser criadas.
                 </p>
               )}
-            </>
-          )}
-        </div>
-      )}
 
-      <div className="card mt-16">
-        <p className="eyebrow" style={{ marginBottom: 8 }}>Últimas rodadas do motor</p>
-
-        {/* ⚠ O ALARME DE SILÊNCIO vem ANTES da lista. Campanha parada com tudo
-            configurado certo é o pior estado possível: nada avisa, e cada dia
-            perdido é uma lista que não anda. */}
-        {agendadorMudo && (
-          <p className="badge badge-danger" style={{ whiteSpace: "normal", textAlign: "left" }}>
-            <strong>O agendador não bate há{" "}
-            {minutosSemBatida === null
-              ? "nunca bateu"
-              : minutosSemBatida >= 120
-                ? `${Math.floor(minutosSemBatida / 60)} horas`
-                : `${minutosSemBatida} minutos`}.</strong>{" "}
-            Ele bate de 15 em 15 minutos, das {a.window_start}h às {a.window_end}h, de segunda
-            a sexta — quatro batidas perdidas seguidas não são atraso normal. O{" "}
-            <code>schedule</code> do GitHub descarta execuções sob carga e não avisa ninguém.{" "}
-            <strong>Use Enviar agora</strong> acima: isso não depende do agendador. Depois
-            confira em <em>Actions → Motor proativo</em> no GitHub se as execuções pararam de
-            ser criadas.
-          </p>
-        )}
-
-        {/* ⚠ A PROVA DE VIDA APARECE MESMO QUANDO ESTÁ TUDO CERTO. Campo que só
-            existe no erro é indistinguível de campo que não foi feito — a regra
-            do "campo cinza com o motivo escrito" do CLAUDE.md. Sem esta linha,
-            "o agendador está vivo" seria uma informação que ninguém tem como
-            confirmar, que é como 27/ago começou. */}
-        {!agendadorMudo && ultimaBatida && (
-          <p className="text-dim" style={{ margin: "0 0 4px", fontSize: 12 }}>
-            Agendador vivo — última batida{" "}
-            {minutosSemBatida !== null && minutosSemBatida < 60
-              ? `há ${minutosSemBatida} min`
-              : `em ${dataHoraLocal(ultimaBatida.occurred_at)}`}
-            {ultimaBatida.pulada && ultimaBatida.porque ? ` · ${ultimaBatida.porque}` : ""}
-          </p>
-        )}
-
-        {execucoes.length === 0 ? (
-          <p className="text-dim" style={{ margin: 0, fontSize: 14 }}>
-            Nenhuma rodada registrada ainda. Cada execução — do agendador ou do botão —
-            passa a aparecer aqui, <strong>inclusive as que não mandaram nada</strong>: é o
-            que distingue &ldquo;rodou e não tinha ninguém&rdquo; de &ldquo;não rodou&rdquo;.
-          </p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0" }}>
-            {execucoes.map((e, i) => (
-              <li key={e.id} style={{ padding: "8px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
-                <div className="row wrap" style={{ gap: 8, alignItems: "baseline" }}>
-                  <span className="text-faint" style={{ fontSize: 12, minWidth: 96 }}>
-                    {dataHoraLocal(e.occurred_at)}
-                  </span>
-                  <span className="badge">{e.origem === "agendador" ? "agendador" : "botão"}</span>
-                  {e.erro ? (
-                    <span className="badge badge-danger">falhou</span>
-                  ) : (
-                    <span className={e.enviadas > 0 ? "badge badge-success" : "badge"}>
-                      {e.enviadas} enviada(s)
-                    </span>
-                  )}
-                  {e.falhas > 0 && <span className="badge badge-danger">{e.falhas} não chegaram</span>}
-                  {e.simulado && <span className="badge badge-warn">simulação</span>}
-                  {e.interrompido && <span className="badge badge-warn">parou no meio</span>}
-                </div>
-                <p className="text-dim" style={{ fontSize: 12, margin: "2px 0 0 104px" }}>
-                  {e.erro ?? e.porque}
+              {/* ⚠ A PROVA DE VIDA APARECE MESMO QUANDO ESTÁ TUDO CERTO. Campo que só
+                  existe no erro é indistinguível de campo que não foi feito — a regra
+                  do "campo cinza com o motivo escrito" do CLAUDE.md. Sem esta linha,
+                  "o agendador está vivo" seria uma informação que ninguém tem como
+                  confirmar, que é como 27/ago começou. */}
+              {!agendadorMudo && ultimaBatida && (
+                <p className="text-dim" style={{ margin: "0 0 4px", fontSize: 12 }}>
+                  Agendador vivo — última batida{" "}
+                  {minutosSemBatida !== null && minutosSemBatida < 60
+                    ? `há ${minutosSemBatida} min`
+                    : `em ${dataHoraLocal(ultimaBatida.occurred_at)}`}
+                  {ultimaBatida.pulada && ultimaBatida.porque ? ` · ${ultimaBatida.porque}` : ""}
                 </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              )}
+
+              {execucoes.length === 0 ? (
+                <p className="text-dim" style={{ margin: 0, fontSize: 14 }}>
+                  Nenhuma rodada registrada ainda. Cada execução — do agendador ou do botão —
+                  passa a aparecer aqui, <strong>inclusive as que não mandaram nada</strong>: é o
+                  que distingue &ldquo;rodou e não tinha ninguém&rdquo; de &ldquo;não rodou&rdquo;.
+                </p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0" }}>
+                  {execucoes.map((e, i) => (
+                    <li key={e.id} style={{ padding: "8px 0", borderTop: i ? "1px solid var(--border)" : "none" }}>
+                      <div className="row wrap" style={{ gap: 8, alignItems: "baseline" }}>
+                        <span className="text-faint" style={{ fontSize: 12, minWidth: 96 }}>
+                          {dataHoraLocal(e.occurred_at)}
+                        </span>
+                        <span className="badge">{e.origem === "agendador" ? "agendador" : "botão"}</span>
+                        {e.erro ? (
+                          <span className="badge badge-danger">falhou</span>
+                        ) : (
+                          <span className={e.enviadas > 0 ? "badge badge-success" : "badge"}>
+                            {e.enviadas} enviada(s)
+                          </span>
+                        )}
+                        {e.falhas > 0 && <span className="badge badge-danger">{e.falhas} não chegaram</span>}
+                        {e.simulado && <span className="badge badge-warn">simulação</span>}
+                        {e.interrompido && <span className="badge badge-warn">parou no meio</span>}
+                      </div>
+                      <p className="text-dim" style={{ fontSize: 12, margin: "2px 0 0 104px" }}>
+                        {e.erro ?? e.porque}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+              </>
+            ),
+          },
+          {
+            id: "regras",
+            titulo: "Regras",
+            conteudo: (
+              <>
+            <form action={saveAutomation} className="card mt-24">
+              <p className="eyebrow">Modo de operação</p>
+              <div className="seg mt-8" role="radiogroup" aria-label="Modo de operação">
+                {(["off", "simulation", "auto"] as AutomationMode[]).map((m) => (
+                  <label key={m}>
+                    <input type="radio" name="mode" value={m} defaultChecked={a.mode === m} disabled={!canEdit} />
+                    {MODE_LABEL[m]}
+                  </label>
+                ))}
+              </div>
+              <p className="text-faint mt-8" style={{ fontSize: 13 }}>{MODE_HINT[a.mode]}</p>
+
+              <hr className="divider" />
+              <p className="eyebrow" style={{ marginBottom: 14 }}>Regras anti-bloqueio</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+                {FIELDS.map((f) => (
+                  <div key={f.key}>
+                    <label className="label" htmlFor={f.key}>{f.label}</label>
+                    <input
+                      id={f.key}
+                      name={f.key}
+                      type="number"
+                      min={f.min}
+                      max={f.max}
+                      defaultValue={a[f.key]}
+                      disabled={!canEdit}
+                    />
+                    <p className="text-faint" style={{ fontSize: 12, marginTop: 4 }}>{f.hint}</p>
+                  </div>
+                ))}
+              </div>
+
+              {canEdit ? (
+                <button type="submit" className="btn btn-primary mt-24">Salvar regras</button>
+              ) : (
+                <p className="text-faint mt-16" style={{ fontSize: 13 }}>
+                  Só quem é dono ou admin da empresa pode alterar estas regras.
+                </p>
+              )}
+            </form>
+
+            {/* O QUE FALTA PARA LIGAR, EM PORTUGUÊS.
+                Antes esta tela dizia só "quando estiver ligado" — e não dizia o que
+                é preciso para ligar, quem faz cada parte, nem quanto custa. Painel
+                que promete um botão sem dizer o caminho até ele vira promessa. */}
+              </>
+            ),
+          },
+          {
+            id: "canal",
+            titulo: "Canal oficial",
+            conteudo: (
+              <>
+                {/* ⚠ PERFIL E DISPARO DE TESTE MORAM AQUI, e não na Operação.
+                    Os dois falam do CANAL: o que a pessoa vê ao tocar no nome, e
+                    provar o encanamento antes da primeira mensagem real. Ficavam
+                    no meio do dia a dia porque a página era uma pilha só. */}
+            {canEdit && (
+              <Canal
+                configurado={status.configurado}
+                phoneId={status.phoneId}
+                temVerifyToken={status.temVerifyToken}
+                temAppSecret={status.temAppSecret}
+                atualizadoEm={status.atualizadoEm}
+                urlDoWebhook={`${await origemDoSite()}/api/whatsapp/webhook`}
+              />
+            )}
+
+                {canEdit && status.configurado && <PerfilDoNumero />}
+
+                {canEdit && <DisparoDeTeste />}
+              </>
+            ),
+          },
+          {
+            id: "roteamento",
+            titulo: "Por onde cada motivo sai",
+            conteudo: (
+              <>
+            {canEdit && (
+              <Roteamento
+                roteamento={lerRoteamento(data?.settings)}
+                modelos={lerModelos(data?.settings)}
+                temCredencial={status.configurado}
+                tetoCents={lerTetoDeMensagens(data?.settings)}
+              />
+            )}
+              </>
+            ),
+          },
+          {
+            id: "ajuda",
+            titulo: "Como funciona",
+            conteudo: (
+              <>
+            <div className="card mt-24" style={{ borderColor: "var(--border-brand)" }}>
+              <p className="eyebrow" style={{ marginBottom: 8 }}>Como funciona HOJE, sem automação</p>
+              <p style={{ marginTop: 0, fontSize: 14 }}>
+                O sistema já decide <strong>quem</strong> procurar e escreve <strong>o que</strong>{" "}
+                dizer — é a <a href="/painel/fila">Fila de envio</a>. O que ele não faz é
+                apertar o botão: você lê, ajusta e envia pelo WhatsApp com um clique.
+              </p>
+              <p className="text-dim" style={{ marginBottom: 0, fontSize: 14 }}>
+                <strong>Isso não é uma limitação temporária.</strong> Envio automático exige a
+                API oficial da Meta; qualquer atalho por provedor não oficial arrisca{" "}
+                <strong>banir o número da sua empresa</strong>, e o número é o ativo. Por isso
+                a fila existe: entrega quase tudo da automação sem esse risco.
+              </p>
+            </div>
+
+            <div className="card mt-16">
+              <p className="eyebrow" style={{ marginBottom: 8 }}>O que é preciso para ligar o envio automático</p>
+              <ol className="text-dim" style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.9 }}>
+                <li>
+                  <strong>Conta Meta Business</strong> (business.facebook.com). Não precisa de
+                  página do Facebook com conteúdo, mas precisa do portfólio de negócios. Se você
+                  já tem Instagram profissional, provavelmente ele já existe.
+                </li>
+                <li>
+                  <strong>Verificação da empresa</strong> na Meta — CNPJ, comprovante de endereço
+                  e, às vezes, telefone fixo. É a etapa mais demorada: costuma levar dias.
+                </li>
+                <li>
+                  <strong>Um número dedicado</strong> ao WhatsApp Business API. Ele{" "}
+                  <strong>não pode</strong> estar em uso no WhatsApp comum — e migrar um número
+                  que já tem conversas é caminho sem volta.
+                </li>
+                <li>
+                  <strong>Modelos de mensagem aprovados</strong> pela Meta para falar com quem
+                  não escreveu nas últimas 24 horas. Cada modelo passa por revisão.
+                </li>
+                <li>
+                  <strong>Credenciais</strong>: ID da conta WhatsApp Business, ID do número e um
+                  token permanente. É isso que a WSS Labs cadastra para a sua empresa.
+                </li>
+              </ol>
+              <p className="text-faint" style={{ fontSize: 13, marginTop: 12, marginBottom: 0 }}>
+                <strong>As credenciais não são digitadas aqui, e isso é decisão de segurança.</strong>{" "}
+                Token da Meta em campo de tela fica salvo no banco e visível para quem tem acesso
+                ao painel; o lugar certo dele é o cofre de variáveis do servidor. Quando você tiver
+                os três dados acima, mande para a WSS Labs — o cadastro é feito uma vez e não
+                aparece em tela nenhuma.
+              </p>
+            </div>
+
+            <div className="card mt-16">
+              <p className="eyebrow" style={{ marginBottom: 8 }}>Custo, para decidir com número</p>
+              <p className="text-dim" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
+                A Meta cobra <strong>por conversa iniciada</strong> pela empresa, não por mensagem,
+                e o valor muda por país e por categoria (utilidade, marketing, serviço). Conversa
+                iniciada pelo cliente costuma ser gratuita numa janela de 24 horas. Some isso ao
+                custo de IA por resposta, que o seu painel já mede em{" "}
+                <a href="/painel/admin/cotas">Cota de IA</a> — o teto de gasto continua valendo
+                igual com a automação ligada.
+              </p>
+            </div>
+              </>
+            ),
+          },
+        ]}
+      />
 
     </main>
   );
