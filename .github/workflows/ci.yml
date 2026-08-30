@@ -224,6 +224,12 @@ jobs:
       # tratar "respondeu 200" como "esta tudo bem".
       - name: Saude do canal — responder nao e estar bem
         run: node packages/db/tests/saude_canal_test.mjs
+      # ⚠ COR DEFINIDA SO DENTRO DE `@media (prefers-color-scheme: dark)` nao
+      # existe no estado SEM MARCACAO — que e o da maioria, porque quase
+      # ninguem troca o tema do sistema. O resultado nao e erro: e texto de um
+      # tema sobre fundo do outro, passando no build e no typecheck.
+      - name: Tema — claro e escuro definem os mesmos nomes
+        run: node packages/db/tests/tema_check.mjs
       # Quem pediu para nao receber mais. Honrar descadastro e exigencia da
       # LGPD e da politica do WhatsApp, e a marcacao e automatica porque a
       # janela entre "ele pediu" e "alguem viu" e onde a denuncia acontece.

@@ -1,57 +1,146 @@
 /* =========================================================================
    WSS Kairós — Sistema de design
-   Paleta derivada do logo: fundo marinho profundo, aperto de mão azul→ciano
-   fundindo em verde-limão (a seta de crescimento). Referência de acabamento:
-   Linear, Vercel, Stripe. Escuro é a identidade, não uma opção.
+
+   A PALETA É A MARCA, e isso não é decoração. O logo da WSS Labs é um buraco
+   negro com disco de acreção no espectro azul → turquesa → verde, e são essas
+   as três cores aqui. Elas não foram escolhidas por gosto: já existiam.
+
+   ⚠ O QUE MUDOU EM 29/ago/2026, e por quê.
+
+   1. TEMA CLARO EXISTE. Antes o escuro era "a identidade, não uma opção" — e
+      quem opera fica OITO HORAS por dia nesta tela, num balcão de academia com
+      luz de teto. Tema é decisão de quem usa, não da marca. O escuro continua
+      sendo o padrão do produto; deixou de ser prisão.
+
+   2. TOKEN É A FONTE, NOS DOIS TEMAS. A regra que Linear e Supabase seguem:
+      claro não é o escuro invertido, é outro conjunto de valores dos MESMOS
+      nomes. Componente nenhum escreve cor literal — se escrever, ele quebra
+      num dos dois e ninguém percebe até um cliente abrir.
+
+   3. TRÊS ESTADOS, NÃO DOIS. `:root` define o claro; `prefers-color-scheme:
+      dark` cobre quem nunca escolheu (a maioria); `[data-theme]` cobre quem
+      escolheu. Definir cor só dentro de um `@media` é o defeito clássico: no
+      estado sem marcação a página renderiza texto de um tema sobre fundo do
+      outro.
+
+   4. O GRADIENTE VIRA ASSINATURA, NÃO PAPEL DE PAREDE. Ele fica em faixa fina,
+      foco e marca — nunca atrás de texto. Gradiente grande é o que faz produto
+      sério parecer template.
+
+   ⚠ E A DENSIDADE É A DECISÃO DE PRODUTO, não o brilho. As referências de CRM
+   que ganham em 2026 (Attio, Retool, Linear) investem em densidade, edição no
+   lugar e teclado — é lá que a recepcionista vive. "Futurista" envelhece em um
+   ano e cansa em uma tarde.
    ========================================================================= */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Marca */
-  --brand-blue: #2e8df2;
-  --brand-cyan: #37c1e8;
-  --brand-green: #8bd32b;
+  /* Marca — as três cores do disco de acreção. Iguais nos dois temas. */
+  --brand-blue: #1f6fd0;
+  --brand-cyan: #1d9dc4;
+  --brand-green: #5f9c14;
   --brand-gradient: linear-gradient(115deg, #2e8df2 0%, #37c1e8 46%, #8bd32b 100%);
-  --brand-gradient-soft: linear-gradient(115deg, rgba(46, 141, 242, 0.16), rgba(139, 211, 43, 0.16));
+  --brand-gradient-soft: linear-gradient(115deg, rgba(46, 141, 242, 0.10), rgba(139, 211, 43, 0.10));
 
-  /* Superfícies */
-  --bg: #080b14;
-  --bg-elev: #0d1220;
-  --surface: #111a2e;
-  --surface-2: #17233b;
-  --surface-hover: #1b294480;
+  /* Superfícies — neutros com viés azulado, para conversarem com a marca.
+     Cinza puro ao lado de ciano parece sujo; este viés é escolha, não sobra. */
+  --bg: #f4f6fa;
+  --bg-elev: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #eef1f7;
+  --surface-hover: #e6ebf4;
 
-  /* Traços */
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --border-brand: rgba(55, 193, 232, 0.35);
+  --border: rgba(16, 26, 46, 0.10);
+  --border-strong: rgba(16, 26, 46, 0.18);
+  --border-brand: rgba(29, 157, 196, 0.45);
 
-  /* Texto */
-  --text: #e9eef8;
-  --text-dim: #9aa7bd;
-  --text-faint: #5f6b83;
+  --text: #101a2e;
+  --text-dim: #4a5772;
+  --text-faint: #78849c;
 
-  /* Semânticos */
-  --warn: #eab54d;
-  --danger: #f2635f;
-  --success: #7bd45a;
+  /* Semânticos — separados da marca de propósito: cor de estado não pode
+     competir com cor de identidade, senão "atenção" vira decoração. */
+  --warn: #9a6412;
+  --danger: #b23b36;
+  --success: #2b7a3f;
 
-  /* Forma */
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;
   --radius-xl: 22px;
 
-  /* Elevação */
+  --shadow-sm: 0 1px 2px rgba(16, 26, 46, 0.06);
+  --shadow: 0 1px 3px rgba(16, 26, 46, 0.08), 0 12px 32px -18px rgba(16, 26, 46, 0.30);
+  --shadow-brand: 0 8px 30px -12px rgba(31, 111, 208, 0.35);
+  --ring: 0 0 0 3px rgba(31, 111, 208, 0.30);
+
+  --nav-h: 60px;
+  --content-w: 1040px;
+  /* ⚠ A TINTA QUE VAI SOBRE O GRADIENTE — igual nos dois temas, e é isso que a
+     torna correta. O gradiente da marca é claro e saturado sempre; texto claro
+     em cima dele some. Ela NÃO acompanha o tema: acompanha o fundo, que é a
+     marca. Antes era `#04101f` solto em três lugares, sem ninguém explicar por
+     que aquela cor não invertia. */
+  --on-brand: #04101f;
+}
+
+/* O ESCURO — para quem não escolheu nada e usa o sistema em modo escuro.
+   Guardado com `:not([data-theme="light"])` para que a escolha explícita da
+   pessoa ganhe do sistema operacional dela. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --brand-blue: #2e8df2;
+    --brand-cyan: #37c1e8;
+    --brand-green: #8bd32b;
+    --brand-gradient-soft: linear-gradient(115deg, rgba(46, 141, 242, 0.16), rgba(139, 211, 43, 0.16));
+    --bg: #080b14;
+    --bg-elev: #0d1220;
+    --surface: #111a2e;
+    --surface-2: #17233b;
+    --surface-hover: #1b294480;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --border-brand: rgba(55, 193, 232, 0.35);
+    --text: #e9eef8;
+    --text-dim: #9aa7bd;
+    --text-faint: #5f6b83;
+    --warn: #eab54d;
+    --danger: #f2635f;
+    --success: #7bd45a;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+    --shadow-brand: 0 8px 30px rgba(46, 141, 242, 0.25);
+    --ring: 0 0 0 3px rgba(46, 141, 242, 0.35);
+  }
+}
+
+/* O ESCURO ESCOLHIDO A DEDO — ganha do sistema operacional nos dois sentidos. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --brand-blue: #2e8df2;
+  --brand-cyan: #37c1e8;
+  --brand-green: #8bd32b;
+  --brand-gradient-soft: linear-gradient(115deg, rgba(46, 141, 242, 0.16), rgba(139, 211, 43, 0.16));
+  --bg: #080b14;
+  --bg-elev: #0d1220;
+  --surface: #111a2e;
+  --surface-2: #17233b;
+  --surface-hover: #1b294480;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-brand: rgba(55, 193, 232, 0.35);
+  --text: #e9eef8;
+  --text-dim: #9aa7bd;
+  --text-faint: #5f6b83;
+  --warn: #eab54d;
+  --danger: #f2635f;
+  --success: #7bd45a;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
   --shadow-brand: 0 8px 30px rgba(46, 141, 242, 0.25);
   --ring: 0 0 0 3px rgba(46, 141, 242, 0.35);
-
-  /* Ritmo */
-  --nav-h: 60px;
-  --content-w: 1040px;
 }
 
 * {
@@ -65,8 +154,7 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  font-family: var(--font-sans, "Inter"), system-ui, -apple-system, "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
   font-feature-settings: "cv11", "ss01";
   line-height: 1.5;
   color: var(--text);
@@ -217,13 +305,13 @@ code {
 .btn-primary {
   border: none;
   background: var(--brand-gradient);
-  color: #04101f;
+  color: var(--on-brand);
   font-weight: 650;
   box-shadow: var(--shadow-brand);
 }
 .btn-primary:hover {
   filter: brightness(1.07);
-  color: #04101f;
+  color: var(--on-brand);
 }
 .btn-ghost {
   background: transparent;
@@ -442,7 +530,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .seg label:has(input:checked) {
   background: var(--brand-gradient);
-  color: #04101f;
+  color: var(--on-brand);
   font-weight: 650;
 }
 
@@ -521,4 +609,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     -webkit-overflow-scrolling: touch;
     padding-bottom: 2px;
   }
+}
+
+/* ⚠ A DISPLAY APARECE EM TRÊS LUGARES, e essa contenção é a decisão. Sora em
+   texto corrido cansa; em título de página e marca ela dá o ar técnico que o
+   logo já tem, sem efeito nenhum. Fonte de personalidade usada em tudo vira
+   fonte sem personalidade. */
+h1,
+.brandmark {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Números em coluna alinham. Fila, placar e gestão vivem de comparar valores,
+   e dígito de largura variável faz a coluna dançar a cada atualização. */
+.stat-num,
+td,
+.num {
+  font-variant-numeric: tabular-nums;
 }
