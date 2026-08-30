@@ -114,7 +114,34 @@ export async function carregarFila(entrada: {
 }): Promise<CargaDaFila> {
   const { supabase, tenantId, skillKey, ownerId = null } = entrada;
 
-  const { stages, cadences, recurrence, contract } = await getSkillFormConfig(skillKey);
+  // ⚠ O MANIFESTO É LIDO COM O CLIENTE DE QUEM CHAMOU. A tela passa o do
+  // usuário; o motor passa o admin, porque no agendador não existe sessão.
+  //
+  // Sem isto a policy `skills_read_installed` negava a leitura do agendador e
+  // devolvia `null` sem erro: `stages` vinha vazio, ninguém casava com etapa
+  // nenhuma, e a fila saía VAZIA. O motor então registrava, muito bem
+  // comportado, "Nenhum candidato passou nas regras agora" — a frase que
+  // esta casa passa o tempo todo tentando distinguir de "está quebrado".
+  const { stages, cadences, recurrence, contract } = await getSkillFormConfig(skillKey, supabase);
+
+  // ⚠ MANIFESTO SEM ETAPA É DEFEITO, NÃO OPERAÇÃO NORMAL — e precisa PARAR.
+  //
+  // Toda Skill instalada declara etapas; zero etapas só acontece quando a
+  // leitura falhou (RLS negando, `skill_key` errada, manifesto não semeado).
+  // Deixar seguir produz uma fila vazia indistinguível de um dia sem trabalho,
+  // e foi exatamente assim que o agendador passou dias parecendo saudável.
+  //
+  // Quem chama trata: o motor grava a rodada com `erro` (e por isso ela NÃO
+  // reinicia o relógio do espaçamento, ver `lib/espacamento.ts`), e a tela
+  // mostra a mensagem em vez de uma lista vazia sem explicação.
+  if (stages.length === 0) {
+    throw new Error(
+      `A Skill "${skillKey}" voltou sem nenhuma etapa. Ou a leitura de \`skills\` foi ` +
+      `negada (cliente sem sessão numa policy que exige vínculo), ou a \`skill_key\` ` +
+      `da empresa não existe, ou o manifesto não foi semeado no banco ` +
+      `(\`node scripts/seed-skills.mjs ${skillKey}\`). A fila NÃO é vazia: ela não foi montada.`,
+    );
+  }
 
   const [cData, ixData, { data: tRow }] = await Promise.all([
     lerTudo<ContatoDaCarga>(

@@ -26,6 +26,22 @@
 // As três foram corrigidas uma de cada vez, e a segunda e a terceira estavam
 // no mesmo arquivo. Corrigir ocorrência não fecha classe.
 //
+// ⚠ E EM 30/ago/2026 A CLASSE VOLTOU PELA QUARTA VEZ, na peça que roda sozinha
+// e gasta dinheiro do cliente. `getSkillFormConfig` criava o PRÓPRIO cliente de
+// sessão. Na tela isso está certo. **No agendador não existe sessão**: a
+// consulta saía como `anon`, a policy negava, `maybeSingle()` devolvia `null`
+// sem erro, `stages` vinha vazio, a fila saía vazia — e o motor registrava, bem
+// comportado, "Nenhum candidato passou nas regras agora".
+//
+// O motor agendado NUNCA conseguiu montar fila: as 11 rodadas com
+// `origem = 'agendador'` tinham `avaliados = 0`, e as 61 mensagens da campanha
+// saíram todas do botão *Enviar agora*, que roda com a sessão do fundador.
+// Descoberto na véspera da primeira rodada autônoma, simulando por fora do
+// painel — reler o código não teria achado, de novo.
+//
+// Por isso existe a terceira categoria: **`ambos`**, o leitor que serve tela e
+// máquina. Ele não escolhe cliente — ele RECEBE.
+//
 // O QUE ESTE TESTE FAZ
 // Ele NÃO tenta adivinhar se o cliente está certo — adivinhação gera alarme
 // falso e alarme falso ensina a ignorar teste. Ele mantém um INVENTÁRIO: todo
@@ -49,6 +65,10 @@ const RAIZ = new URL("../../../apps/web/", import.meta.url).pathname.replace(/^\
  * `catalogo` — pergunta sobre o catálogo de segmentos em geral (listar todos,
  *              ou conferir um que ainda não está instalado). A RLS
  *              necessariamente devolve vazio. TEM que ser `service_role`.
+ * `ambos`    — o MESMO leitor serve tela (com sessão) e máquina (sem). Ele não
+ *              pode escolher o cliente: tem que RECEBER de quem chama. Foi a
+ *              categoria que faltava em 30/ago, e a falta dela calou o motor
+ *              agendado por dias parecendo saúde.
  */
 const INVENTARIO = {
   "app/calendario/[token]/route.ts": "proprio",
@@ -67,7 +87,7 @@ const INVENTARIO = {
   "app/painel/page.tsx": "proprio",
   "app/painel/responder/ai-actions.ts": "proprio",
   "lib/entitlements.ts": "proprio",
-  "lib/skill.ts": "proprio",
+  "lib/skill.ts": "ambos",
 };
 
 function arquivos(dir, acc = []) {
@@ -138,6 +158,47 @@ for (const [rel, linhas] of encontrados) {
       } else passou++;
     } else passou++;
   }
+}
+
+// 4. O leitor `ambos` recebe o cliente de quem chama, e quem roda SEM sessão
+//    passa o dele. As duas metades: uma sem a outra não vale nada.
+//
+// ⚠ NORMALIZA CRLF ANTES DE CASAR PADRÃO — regra do CLAUDE.md: este arquivo
+// está em CRLF na máquina do fundador e em LF no CI.
+const semCR = (t) => t.split('\\r').join("");
+for (const [rel] of encontrados) {
+  if (INVENTARIO[rel] !== "ambos") continue;
+  const txt = semCR(readFileSync(join(RAIZ, rel), "utf8"));
+  // Ele tem que DECLARAR o parâmetro e USAR o que recebeu.
+  const recebe = txt.includes("cliente?:") && txt.includes("cliente ??");
+  if (!recebe) {
+    falhas.push(
+      `${rel} é \`ambos\` e não aceita o cliente de quem chama.` +
+        "\n      Ele roda com e sem sessão. Criando o próprio cliente de sessão, a" +
+        "\n      chamada sem usuário volta VAZIA — sem erro — e a fila do motor some.",
+    );
+  } else passou++;
+}
+
+// ⚠ E QUEM CHAMA SEM SESSÃO PRECISA PASSAR O CLIENTE. `lib/fila-db.ts` é o
+// caminho do motor: a tela passa o do usuário, o agendador passa o admin.
+{
+  const filaDb = semCR(readFileSync(join(RAIZ, "lib/fila-db.ts"), "utf8"));
+  if (!filaDb.includes("getSkillFormConfig(skillKey, supabase)")) {
+    falhas.push(
+      "lib/fila-db.ts não passa o próprio cliente para getSkillFormConfig." +
+        "\n      É o caminho do motor, que não tem sessão: sem o cliente, a leitura do" +
+        "\n      manifesto volta vazia e a fila sai VAZIA sem erro nenhum.",
+    );
+  } else passou++;
+  // Manifesto sem etapa é defeito, e defeito tem que PARAR — senão a fila
+  // vazia volta a ser indistinguível de um dia sem trabalho.
+  if (!filaDb.includes("stages.length === 0")) {
+    falhas.push(
+      "lib/fila-db.ts não falha quando o manifesto volta sem etapa." +
+        "\n      Zero etapas é leitura quebrada, nunca operação normal.",
+    );
+  } else passou++;
 }
 
 console.log(`  ${encontrados.size} arquivos leem \`skills\`; inventário tem ${Object.keys(INVENTARIO).length}.`);

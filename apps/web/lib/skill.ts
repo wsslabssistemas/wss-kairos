@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ClienteSupabase = SupabaseClient<any, any, any>;
 
 import type { RecurrenceConfig } from "./recurrence";
 import type { RenewalConfig } from "./renovacao";
@@ -38,9 +42,39 @@ export type Stage = {
   goal?: string;
 };
 
-/** Config de formulário vinda do manifesto da Skill (campos são dado, não código). */
-export async function getSkillFormConfig(skillKey: string) {
-  const supabase = await createClient();
+/**
+ * Config de formulário vinda do manifesto da Skill (campos são dado, não código).
+ *
+ * ⚠ O CLIENTE VEM DE QUEM CHAMA — e ignorar isso foi o defeito mais caro de
+ * 30/ago/2026, descoberto na véspera da primeira rodada autônoma.
+ *
+ * Esta função criava o próprio cliente de sessão. Em toda tela isso está
+ * certo: existe usuário, a policy `skills_read_installed` passa pelo vínculo
+ * do tenant, e o cliente do usuário é o mais seguro que existe.
+ *
+ * **No agendador não existe sessão.** A consulta saía como `anon`, a policy
+ * negava, e o `maybeSingle()` devolvia `null` — **sem erro, sem aviso**. Daí
+ * `stages` vinha `[]`, `computeDueTouches` não achava a etapa de ninguém, a
+ * fila saía VAZIA e o motor registrava, muito bem comportado, *"Nenhum
+ * candidato passou nas regras agora"*.
+ *
+ * O estrago medido: **o motor agendado nunca conseguiu montar fila.** As 11
+ * rodadas com `origem = 'agendador'` em `motor_execucoes` têm todas
+ * `enviadas = 0` e `avaliados = 0`; as 61 mensagens da campanha saíram, todas,
+ * do botão *Enviar agora* — que roda numa Server Action, com a sessão do
+ * fundador. O painel provava que o motor funcionava; o agendador provava que
+ * "não havia ninguém para falar". Nenhum dos dois era verdade.
+ *
+ * É a classe que o `CLAUDE.md` documenta em letras garrafais — **RLS que
+ * devolve vazio não é erro** — encontrada em uma peça que roda sozinha e gasta
+ * dinheiro do cliente. Guardado por `skills_client_check.mjs`.
+ *
+ * @param cliente Opcional. Quem roda SEM sessão (motor, cron, webhook) é
+ *   obrigado a passar o seu — normalmente o admin. Sem isso a leitura volta
+ *   vazia e o silêncio vira "não havia ninguém".
+ */
+export async function getSkillFormConfig(skillKey: string, cliente?: ClienteSupabase) {
+  const supabase = cliente ?? (await createClient());
   const { data } = await supabase
     .from("skills")
     .select("manifest")
