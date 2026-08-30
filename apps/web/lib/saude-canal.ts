@@ -67,3 +67,49 @@ export function avaliarSaude(leitura: LeituraDoCanal): Veredito {
   const nota = q === "GREEN" || q === "HIGH" ? "alta" : q ? q.toLowerCase() : "não informada";
   return { gravidade: "ok", resumo: `Canal respondendo, qualidade ${nota}.` };
 }
+
+/**
+ * A NOTA DA META, EM PORTUGUÊS E COM O QUE FAZER.
+ *
+ * ⚠ ESTAVA DENTRO DE UM COMPONENTE DE TELA, e saiu de lá em 29/ago quando a
+ * qualidade passou a aparecer também no Canal oficial. Duas cópias do mesmo
+ * texto divergem na primeira mudança — e aqui o texto É a informação: "GREEN"
+ * não diz nada para quem opera uma academia; "PARE de ampliar" diz.
+ *
+ * ⚠ E CADA NOTA TRAZ A AÇÃO, não só o rótulo. Saber que a qualidade caiu para
+ * média sem saber o que fazer com isso é a mesma coisa que não saber.
+ */
+export const QUALIDADE: Record<string, { txt: string; cls: string; oque: string }> = {
+  GREEN: {
+    txt: "Alta", cls: "badge badge-success",
+    oque: "Pode seguir com a campanha no ritmo combinado.",
+  },
+  HIGH: {
+    txt: "Alta", cls: "badge badge-success",
+    oque: "Pode seguir com a campanha no ritmo combinado.",
+  },
+  YELLOW: {
+    txt: "Média", cls: "badge badge-warn",
+    oque: "PARE de ampliar. Mande menos, e só para quem saiu há pouco tempo — quem esfriou há mais tempo bloqueia mais.",
+  },
+  MEDIUM: {
+    txt: "Média", cls: "badge badge-warn",
+    oque: "PARE de ampliar. Mande menos, e só para quem saiu há pouco tempo — quem esfriou há mais tempo bloqueia mais.",
+  },
+  RED: {
+    txt: "Baixa", cls: "badge badge-danger",
+    oque: "PARE a campanha. Nesse estado a Meta reduz sua entrega, e insistir é o caminho para perder o número.",
+  },
+  FLAGGED: {
+    txt: "Baixa", cls: "badge badge-danger",
+    oque: "PARE a campanha. Nesse estado a Meta reduz sua entrega, e insistir é o caminho para perder o número.",
+  },
+  UNKNOWN: {
+    txt: "ainda sem nota", cls: "badge",
+    oque: "A Meta ainda não avaliou — número novo com pouco volume costuma ficar assim por alguns dias.",
+  },
+};
+
+export function lerQualidade(nota: string | null | undefined) {
+  return QUALIDADE[(nota ?? "UNKNOWN").toUpperCase()] ?? QUALIDADE.UNKNOWN;
+}

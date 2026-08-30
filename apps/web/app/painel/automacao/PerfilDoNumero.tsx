@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { carregarPerfil, salvarPerfil, type PerfilResult } from "./perfil-actions";
+import { lerQualidade } from "@/lib/saude-canal";
 
 /**
  * ⚠ É O QUE A PESSOA VÊ ANTES DE DECIDIR SE RESPONDE.
@@ -44,25 +45,8 @@ export function PerfilDoNumero() {
    * não. O número que governa a decisão mais cara da operação tem que vir com
    * a decisão escrita ao lado.
    */
-  const QUALIDADE: Record<string, { txt: string; cls: string; oque: string }> = {
-    GREEN: {
-      txt: "Alta", cls: "badge badge-success",
-      oque: "Pode seguir com a campanha no ritmo combinado.",
-    },
-    YELLOW: {
-      txt: "Média", cls: "badge badge-warn",
-      oque: "PARE de ampliar. Mande menos, e só para quem saiu há pouco tempo — quem esfriou há mais tempo bloqueia mais.",
-    },
-    RED: {
-      txt: "Baixa", cls: "badge badge-danger",
-      oque: "PARE a campanha. Nesse estado a Meta reduz sua entrega, e insistir é o caminho para perder o número.",
-    },
-    UNKNOWN: {
-      txt: "ainda sem nota", cls: "badge",
-      oque: "A Meta ainda não avaliou — número novo com pouco volume costuma ficar assim por alguns dias.",
-    },
-  };
-  const q = QUALIDADE[estado?.quality_rating ?? "UNKNOWN"] ?? QUALIDADE.UNKNOWN;
+  // A tradução mora em `lib/saude-canal.ts`: o Canal oficial usa a mesma.
+  const q = lerQualidade(estado?.quality_rating);
 
   const abrir = async () => {
     setCarregando(true);

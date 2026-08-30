@@ -13,6 +13,9 @@ import { Responder } from "./Responder";
 import { dataHoraLocal } from "@/lib/fuso";
 import { lerFalha, agruparFalhas } from "@/lib/erro-meta";
 import { Abas } from "../Abas";
+import { lerQualidade } from "@/lib/saude-canal";
+import { ultimaVerificacao } from "@/lib/vigia-canal";
+import { estadoDoNumero } from "@/lib/perfil-canal";
 
 export const metadata = { title: "Canal oficial" };
 
@@ -368,6 +371,47 @@ export default async function ConversasPage({
   const fs = (listaFalhas as Linha[] | null) ?? [];
   const rs = (recentes as Linha[] | null) ?? [];
 
+  /**
+   * A qualidade do número, para o topo da tela.
+   *
+   * Prefere o que o vigia gravou (`0069`); sem registro, pergunta à Meta uma
+   * vez. Falhar aqui não derruba a tela — o canal continua funcionando e a
+   * pessoa continua trabalhando; o que se perde é o aviso.
+   */
+  let qualidade: {
+    q: { txt: string; cls: string; oque: string };
+    degrau: string | null;
+    nome: string | null;
+    nomeRejeitado: boolean;
+    quando: string | null;
+  } | null = null;
+  try {
+    const reg = await ultimaVerificacao(tenant.id);
+    if (reg?.ok) {
+      qualidade = {
+        q: lerQualidade(reg.quality_rating),
+        degrau: reg.messaging_limit_tier,
+        nome: reg.verified_name,
+        nomeRejeitado: ["DECLINED", "REJECTED"].includes((reg.name_status ?? "").toUpperCase()),
+        quando: reg.occurred_at,
+      };
+    } else {
+      const cred = await credencialDoCanal(tenant.id);
+      const viva = cred ? await estadoDoNumero(cred) : null;
+      if (viva?.ok) {
+        qualidade = {
+          q: lerQualidade(viva.estado.quality_rating),
+          degrau: viva.estado.messaging_limit_tier ?? null,
+          nome: viva.estado.verified_name ?? null,
+          nomeRejeitado: ["DECLINED", "REJECTED"].includes((viva.estado.name_status ?? "").toUpperCase()),
+          quando: null,
+        };
+      }
+    }
+  } catch (e) {
+    console.error(`[conversas] nao consegui a qualidade: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   return (
     <main>
       <div className="between">
@@ -379,6 +423,40 @@ export default async function ConversasPage({
         equipe tem pelo WhatsApp de cada um não passam por aqui — e o histórico completo
         de cada pessoa continua na ficha dela.
       </p>
+
+      {/* ⚠ A QUALIDADE DO NÚMERO VEM ANTES DE TUDO, e ela estava atrás de um
+          botão numa tela de configuração. O fundador: *"não é melhor deixar no
+          canal oficial essa questão da qualidade, pra já olhar de cara?"* — e
+          está certo: é o fato que MUDA A DECISÃO DO DIA. Com qualidade média,
+          a ação certa é reduzir volume; com alta, é ampliar. Quem abre esta
+          tela para trabalhar precisa saber disso antes de escolher o que fazer.
+
+          ⚠ E O NOME REJEITADO ANDA JUNTO. Ele não impede envio nenhum, e por
+          isso passa meses despercebido — mas é o que a pessoa lê antes de
+          decidir se abre a mensagem. Qualidade alta com nome errado é um
+          problema silencioso do tamanho de uma campanha inteira.
+
+          ⚠ PREFERE O REGISTRO DO VIGIA, e só pergunta à Meta quando não há
+          registro. Consultar a cada abertura de tela custaria uma chamada
+          externa no caminho de quem trabalha — e depois da `0069` o vigia já
+          responde de graça. */}
+      {qualidade && (
+        <div className="card mt-16">
+          <div className="row wrap" style={{ gap: 10, alignItems: "center" }}>
+            <span className={qualidade.q.cls}>Qualidade do número: {qualidade.q.txt}</span>
+            {qualidade.degrau && (
+              <span className="badge">{qualidade.degrau.replace("TIER_", "até ")}/dia</span>
+            )}
+            {qualidade.nomeRejeitado && (
+              <span className="badge badge-warn">Nome rejeitado — quem recebe vê &ldquo;{qualidade.nome}&rdquo;</span>
+            )}
+            <span className="text-faint" style={{ fontSize: 12 }}>
+              {qualidade.quando ? `conferido ${quando(qualidade.quando)}` : "perguntado agora"}
+            </span>
+          </div>
+          <p className="text-dim" style={{ fontSize: 13, margin: "8px 0 0" }}>{qualidade.q.oque}</p>
+        </div>
+      )}
 
       {/* ⚠ AS CONVERSAS VÊM PRIMEIRO, e isto foi reordenado em 24/ago a pedido
           do fundador: *"faz uma ação no topo da tela, depois desce lá para
