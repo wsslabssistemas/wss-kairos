@@ -357,6 +357,11 @@ export async function aplicar(
       // pode virar corromper.
       const patch: Record<string, unknown> = { custom };
       if (l.vigencia_ate) patch.contract_end = l.vigencia_ate;
+      // ⚠ O INICIO DO CONTRATO — sem ele a regua de renovacao nao sabe quanto
+      // ja passou, e num plano MENSAL a janela de 30 dias abre no dia da
+      // matricula. Mesma regra do fim: linha sem data legivel nao apaga a data
+      // que existe.
+      if (l.vigencia_de) patch.contract_start = l.vigencia_de;
 
       // ⚠ QUEM ESTÁ NA FONTE COM CONTRATO CORRENDO VOLTA PARA A ETAPA ATIVA.
       //

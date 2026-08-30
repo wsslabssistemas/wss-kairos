@@ -118,6 +118,13 @@ export type ContatoComContrato = {
   name: string;
   phone: string | null;
   journey_stage: string;
+  /**
+   * Quando o contrato COMEÇOU (ISO). Opcional: base antiga não tem.
+   *
+   * ⚠ Sem ela a régua não sabe quanto do contrato já passou — e é isso que faz
+   * um plano MENSAL abrir a janela de renovação no dia da matrícula.
+   */
+  contract_start?: string | null;
   contract_end: string | null;
   /**
    * Quando a vigência foi CONFERIDA na fonte pela última vez (ISO, só data).
@@ -281,6 +288,37 @@ export function computeRenovacoes(
     // quando já é hora da condição.
     const janela = JAN.find((j) => dias <= j.diasAntes);
     if (!janela) continue;
+
+    /**
+     * ⚠ CONTRATO QUE ACABOU DE COMEÇAR NÃO ESTÁ A VENCER.
+     *
+     * O DEFEITO DO PLANO MENSAL, apontado pelo fundador em 29/ago: as janelas
+     * abrem 60 e 30 dias antes do vencimento, e um plano de 30 dias tem
+     * `diasParaVencer = 30` **no dia da matrícula**. Quem assinava hoje
+     * aparecia na fila hoje, com o assunto "seu plano está a vencer", para um
+     * vendedor perguntar de renovação a quem acabou de pagar.
+     *
+     * ⚠ E O ESTRAGO NÃO É SÓ A MENSAGEM ESTRANHA. `renovacao` tem peso 1 na
+     * fila — quase o topo. Cada mensal novo entrava na frente de gente com
+     * conversa de verdade devida, empurrando o trabalho útil para baixo.
+     *
+     * A regra: a janela não abre antes de **metade do contrato** ter passado.
+     * Mensal de 30 dias abre no dia 15; anual de 365 abre no dia 182, mas os
+     * 60 dias de antecedência mandam bem depois disso — então para plano longo
+     * nada muda. É uma trava que só morde onde o defeito existe.
+     *
+     * ⚠ SEM `contract_start` A REGRA NÃO OPINA. Base antiga não tem a data, e
+     * barrar por ausência de dado tiraria renovação legítima da fila em
+     * silêncio — o mesmo princípio do recorte e do `paraE164BR`.
+     */
+    if (c.contract_start) {
+      const inicio = Date.parse(c.contract_start);
+      const fim = Date.parse(c.contract_end);
+      if (Number.isFinite(inicio) && Number.isFinite(fim) && fim > inicio) {
+        const metade = inicio + (fim - inicio) / 2;
+        if (hoje.getTime() < metade) continue;
+      }
+    }
 
     out.push({
       contactId: c.id, name: c.name, phone: c.phone,

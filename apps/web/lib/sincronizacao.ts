@@ -38,6 +38,19 @@ export type LinhaDaFonte = {
   nome?: string | null;
   /** ISO (YYYY-MM-DD). Ausente quando a fonte não declara vigência. */
   vigencia_ate?: string | null;
+  /**
+   * ISO (YYYY-MM-DD) do INÍCIO do contrato.
+   *
+   * ⚠ ELA ENTROU POR CAUSA DO PLANO MENSAL. As janelas de renovação abrem 60 e
+   * 30 dias antes do vencimento — e num plano de 30 dias isso significa **abrir
+   * no dia da matrícula**. Quem assinou hoje aparecia na fila hoje, com o
+   * assunto "seu plano está a vencer", para um vendedor que ia perguntar de
+   * renovação a alguém que acabou de pagar.
+   *
+   * Sem o início não dá para saber quanto do contrato já passou, e sem isso a
+   * régua não tem como distinguir "a vencer" de "acabou de começar".
+   */
+  vigencia_de?: string | null;
   /** Marcação derivada pelo sistema (ex.: veio da aba de convênio). */
   marcacoes?: string[];
   /**

@@ -349,6 +349,15 @@ export function ItemDaFila({
           className="stack"
           style={{ gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}
         >
+          {/* ⚠ O REGISTRO PRECISA SE ANUNCIAR. O fundador procurou "um botão de
+              registrar, como tem na automação" e concluiu que não existia — e
+              ele existe: é o botão lá embaixo, chamado "Marquei como enviado",
+              depois de um campo opcional e de uma rolagem.
+              Função que existe e não se apresenta é função que não existe para
+              quem usa. E o custo aqui é o de sempre: sem o registro, o toque
+              não conta, a pessoa fica na fila, e o ajuste do texto — que é a
+              lição mais valiosa que temos — se perde. */}
+          <p className="eyebrow" style={{ margin: 0 }}>Registrar o que aconteceu</p>
           <input type="hidden" name="contact_id" value={contactId} />
           {/* Sem texto gerado, vai vazio — e `marcarEnviado` grava "(toque da
               fila, sem texto registrado)". O toque conta igual; o que não

@@ -79,6 +79,16 @@ const PLANO_H = ["plano", "produto", "servico", "serviço", "modalidade", "contr
 
 /** Cabeçalhos que dizem o CICLO do plano — é o que separa renovação de ajuste. */
 const CICLO_H = ["meses", "periodicidade", "ciclo", "duracao", "duração"];
+
+/**
+ * Cabeçalhos que dizem quando o contrato COMEÇOU.
+ *
+ * ⚠ Não confundir com a data de cadastro. "Inclusao" fica de fora de
+ * propósito: é quando a linha foi digitada no sistema da academia, não quando
+ * o contrato passou a valer — e usar uma pela outra faria a régua de renovação
+ * medir a partir do dia errado.
+ */
+const INICIO_H = ["inicio", "início", "inicio-vigencia", "data-inicio", "vigencia-de"];
 const CICLO_PALAVRA: Record<string, number> = {
   mensal: 30, bimestral: 60, trimestral: 90, quadrimestral: 120,
   semestral: 180, anual: 365, bianual: 730,
@@ -139,6 +149,11 @@ export function ler(csv: string, opts: { exigeVigencia?: boolean } = {}): Leitur
   // O NOME do plano, cru. Quem classifica é `lib/planos.ts`, com a lista do
   // manifesto do segmento — este arquivo não pode conhecer "Treino Avulso".
   const iPlano = h.findIndex((c) => PLANO_H.some((k) => c === k || c.startsWith(k)));
+  // IGUALDADE EXATA, nao `startsWith`: "Inicio" e "Data-de-Inclusao" sao
+  // colunas diferentes, e casar por prefixo faria a regua de renovacao medir a
+  // partir do dia em que alguem digitou a linha, nao de quando o contrato
+  // passou a valer.
+  const iInicio = h.findIndex((c) => INICIO_H.includes(c));
 
   // ⚠ A CHAVE NUNCA É ADIVINHADA.
   //
@@ -190,10 +205,15 @@ export function ler(csv: string, opts: { exigeVigencia?: boolean } = {}): Leitur
     // que é exatamente o defeito da Maria Isabel reintroduzido pela porta dos
     // fundos.
     const vigencia = det.endIdx >= 0 ? parseDataBR(r[det.endIdx] ?? "") : null;
+    const inicio = iInicio >= 0 ? parseDataBR(r[iInicio] ?? "") : null;
     if (vistas.has(chave)) {
       const ja = out.find((l) => l.chave === chave)!;
       if (vigencia && (!ja.vigencia_ate || vigencia > ja.vigencia_ate)) {
         ja.vigencia_ate = vigencia;
+        // O inicio acompanha o fim: sao do MESMO contrato. Guardar o fim de um
+        // com o inicio de outro daria um contrato que nunca existiu, e a regua
+        // mediria a fracao decorrida de uma coisa imaginaria.
+        ja.vigencia_de = inicio;
         ignoradas.push({ linha: i + 1, motivo: `chave ${chave} repetida — ficou a vigência mais longa (${vigencia})` });
       } else {
         ignoradas.push({ linha: i + 1, motivo: `chave ${chave} repetida — vigência igual ou mais curta, descartada` });
@@ -206,6 +226,7 @@ export function ler(csv: string, opts: { exigeVigencia?: boolean } = {}): Leitur
       chave,
       nome: (r[det.nameIdx] ?? "").trim() || null,
       vigencia_ate: vigencia,
+      vigencia_de: inicio,
       ciclo_dias: iCiclo >= 0 ? cicloEmDias(r[iCiclo] ?? "") : null,
       plano: iPlano >= 0 ? (r[iPlano] ?? "").trim() || null : null,
     });

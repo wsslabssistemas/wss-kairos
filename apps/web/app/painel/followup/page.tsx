@@ -105,9 +105,22 @@ export default async function FollowUpPage({
           </form>
         )}
       </div>
+      {/* ⚠ ESTA TELA É CONSULTA, NÃO EXECUÇÃO — e dizer isso resolve uma dúvida
+          real do fundador em 29/ago: *"os vendedores focam estritamente na fila
+          de envio, como fica a aba follow-up, quem olha para ela?"*.
+          Ninguém precisa olhar para trabalhar: tudo que está aqui já entra na
+          FILA DE ENVIO, com gerador de mensagem e registro, na ordem certa.
+          O valor desta tela é o COMPLEMENTO: a fila mostra o que fazer hoje;
+          aqui se vê quem está há mais tempo sem atenção. Tela sem papel escrito
+          vira tela que alguém abre por engano e não sabe o que fazer. */}
       <p className="text-dim" style={{ marginTop: 4 }}>
         Quem está esperando uma resposta sua. A maior parte das vendas não se
         perde por preço — se perde por silêncio.
+      </p>
+      <p className="badge" style={{ whiteSpace: "normal", textAlign: "left", marginTop: 10 }}>
+        <strong>Esta tela é para consultar, não para executar.</strong> Todo mundo que
+        aparece aqui já está na <Link href="/painel/fila">Fila de envio</Link>, com mensagem
+        pronta e registro. Use esta aqui para enxergar quem está esquecido há mais tempo.
       </p>
 
       <div className="stat-grid mt-24">

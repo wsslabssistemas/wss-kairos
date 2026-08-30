@@ -32,6 +32,24 @@ export type Alcance = {
   recorte: number;
   /** O próximo degrau que vale a pena, se houver. */
   proximo: { dias: number; destrava: number } | null;
+  /** Alcançáveis em TODAS as faixas, ignorando o recorte. */
+  acervo: number;
+  /**
+   * Dias úteis para falar com o acervo inteiro, no teto diário de hoje.
+   *
+   * ⚠ ELE RESPONDE A PERGUNTA CERTA DO FUNDADOR (29/ago): a fila de reativação
+   * põe **quem saiu há menos tempo primeiro**, e ele perguntou se, numa base
+   * grande, os antigos não ficariam para sempre no fim — o ciclo girando
+   * sempre nas mesmas pessoas.
+   *
+   * A resposta não é uma opinião, é uma divisão: com 872 pessoas e 30 por dia,
+   * o acervo inteiro sai em 30 dias úteis, e entram ~16 ex-alunos novos por
+   * mês contra uma capacidade de 660. **A capacidade é 40× a entrada** — não
+   * há inanição aqui. Mas num cliente onde a entrada alcançar a capacidade,
+   * haveria — e é por isso que o número aparece na tela em vez de virar
+   * suposição de quem conhece a base de cor.
+   */
+  diasParaOAcervo: number | null;
 };
 
 /** Os degraus da campanha, na ordem em que o plano os usa. */
@@ -41,6 +59,8 @@ export async function alcanceDaReativacao(
   tenantId: string,
   recorte: number,
   etapaDeSaida: string | null,
+  /** O teto diário de envios — para estimar em quantos dias o acervo sai. */
+  tetoDiario = 0,
 ): Promise<Alcance | null> {
   // ⚠ SEM A ETAPA DECLARADA NO MANIFESTO NÃO HÁ O QUE CONTAR. "ex_aluno" é
   // vocabulário de academia e não pode morar aqui (Lei 1). Ausência devolve
@@ -110,5 +130,8 @@ export async function alcanceDaReativacao(
     }
   }
 
-  return { dentro, recorte, proximo };
+  // ⚠ TETO ZERO É "SEM TETO", e dividir por ele daria Infinity na tela.
+  const diasParaOAcervo = tetoDiario > 0 ? Math.ceil(alcancaveis.length / tetoDiario) : null;
+
+  return { dentro, recorte, proximo, acervo: alcancaveis.length, diasParaOAcervo };
 }

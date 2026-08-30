@@ -121,5 +121,47 @@ verifica("conferido depois do fim, afirma o vencimento",
 verifica("conferido depois do fim, volta o texto de retomada",
   venc("2026-08-12").titulo, "Venceu sem contato");
 
+// ================================ O PLANO MENSAL QUE NASCIA "A VENCER" (29/ago)
+//
+// ⚠ O DEFEITO. As janelas de renovacao abrem 60 e 30 dias antes do
+// vencimento. Um plano MENSAL dura 30 dias — entao `diasParaVencer` vale 30
+// **no dia da matricula**, e a pessoa entrava na fila no mesmo dia em que
+// pagou, com o assunto "seu plano esta a vencer".
+//
+// ⚠ E O ESTRAGO NAO ERA SO A MENSAGEM ESTRANHA. `renovacao` tem peso 1 na
+// fila, quase o topo: cada mensal novo entrava NA FRENTE de gente com conversa
+// de verdade devida, empurrando o trabalho util para baixo. O vendedor via uma
+// fila cheia de gente que acabou de pagar.
+//
+// A regra: a janela nao abre antes de METADE do contrato ter passado.
+
+// Usa os ajudantes que o arquivo ja tem: `daqui` e a data relativa ao HOJE
+// fixo, e `rodar` passa esse HOJE — teste que depende do relogio de quem roda
+// falha sozinho num dia qualquer.
+const mensal = (inicioDias, fimDias) => ({
+  id: "m", name: "Mensal", phone: "51999999999", journey_stage: "convertido",
+  contract_start: daqui(inicioDias),
+  contract_end: daqui(fimDias),
+});
+
+// Assinou HOJE um mensal (hoje -> +30). A metade e o dia 15: nao entra.
+verifica("mensal assinado hoje NAO entra na fila", rodar([mensal(0, 30)]).length, 0);
+
+// Dia 10 de 30: ainda antes da metade.
+verifica("mensal no dia 10 de 30 ainda nao entra", rodar([mensal(-10, 20)]).length, 0);
+
+// Dia 20 de 30: passou da metade, entra.
+verifica("mensal no dia 20 de 30 ENTRA", rodar([mensal(-20, 10)]).length, 1);
+
+// ⚠ PLANO LONGO NAO MUDA NADA. Anual: a metade cai no dia 182, e a janela de
+// 60 dias so abre no dia 305 — bem depois. A trava so morde onde o defeito
+// existe, e nao pode roubar renovacao de quem precisa dela.
+verifica("anual a 45 dias do fim continua entrando", rodar([mensal(-320, 45)]).length, 1);
+
+// ⚠ SEM `contract_start` A REGRA NAO OPINA. Base antiga nao tem a data, e
+// barrar por ausencia de dado tiraria renovacao legitima da fila em silencio —
+// o mesmo principio do recorte e do `paraE164BR`: falhar nao pode virar barrar.
+verifica("sem data de inicio, a regra nao barra", rodar([c("s", 20)]).length, 1);
+
 console.log(falhas ? `\n✗ FALHOU — ${falhas} caso(s)` : "\n✓ PASSOU — 17/17");
 process.exit(falhas ? 1 : 0);

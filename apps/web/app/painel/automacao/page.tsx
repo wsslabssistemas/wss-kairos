@@ -187,6 +187,7 @@ export default async function AutomacaoPage({
     tenant.id,
     a.reativacao_max_dias,
     contract?.ended_stage ?? null,
+    a.max_per_day,
   );
 
   const status = await statusDoCanal(tenant.id);
@@ -415,6 +416,19 @@ export default async function AutomacaoPage({
               <strong>{alcance.proximo.dias === 0 ? "a base inteira" : `${alcance.proximo.dias} dias`}</strong>,
               entram mais <strong>{alcance.proximo.destrava} pessoa(s)</strong>. O campo é{" "}
               <em>“Reativação: só quem saiu nos últimos (dias)”</em>, logo acima.
+            </p>
+          )}
+          {/* ⚠ A PERGUNTA "VAMOS ALCANÇAR OS ANTIGOS ALGUM DIA?" tem resposta
+              aritmética, e ela precisa estar na tela. A fila põe quem saiu há
+              menos tempo primeiro — numa base onde entram mais pessoas do que
+              o teto alcança, os antigos ficariam para sempre no fim. Aqui não
+              ficam, e o número mostra por quê. */}
+          {alcance.diasParaOAcervo !== null && alcance.acervo > alcance.dentro && (
+            <p className="text-dim" style={{ fontSize: 13, margin: "10px 0 0" }}>
+              Somando todas as faixas são <strong>{alcance.acervo} pessoas</strong> — cerca de{" "}
+              <strong>{alcance.diasParaOAcervo} dias úteis</strong> para falar com todas, no teto
+              de {a.max_per_day}/dia. Quem saiu há menos tempo vem primeiro, porque responde mais;
+              os mais antigos entram na sequência, não ficam de fora.
             </p>
           )}
           {!alcance.proximo && alcance.dentro === 0 && (

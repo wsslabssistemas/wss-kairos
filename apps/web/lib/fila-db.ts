@@ -48,6 +48,8 @@ export type ContatoDaCarga = {
   next_action: string | null;
   next_action_note: string | null;
   contract_end: string | null;
+  /** Inicio do contrato — a regua de renovacao precisa dele. Ver `lib/renovacao.ts`. */
+  contract_start: string | null;
   custom: Record<string, unknown> | null;
   /** Marcado como "nao contatar" (0059). Nao entra em lista proativa nenhuma. */
   do_not_contact: boolean;
@@ -118,7 +120,7 @@ export async function carregarFila(entrada: {
     lerTudo<ContatoDaCarga>(
       (de, ate) => supabase
         .from("contacts")
-        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, custom, do_not_contact, do_not_contact_reason")
+        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, contract_start, custom, do_not_contact, do_not_contact_reason")
         .eq("tenant_id", tenantId)
         .is("deleted_at", null)
         .order("id")
