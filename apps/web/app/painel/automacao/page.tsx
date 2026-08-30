@@ -11,7 +11,7 @@ import { Roteamento } from "./Roteamento";
 import { Simulacao } from "./Simulacao";
 import { DisparoDeTeste } from "./DisparoDeTeste";
 import { RodarAgora } from "./RodarAgora";
-import { Abas } from "./Abas";
+import { Abas } from "../Abas";
 import { PerfilDoNumero } from "./PerfilDoNumero";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";

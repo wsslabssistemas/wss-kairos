@@ -230,6 +230,12 @@ jobs:
       # tema sobre fundo do outro, passando no build e no typecheck.
       - name: Tema — claro e escuro definem os mesmos nomes
         run: node packages/db/tests/tema_check.mjs
+      # ⚠ A TELA MOSTRAVA 14 FALHAS COM O TEXTO CRU DA META, em ingles, para
+      # uma recepcionista brasileira. "Message undeliverable" e "healthy
+      # ecosystem engagement" parecem a mesma coisa e sao problemas diferentes
+      # — o segundo e o aviso que vem ANTES de a Meta restringir o numero.
+      - name: Erro da Meta — traduzir sem inventar
+        run: node packages/db/tests/erro_meta_test.mjs
       # Quem pediu para nao receber mais. Honrar descadastro e exigencia da
       # LGPD e da politica do WhatsApp, e a marcacao e automatica porque a
       # janela entre "ele pediu" e "alguem viu" e onde a denuncia acontece.
