@@ -379,6 +379,13 @@ dna_sections:
       # respondia de cabeça. Numa campanha de reativação é a primeira objeção
       # de quem já foi aluno — e a isenção só vale como argumento se for FATO
       # declarado, nunca simpatia inventada na hora.
+      # ⚠ COMO PARCELAR NAO E SO UM FATO, E UMA REGRA DE OFERTA. Existe forma de
+      # pagamento que a casa aceita e NAO quer oferecer primeiro — por custo,
+      # por risco de inadimplencia ou porque so faz sentido num plano. Sem um
+      # lugar para isso, o motor trata toda forma de pagamento como igual e
+      # oferece a que for pior para a empresa, achando que esta ajudando.
+      # O texto tem que dizer o padrao E a excecao, com a condicao escrita.
+      - { key: installments, type: text, label: "Regra de parcelamento", help: "Qual forma de parcelamento oferecer por padrão, e o que só vale se o cliente perguntar. Ex.: cartão de crédito é o padrão; parcelar no Pix só no trimestral e só se ele perguntar", options: ["Cartão de crédito é o padrão, e é a única forma de parcelar", "Cartão de crédito é o padrão; parcelo no Pix só em plano mais longo e só se o cliente perguntar", "Parcelo no Pix igual ao cartão, sem restrição", "Não parcelo: só à vista ou mensalidade"] }
       - { key: joining_fee, type: text, label: "Taxa de adesão", help: "Se existe adesão, em que plano ela entra e quem é isento. Ex.: R$ 99 só no plano recorrente; isenta para quem já foi aluno", options: ["Não cobro adesão em nenhum plano", "Só no plano recorrente, e quem já foi aluno é isento", "Só no plano recorrente, sem isenção", "Cobro adesão em todos os planos"] }
   - key: availability
     label: "Horário de funcionamento"
