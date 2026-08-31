@@ -169,6 +169,14 @@ jobs:
       # alta. Derivar o primeiro nome nunca grava, como o paraE164BR.
       - name: Modelo — higiene das variaveis e o primeiro nome
         run: node packages/db/tests/modelo_test.mjs
+      # O QUE CHEGA EM QUEM REDIGE. Quatro ligacoes que existiam e nao chegavam
+      # ao modelo: a busca usava so a ultima mensagem, o modelo aprovado ia
+      # para o historico como rotulo sem texto, os gatilhos eram perguntas do
+      # cliente numa campanha em que ele responde, e a lista curada de motivos
+      # de saida so preenchia um select de encerramento. Nada disso dava erro:
+      # a mensagem saia fluente e sem tecnica nenhuma.
+      - name: Resposta — a tecnica curada chega em quem escreve
+        run: node packages/db/tests/resposta_check.mjs
       # O motor proativo. As seis regras anti-bloqueio da tela de Automacao
       # eram gravadas desde que ela nasceu e NENHUMA linha do sistema as lia —
       # um formulario que salva e ninguem cumpre promete um freio que nao

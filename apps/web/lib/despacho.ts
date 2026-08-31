@@ -5,7 +5,7 @@ import { credencialDoCanal } from "@/lib/credenciais";
 import { lerRoteamento, lerModelos, rotaDoToque } from "@/lib/roteamento";
 import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
 import { enviarPelaCloudAPI, enviarModeloPelaCloudAPI } from "@/lib/envio";
-import { primeiroNome, higienizarParametro } from "@/lib/modelo";
+import { primeiroNome, higienizarParametro, renderizarModelo } from "@/lib/modelo";
 import { paraE164BR } from "@/lib/phone";
 import { registrarEnvio, gastoDeMensagensNoMes } from "@/lib/custo_mensagem-db";
 import { avaliarTetoDeMensagens, lerTetoDeMensagens } from "@/lib/custo_mensagem";
@@ -152,6 +152,12 @@ export async function despacharToque(entrada: {
 
   let resultado: { ok: true; id: string } | { ok: false; motivo: string; limitePorUsuario?: boolean };
   let modeloUsado: string | null = null;
+  /**
+   * ⚠ O TEXTO QUE A PESSOA VAI RECEBER, para o histórico guardar a fala e não
+   * o rótulo. Nulo quando não achamos o corpo — aí volta a gravar
+   * `(modelo "nome")`, como antes. Ver o bloco no `insert` lá embaixo.
+   */
+  let corpoRenderizado: string | null = null;
 
   if (rota.via === "cloud_api_texto") {
     if (!texto.trim()) return { ok: false, motivo: "Sem texto para enviar." };
@@ -188,6 +194,26 @@ export async function despacharToque(entrada: {
       parametros.push(porExtenso(iso));
     }
 
+    // ⚠ O CORPO APROVADO, PARA O HISTÓRICO. Vem de `modelos_canal` (0070): a
+    // linha da empresa primeiro, o texto do produto depois. É leitura de
+    // apoio, então falhar aqui NÃO pode impedir o envio — a mensagem vale
+    // mais que o registro bonito dela, e sem corpo o `insert` cai no rótulo
+    // antigo em vez de estourar.
+    try {
+      const { data: modelos } = await supabase
+        .from("modelos_canal")
+        .select("tenant_id, corpo")
+        .eq("nome", rota.modelo)
+        .or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+      const linhas = (modelos as { tenant_id: string | null; corpo: string }[] | null) ?? [];
+      // A da empresa ganha da do produto — mesma regra de `knowledge_entries`.
+      const escolhida = linhas.find((m) => m.tenant_id === tenantId) ?? linhas.find((m) => m.tenant_id === null);
+      if (escolhida) corpoRenderizado = renderizarModelo(escolhida.corpo, parametros);
+      else console.warn(`[despacho] sem corpo para o modelo "${rota.modelo}" — o historico vai sem a fala.`);
+    } catch (e) {
+      console.warn(`[despacho] nao consegui ler o corpo do modelo: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
     resultado = await enviarModeloPelaCloudAPI(num.digitos, rota.modelo, parametros, credencial!);
   }
 
@@ -206,7 +232,12 @@ export async function despacharToque(entrada: {
     input_kind: "system_initiated",
     channel: "whatsapp",
     external_id: resultado.id,
-    content: modeloUsado ? `(modelo "${modeloUsado}")` : texto,
+    // ⚠ O QUE FOI DITO, NÃO O NOME DO QUE FOI DITO. Até 31/ago aqui ficava
+    // `(modelo "reativacao_ex_aluno")` e a IA que responde lia um rótulo
+    // vazio: ela redigia sem saber qual pergunta a pessoa estava respondendo.
+    // O rótulo continua como último recurso — histórico sem a fala é ruim,
+    // histórico sem NADA é pior.
+    content: modeloUsado ? (corpoRenderizado ?? `(modelo "${modeloUsado}")`) : texto,
     occurred_at: new Date().toISOString(),
     created_by: membershipId,
   });

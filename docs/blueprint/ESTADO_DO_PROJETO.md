@@ -205,6 +205,104 @@ que trouxe a pessoa (`referral`) · reação ≠ mensagem.
 
 ---
 
+## 0.000. ⚠ LEIA ISTO PRIMEIRO — 31 de agosto de 2026
+
+> A seção mais recente. As de baixo continuam valendo como histórico.
+
+### 🟢 A PRIMEIRA RODADA AUTÔNOMA ACONTECEU — duas, na verdade
+
+| Hora | Origem | Avaliados | Enviadas |
+|---|---|---|---|
+| 09:01 | `agendador` | 901 | **15** |
+| 13:16 | `agendador` | 886 | **11** |
+
+Zero falhas. O teto do dia funcionou como desenhado: 15 do motor + 4 respostas
+manuais pelo canal = 19, e a segunda rodada mandou os 11 que faltavam para 30.
+E as batidas recusadas viraram linha (`pulada`) de 15 em 15 minutos — a
+correção de 30/ago aparecendo em produção.
+
+**Ninguém clicou em nada.** É a primeira vez desde que o produto existe.
+
+### 🔴 E A PRIMEIRA CONVERSA REAL MOSTROU O DEFEITO DE FUNDO
+
+O fundador leu uma resposta que a IA gerou para uma ex-aluna e disse: *"tudo o
+que a IA sugeriu responder é óbvio"*. Ele estava certo, e a causa não era o
+modelo nem o prompt — **nada da técnica curada chegava até quem redige.**
+
+Quatro ligações faltando, todas silenciosas, todas medidas:
+
+| # | O que estava quebrado | Como se via |
+|---|---|---|
+| 1 | A busca da biblioteca usava **só a última mensagem** | `"Emagrecer"` casava com **ZERO** entradas |
+| 2 | O envio de modelo gravava só o NOME: `(modelo "reativacao_ex_aluno")` | A IA respondia a um "Oi sim" **sem saber a pergunta** |
+| 3 | Os gatilhos eram **perguntas do cliente**; em campanha ele **responde** | 4 entradas sem gatilho nenhum — inclusive a da reativação |
+| 4 | `churn_reasons` só era carregada para preencher um `<select>` | Quem escreve nunca viu a lista de motivos de saída |
+
+⚠ **E o fallback mentia.** Sem casamento, iam `allEntries.slice(0, 6)` — as
+seis primeiras na ordem do banco — sob o rótulo de "entradas relevantes". Numa
+conversa sem objeção nenhuma, **cinco eram de contorno de objeção**. É a mesma
+família da regra dos 1.000: sem `ORDER BY`, o que volta é arbitrário. Só que
+aqui o arbitrário vira **técnica de venda aplicada a um cliente real**.
+
+**O que mudou** (`0070`, `0071`, `lib/modelo.ts`, `lib/despacho.ts`,
+`responder/ai-actions.ts`):
+
+1. A consulta passou a ser a **situação**: mensagem + as falas dele na conversa
+   + etapa e objetivo do manifesto.
+2. `modelos_canal` guarda o corpo dos 5 modelos aprovados; o envio grava o
+   **texto renderizado**. As 125 linhas antigas foram preenchidas
+   (`scripts/preencher-corpo-dos-modelos.mjs`).
+3. Gatilhos de **resposta** ("emagrecer", "os horários", "sim", "quero voltar").
+   Nenhuma entrada da academia está sem gatilho.
+4. Os **motivos de saída** entram no prompt — só na etapa de quem saiu, com a
+   chave vinda do manifesto (Lei 1).
+5. **Sem casamento, o bloco fica vazio e o prompt diz que ficou.**
+
+**Medido antes e depois, na conversa real:**
+
+| Consulta | Antes | Depois |
+|---|---|---|
+| `"Emagrecer"` | **0 entradas** | `goal_matching` 8.59 · reativação 8.27 |
+| `"Os horários por isso parei"` | — | **`Redução de sacrifício (Hormozi)`** 8.48 |
+
+⚠ **E a segunda linha é a prova do produto.** O fundador, escrevendo à mão,
+disse que o certo ali era *"bolar um treino eficiente de 15, 20 min até ela
+ajustar a rotina"*. É exatamente a técnica que a biblioteca já tinha curada
+(`Redução de sacrifício`) e que o motor agora alcança. **A doutrina estava
+certa; faltava o fio.**
+
+### 🟡 O QUE ISSO ENSINOU, E VALE PARA O PRODUTO INTEIRO
+
+- **A biblioteca foi curada para conversa que ENTRA.** O motor produz conversa
+  que SAI, e nela o cliente responde em uma ou duas palavras. Todo segmento
+  novo precisa de gatilhos dos dois lados.
+- **O fundador achou em uma conversa o que eu não achei em dois dias de
+  código.** De novo: quem usa acha, quem relê não.
+- **O que ele sabe não está escrito.** O treino de 15–20 minutos não existia em
+  DNA, biblioteca nem manifesto. Foi acrescentado nos dois lugares — mas a
+  lição é que **o gargalo do produto continua sendo extrair o que o dono da
+  operação sabe**, não melhorar o modelo.
+
+### ⚪ PENDÊNCIA NOVA, ESCRITA PARA NÃO VIRAR ESQUECIMENTO
+
+**O corpo dos modelos vem do repositório, não da Meta.** A leitura direta
+(`GET /{waba_id}/message_templates`) exige o WABA id, e ele **não é alcançável
+com o token atual** — testei `whatsapp_business_account` no phone id,
+`granular_scopes` do `debug_token` e as duas arestas do app; as três recusam.
+A coluna `modelos_canal.origem` diz `repositorio` justamente para ninguém
+confundir reconstrução com leitura. Se um texto for editado e reaprovado na
+Meta sem alguém atualizar aqui, o histórico passa a registrar o texto velho.
+**Fechar isso exige o WABA id** — uma caixa a mais na tela de credenciais, ou
+descoberta por outro caminho.
+
+### 🟢 E O NOME DE EXIBIÇÃO SAIU DA LISTA
+
+O fundador decidiu em 31/ago que **não vai trocar**: na tela de quem recebe
+aparece "Be FITNESS 💪02" com a logo, e isso não atrapalha. A pendência mais
+antiga do projeto fechou por decisão, não por conserto.
+
+---
+
 ## 0.00. ⚠ RETOMADA — estado em 30 de agosto de 2026, 17h
 
 > **Leia esta seção primeiro.** Ela substitui o "ponto de pausa" escrito na

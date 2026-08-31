@@ -126,7 +126,7 @@ export async function gerarResposta(input: {
 
   try {
   const supabase = await createClient();
-  const { stages, fields } = await getSkillFormConfig(tenant.skill_key);
+  const { stages, fields, churnReasons, contract } = await getSkillFormConfig(tenant.skill_key);
 
   // A biblioteca CURADA do segmento (tenant_id null) é lida com service_role.
   // Ela nunca pode chegar ao browser — a policy de `knowledge_entries` só a
@@ -174,26 +174,6 @@ export async function gerarResposta(input: {
     ...((entriesData as Entry[] | null) ?? []),
     ...((seedData as Entry[] | null) ?? []),
   ];
-  const picked = matchEntries(message, allEntries, 8);
-  const usadas = picked.length ? picked : allEntries.slice(0, 6);
-
-  // Qual escola governa cada situação NESTE segmento (o orquestrador em dado).
-  const strategyMap = (manifest.strategy_map as StrategyMap | undefined) ?? null;
-  const dicionario = await loadSchools();
-  const escolas = usadas.map((e) => resolveSchool(e, strategyMap));
-
-  // A TRAVA ANTI-INVENÇÃO, EM CÓDIGO. Cruza o que a biblioteca exige
-  // (`required_facts`) com o que o DNA tem. Antes disto o campo era buscado do
-  // banco e nunca usado: quem decidia escalar era o julgamento do modelo.
-  const trava = checkRequiredFacts(sections, usadas);
-
-  const library = usadas
-    .map(
-      (e, i) =>
-        `Categoria: ${e.category}\nEscola: ${escolas[i] ?? "—"}\nGatilho: ${(e.trigger_questions ?? []).join(" / ")}\nEstratégia: ${e.strategy ?? ""}\nTécnica: ${e.technique ?? ""}\nResposta modelo: ${e.answer ?? ""}\nErros a evitar: ${(e.common_errors ?? []).join("; ")}\nPróximo passo: ${e.next_objective ?? ""}`,
-    )
-    .join("\n---\n");
-
   // Contexto do cliente + histórico.
   let contactBlock = "Nenhum cliente selecionado — trate como primeiro contato.";
   // QUALIFICAÇÃO DE COMPRA: o que se sabe do negócio e o que falta descobrir.
@@ -206,6 +186,18 @@ export async function gerarResposta(input: {
   // medição de aprendizado (convênio 9% de resposta × WhatsApp 54%), e o
   // `contact` daqui é local ao `if`.
   let origemDoContato: string | null = null;
+  /**
+   * ⚠ O QUE ALIMENTA A BUSCA DA BIBLIOTECA, além da mensagem de agora.
+   *
+   * `falasDoCliente` são as falas DELE nesta conversa — o assunto mora ali,
+   * não no "sim" isolado. `etapaParaBusca` é onde ele está na jornada, dito
+   * na voz do segmento (rótulo + objetivo do manifesto): é o que separa
+   * "emagrecer" de um lead novo de "emagrecer" de quem já foi aluno e parou.
+   */
+  let falasDoCliente: string[] = [];
+  let etapaParaBusca = "";
+  /** A etapa CRUA (a chave do manifesto), para comparar com `ended_stage`. */
+  let etapaAtualDoContato: string | null = null;
   if (input.contactId) {
     const [{ data: c }, { data: h }] = await Promise.all([
       supabase.from("contacts").select("name, journey_stage, owner_id, custom, source").eq("id", input.contactId).eq("tenant_id", tenant.id).maybeSingle(),
@@ -234,6 +226,7 @@ export async function gerarResposta(input: {
       source: string | null;
     } | null;
     origemDoContato = contact?.source ?? null;
+    etapaAtualDoContato = contact?.journey_stage ?? null;
     const hist = (h as { direction: string; content: string; occurred_at: string }[] | null) ?? [];
     const stageLabel = stages.find((s) => s.key === contact?.journey_stage)?.label ?? contact?.journey_stage;
     const histText = hist.length
@@ -243,9 +236,117 @@ export async function gerarResposta(input: {
           .join("\n")
       : "Sem histórico anterior.";
     donoDoContato = contact?.owner_id ?? null;
+
+    // ⚠ SÓ AS FALAS DELE, e as mais recentes primeiro. As NOSSAS não entram:
+    // a mensagem que o sistema mandou é o que a gente já sabe dizer, e usá-la
+    // como consulta faria a busca devolver a técnica que acabamos de aplicar
+    // em vez da que a resposta dele pede.
+    falasDoCliente = hist
+      .filter((i) => i.direction === "inbound")
+      .map((i) => i.content)
+      .filter(Boolean)
+      .slice(-4);
+    const etapaDoManifesto = stages.find((st) => st.key === contact?.journey_stage);
+    etapaParaBusca = [etapaDoManifesto?.label ?? "", etapaDoManifesto?.goal ?? ""].filter(Boolean).join(" ");
+
     contactBlock = `Cliente: ${contact?.name ?? "?"}\nEtapa atual: ${stageLabel}\nHISTÓRICO (não repita abordagens já usadas; evolua a conversa):\n${histText}`;
     qualificacaoBlock = blocoParaPrompt(lerQualificacao(fields, contact?.custom));
   }
+
+  // ⚠ A CONSULTA DA BIBLIOTECA É A SITUAÇÃO, NUNCA SÓ A ÚLTIMA MENSAGEM.
+  //
+  // Medido em 31/ago/2026, na conversa de uma ex-aluna real: ela respondeu
+  // "Emagrecer", uma palavra. Com a mensagem sozinha como consulta, a busca
+  // devolveu ZERO entradas e o código caía em `allEntries.slice(0, 6)` — as
+  // seis primeiras na ordem em que o banco entregou, das quais CINCO eram de
+  // contorno de objeção, numa conversa em que não houve objeção nenhuma. O
+  // prompt apresentava esse bloco como "as entradas relevantes", então o
+  // modelo escrevia com o material errado, com confiança.
+  //
+  // E é o caso NORMAL, não a borda: em campanha proativa quem responde é o
+  // cliente, e resposta de WhatsApp é curta — "sim", "quanto?", "emagrecer".
+  // A frase de uma palavra não tem sinal; a SITUAÇÃO tem.
+  //
+  // Com a situação inteira, a mesma busca põe `goal_matching` em primeiro.
+  const consulta = [
+    message,
+    // O que ELE já disse nesta conversa — o assunto mora aqui, não no "sim".
+    ...falasDoCliente,
+    // Onde ele está na jornada, na voz do segmento (rótulo e objetivo do
+    // manifesto). É o que separa "emagrecer" dito por um lead novo de
+    // "emagrecer" dito por quem já foi aluno e parou.
+    etapaParaBusca,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const picked = matchEntries(consulta, allEntries, 8);
+
+  // ⚠ NADA CASOU É UMA RESPOSTA, E ELA PRECISA SER DITA.
+  //
+  // Antes, o vazio virava `allEntries.slice(0, 6)`: entradas escolhidas pela
+  // ordem do `select`, entregues ao modelo com o rótulo de relevantes. É a
+  // mesma família da regra dos 1.000 — sem `ORDER BY`, o que volta é
+  // arbitrário — só que aqui o arbitrário vira TÉCNICA DE VENDA aplicada a um
+  // cliente real. Técnica errada com confiança é pior que técnica nenhuma.
+  //
+  // Agora o bloco fica vazio e o prompt DIZ que ficou. O modelo responde com
+  // as regras universais e o DNA, sem fingir escola que ninguém escolheu.
+  const usadas = picked;
+
+  // Qual escola governa cada situação NESTE segmento (o orquestrador em dado).
+  const strategyMap = (manifest.strategy_map as StrategyMap | undefined) ?? null;
+  const dicionario = await loadSchools();
+  const escolas = usadas.map((e) => resolveSchool(e, strategyMap));
+
+  // A TRAVA ANTI-INVENÇÃO, EM CÓDIGO. Cruza o que a biblioteca exige
+  // (`required_facts`) com o que o DNA tem. Antes disto o campo era buscado do
+  // banco e nunca usado: quem decidia escalar era o julgamento do modelo.
+  const trava = checkRequiredFacts(sections, usadas);
+
+  const library = usadas.length
+    ? usadas
+        .map(
+          (e, i) =>
+            [
+              `Categoria: ${e.category}`,
+              `Escola: ${escolas[i] ?? "—"}`,
+              `Gatilho: ${(e.trigger_questions ?? []).join(" / ")}`,
+              `Estratégia: ${e.strategy ?? ""}`,
+              `Técnica: ${e.technique ?? ""}`,
+              `Resposta modelo: ${e.answer ?? ""}`,
+              `Erros a evitar: ${(e.common_errors ?? []).join("; ")}`,
+              `Próximo passo: ${e.next_objective ?? ""}`,
+            ].join("\n"),
+        )
+        .join("\n---\n")
+    : "";
+
+  // ⚠ OS MOTIVOS DE SAÍDA DO RAMO — o ativo que existia e nunca chegava aqui.
+  //
+  // Achado em 31/ago/2026 lendo uma conversa real de reativação. O manifesto
+  // da academia declara sete motivos de saída, cada um com `o_que_fazer`
+  // curado: *"foi tempo? fale de HORÁRIO, não de preço"*, *"foi preço? é o
+  // único caso em que condição resolve"*, *"desanimou? é acompanhamento, não
+  // desconto"*. Material de venda de verdade, escrito por quem conhece a
+  // operação.
+  //
+  // E ele era carregado em UM lugar só: para preencher o `<select>` de "motivo
+  // de saída" na hora de ENCERRAR o atendimento. Quem redige a mensagem nunca
+  // viu. O resultado foi a IA respondendo "seu objetivo é emagrecer, ganhar
+  // massa ou saúde?" para uma ex-aluna, sem nunca perguntar o que a fez parar
+  // — que é o fato que decide se ela volta e se fica.
+  //
+  // ⚠ SÓ NA ETAPA DE QUEM SAIU, e a chave vem do manifesto (`ended_stage`),
+  // nunca escrita aqui (Lei 1). Numa conversa de primeiro contato esta lista
+  // faria o modelo perguntar por que a pessoa parou — de uma pessoa que nunca
+  // começou.
+  const motivosDeSaida =
+    contract?.ended_stage && etapaAtualDoContato === contract.ended_stage && churnReasons.length
+      ? churnReasons
+          .map((m) => `- ${m.label}: ${m.o_que_fazer ?? ""}`)
+          .join("\n")
+      : "";
 
   // Horários livres: sem isto o motor escala para um humano toda vez que
   // alguém quer marcar — e no modo automático a venda não fecha.
@@ -470,7 +571,11 @@ ${trava.faltando.length ? trava.faltando.map((f) => `- ${f}`).join("\n") : "(nen
 ${trava.travou ? "→ Falta fato EXIGIDO por uma entrada que manda escalar. Marque \"escalar\": true e escreva apenas uma mensagem curta e segura que encaminha para verificação humana. NÃO redija a resposta comercial." : ""}
 
 BIBLIOTECA COMERCIAL (estratégia e técnicas — a base das respostas):
-${library || "(biblioteca vazia)"}
+${library || "NENHUMA entrada da biblioteca casou com esta situação. Responda com as regras universais, o DNA e o CATÁLOGO — e NÃO afirme estar aplicando escola nenhuma: nenhuma foi escolhida."}
+${motivosDeSaida ? `
+POR QUE ESTE CLIENTE PAROU — os motivos deste ramo e o que fazer em cada um.
+Ele é ex-cliente: descobrir QUAL destes foi o dele vale mais que qualquer argumento, porque é o que decide se ele volta E se fica. Pergunte oferecendo alternativas concretas (escolher entre opções custa menos que confessar), nunca "por que você saiu", que soa cobrança e coleta a desculpa educada. Se ele já disse qual foi, trate ESSE e não os outros:
+${motivosDeSaida}` : ""}
 ${reparos ? `
 ${reparos}` : ""}
 ${notaDoAprendizado ? `

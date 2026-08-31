@@ -309,6 +309,35 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   da lista — numa academia, onde nada está disputado. **Negar o que existe é
   pior de detectar que afirmar o que não existe:** a lead desiste na hora, não
   reclama, e nada aparece em tela nenhuma.
+- **⚠ A BIBLIOTECA CURADA FOI ESCRITA PARA CONVERSA QUE ENTRA; O MOTOR PRODUZ
+  CONVERSA QUE SAI.** Todo gatilho era pergunta do cliente ("quanto custa",
+  "o que você recomenda"). Em campanha proativa quem pergunta é o sistema e o
+  cliente **responde** — e resposta de WhatsApp tem uma palavra. Em 31/ago
+  `"Emagrecer"` casou com ZERO entradas, e quatro entradas da academia não
+  tinham gatilho nenhum, **inclusive a que governa a reativação inteira**.
+  Segmento novo precisa de gatilho dos DOIS lados.
+- **⚠ A CONSULTA DA BIBLIOTECA É A SITUAÇÃO, NUNCA SÓ A ÚLTIMA MENSAGEM.**
+  Mensagem + as falas dele na conversa + etapa e objetivo do manifesto. Com a
+  palavra solta a busca não tem sinal; com a situação, a entrada certa vem em
+  primeiro.
+- **⚠ FALLBACK DE BUSCA NÃO PODE INVENTAR RELEVÂNCIA.** Sem casamento o código
+  mandava `allEntries.slice(0, 6)` — as seis primeiras na ordem do banco — sob
+  o rótulo de "entradas relevantes", e cinco eram de contorno de objeção numa
+  conversa sem objeção. É a regra dos 1.000 outra vez (sem `ORDER BY`, o que
+  volta é arbitrário), só que o arbitrário vira **técnica de venda aplicada a
+  um cliente real**. **Técnica errada com confiança é pior que técnica
+  nenhuma:** hoje o bloco fica vazio e o prompt DIZ que ficou.
+- **⚠ MODELO APROVADO TEM QUE VIRAR FALA NO HISTÓRICO.** Gravar
+  `(modelo "reativacao_ex_aluno")` faz a IA responder a um "Oi sim" sem saber
+  qual era a pergunta — o fundador nomeou como *"resposta jogada ao ar"*. O que
+  se grava é o **texto renderizado no momento do envio**, nunca uma referência
+  ao corpo: histórico é registro do que aconteceu, e um texto reaprovado amanhã
+  não pode mudar a conversa de ontem. Ver `modelos_canal` (`0070`).
+- **⚠ ATIVO CURADO QUE NÃO CHEGA EM QUEM REDIGE NÃO EXISTE.** `churn_reasons`
+  traz, por motivo de saída, o que fazer — *"foi tempo? fale de horário, não de
+  preço"* — e era carregada só para preencher um `<select>` de encerramento.
+  Numa conversa de reativação é o material mais valioso que temos. Ao curar
+  qualquer coisa nova, pergunte **quem lê isso na hora de escrever**.
 - **O sinal mais rápido de qualidade da IA é a CORREÇÃO DO VENDEDOR.** Quando
   alguém adapta a mensagem antes de enviar, é um vendedor experiente corrigindo
   o modelo no contexto exato, de graça. Isso era jogado fora. Hoje o par

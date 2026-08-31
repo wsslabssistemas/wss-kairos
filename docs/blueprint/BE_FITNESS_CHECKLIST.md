@@ -32,8 +32,11 @@ envia → ela responde de novo.
 
 | # | O quê | Onde |
 |---|---|---|
-| 1 | **Nome de exibição rejeitado** — sai "Be Fitness2" | Caso no suporte da Meta, com o erro 1675034 e o id `1202699839603007` |
-| 2 | **Exportação de títulos em aberto** (`Codigo`, valor, vencimento) | Sem ela não dá para dimensionar quem abandonou devendo |
+| 1 | **Exportação de títulos em aberto** (`Codigo`, valor, vencimento) | Sem ela não dá para dimensionar quem abandonou devendo |
+
+✅ ~~**Nome de exibição rejeitado**~~ — **fechado por decisão em 31/ago.** Na
+tela de quem recebe aparece "Be FITNESS 💪02" com a logo, e o fundador decidiu
+não trocar. Era a pendência mais antiga do projeto.
 
 ⚠ **Tudo o mais que dependia dele foi feito em 30/ago:** as três migrations
 aplicadas, o agendador reserva instalado, o segredo rotacionado e sincronizado,
@@ -44,6 +47,8 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
 | O quê | Espera |
 |---|---|
 | **Fase 2: a IA responde e agenda sozinha** | Amostra de `origem_ia`. Hoje **75% em 16 casos** — pouco. Esperar ~50 |
+| ~~A técnica curada não chegava em quem redige~~ | **Feito em 31/ago** — os quatro pontos. Ver `ESTADO_DO_PROJETO.md` §0.000 |
+| **Corpo do modelo vem do repositório, não da Meta** | O WABA id, que este token não alcança |
 | ~~Relógio do espaçamento medindo batida~~ | **Feito em 30/ago**, na véspera da primeira rodada autônoma |
 | Pausa de 20–40s antes da resposta automática | Vem junto da fase 2 |
 | Aviso de "decisão esperando humano" | Vem junto da fase 2 |
