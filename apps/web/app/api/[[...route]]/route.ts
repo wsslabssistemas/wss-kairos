@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { variantesArmazenadas } from "@/lib/phone";
 import { escolherResponsavel } from "@/lib/carteira";
 import { guardarWabaId, empresaDoNumero } from "@/lib/credenciais";
+import { origemDaPrimeiraMensagem } from "@/lib/origem-site";
 import { pediuParaSair } from "@/lib/optout";
 import { tipoDeFecho } from "@/lib/fecho";
 import { rodarTodasAsEmpresas } from "@/lib/motor-rota";
@@ -442,7 +443,13 @@ async function registrar(mensagens: MensagemRecebida[]) {
           // variável que o fundador impôs como obrigatória na medição, porque
           // convênio tem 9% de resposta contra 54% do WhatsApp: somar as duas
           // é medir duas coisas e chamar de uma.
-          source: msg.origem ? "campanha meta" : "whatsapp",
+          // ⚠ E O SITE TAMBÉM É ORIGEM. Desde 31/ago os botões do site apontam
+          // para este número; sem a marca na primeira mensagem, todo lead
+          // vindo dele nasceria como "whatsapp" e o site não teria como
+          // provar que trouxe alguém. Ver `lib/origem-site.ts`.
+          source: msg.origem
+            ? "campanha meta"
+            : (origemDaPrimeiraMensagem(msg.texto) ?? "whatsapp"),
           // ⚠ E O ANÚNCIO INTEIRO FICA GUARDADO. Ele vem UMA VEZ, junto da
           // primeira mensagem, e não é consultável depois — descartar aqui é
           // perder para sempre qual criativo trouxe a pessoa. O título é o que

@@ -18,6 +18,7 @@ import {
   phoneNumberIdDoPacote,
 } from "../../../apps/web/lib/whatsapp-webhook.ts";
 import { variantesArmazenadas } from "../../../apps/web/lib/phone.ts";
+import { origemDaPrimeiraMensagem } from "../../../apps/web/lib/origem-site.ts";
 
 let passou = 0;
 const falhas = [];
@@ -105,6 +106,21 @@ eq("uma mensagem de texto é lida", p.mensagens.length, 1);
 eq("wamid", p.mensagens[0]?.wamid, "wamid.AAA");
 eq("remetente", p.mensagens[0]?.de, "5551982512270");
 eq("nome do perfil é casado pelo wa_id", p.mensagens[0]?.nome, "Maria");
+
+// ⚠ DE ONDE VEIO: O SITE (31/ago/2026).
+//
+// O site novo entrou no ar com os botoes apontando para o numero da automacao.
+// Sem marca na primeira mensagem, todo lead vindo dele nasce como "whatsapp" —
+// indistinguivel de quem viu no Instagram, pegou por indicacao ou digitou. E
+// origem e a unica dimensao que o fundador imps como obrigatoria na medicao.
+//
+// ⚠ E QUEM APAGAR O TEXTO ENTRA COMO "whatsapp", de proposito: nao da para
+// provar de onde veio. Origem que se perde e melhor que origem inventada.
+eq("a frase do site vira origem", origemDaPrimeiraMensagem("Oi! Vim pelo site e quero saber mais"), "site");
+eq("sem acento e em caixa alta tambem", origemDaPrimeiraMensagem("OI, VIM PELO SÍTE"), "site");
+eq("mensagem comum nao inventa origem", origemDaPrimeiraMensagem("quanto custa a mensalidade?"), null);
+eq("vazio nao inventa origem", origemDaPrimeiraMensagem(""), null);
+eq("nulo nao quebra", origemDaPrimeiraMensagem(null), null);
 
 // ⚠ O WABA ID CHEGA EM TODO PACOTE E ERA JOGADO FORA (31/ago/2026).
 //
