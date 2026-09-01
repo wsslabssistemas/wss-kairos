@@ -17,7 +17,14 @@
 //
 // COMO FUNCIONA. O link do site leva um texto pronto:
 //
-//   https://wa.me/5551941934124?text=Oi!%20Vim%20pelo%20site%20e%20quero%20saber%20mais
+//   https://wa.me/5551994193412?text=Oi!%20Vim%20pelo%20site%20e%20quero%20saber%20mais
+//
+// ⚠ O NÚMERO ACIMA É O DA BE FITNESS E TEM O NONO DÍGITO. A Meta EXIBE o
+// número brasileiro sem ele ("+55 51 9419-3412"), e copiar da tela dela
+// produz um link que não abre conversa nenhuma. É a mesma armadilha que já
+// duplicou contato no webhook — ver `variantesArmazenadas` em `lib/phone.ts`.
+// Eu mesmo errei este número num comentário em 31/ago; quem conferiu foi o
+// fundador, publicando o site.
 //
 // A pessoa vê o texto já escrito na conversa e só aperta enviar. A primeira
 // mensagem chega com a marca, e é ela que diz a origem.
