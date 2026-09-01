@@ -185,6 +185,14 @@ jobs:
       # fatia orfa no relatorio, sem erro nenhum.
       - name: Origem — o que o codigo grava, o manifesto declara
         run: node packages/db/tests/origem_check.mjs
+      # A PORTA DE ENTRADA. O link de convite e de USO UNICO, e a troca por
+      # sessao acontecia num GET — entao a previa do WhatsApp, o antivirus e o
+      # filtro de e-mail corporativo queimavam o token antes de a pessoa
+      # clicar. O socio do fundador viu "link expirado" sem ter demorado nada.
+      # Operacao de uso unico nao acontece num GET: robo de previa nao aperta
+      # botao.
+      - name: Convite — o link so e usado quando alguem clica
+        run: node packages/db/tests/convite_check.mjs
       # O motor proativo. As seis regras anti-bloqueio da tela de Automacao
       # eram gravadas desde que ela nasceu e NENHUMA linha do sistema as lia —
       # um formulario que salva e ninguem cumpre promete um freio que nao
