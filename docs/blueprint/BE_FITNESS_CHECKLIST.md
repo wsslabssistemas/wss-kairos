@@ -48,7 +48,9 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
 |---|---|
 | **Fase 2: a IA responde e agenda sozinha** | Amostra de `origem_ia`. Hoje **75% em 16 casos** — pouco. Esperar ~50 |
 | ~~A técnica curada não chegava em quem redige~~ | **Feito em 31/ago** — os quatro pontos. Ver `ESTADO_DO_PROJETO.md` §0.000 |
-| **Corpo do modelo vem do repositório, não da Meta** | O WABA id, que este token não alcança |
+| ~~Corpo do modelo vem do repositório~~ | **Feito em 01/set** — o WABA id chegou sozinho pelo webhook, os 5 modelos vêm da Meta e o vigia reconfere 1×/dia |
+| ~~Importação exigia saber o tipo do arquivo~~ | **Feito em 01/set** — o sistema identifica e a pessoa corrige |
+| ~~Ficha dobrada invisível~~ | **Feito em 01/set** — virou contradição, com o nome da outra ficha |
 | ~~Relógio do espaçamento medindo batida~~ | **Feito em 30/ago**, na véspera da primeira rodada autônoma |
 | Pausa de 20–40s antes da resposta automática | Vem junto da fase 2 |
 | Aviso de "decisão esperando humano" | Vem junto da fase 2 |

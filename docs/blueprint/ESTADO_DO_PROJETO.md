@@ -303,6 +303,72 @@ antiga do projeto fechou por decisão, não por conserto.
 
 ---
 
+## 0.0000. ⚠ 1 DE SETEMBRO — a importação, a ficha dobrada e o WABA
+
+### 🟢 O QUE FOI ENTREGUE
+
+**1 · A importação descobre sozinha que arquivo é aquele.** A tela tinha duas
+caixas rotuladas e exigia que a pessoa soubesse qual arquivo era qual antes de
+qualquer leitura. O fundador nomeou o custo: *"o sistema da Be Fitness é tão
+ruim que não tenho todas as informações em apenas uma planilha, sempre fico com
+dúvida do tipo de importação que devo fazer"*. Agora é uma caixa só, vários
+arquivos de uma vez, cada um se identificando e dizendo de onde tirou isso.
+Arquivo estranho volta *"não reconhecido"* **com os cabeçalhos lidos**.
+
+⚠ A identificação **roda os leitores de verdade**, não uma lista própria de
+cabeçalhos — lista própria seria uma segunda versão da regra. E ela **propõe,
+nunca decide**: a correção fica sempre à mão.
+
+**2 · A ficha dobrada parou de ficar escondida.** `idsComGemeoAtivo` escondia da
+fila, desde agosto, o cadastro velho de quem tem outra ficha com contrato
+correndo. **Esconder é certo e não é conserto:** o cadastro seguia dobrado,
+contando como ex-cliente na carteira, e ninguém era avisado. Agora `duplicata` é
+contradição visível, **com o nome da outra ficha junto**, e encabeça a lista —
+é a única contradição que já produziu mensagem errada para uma pessoa real.
+São **1** hoje na Be Fitness. `paresDeGemeos` virou a fonte única e
+`idsComGemeoAtivo` deriva dela.
+
+**3 · Agendamento: já estava pronto, e eu ia reconstruir.** Fui conferir antes:
+`marcarCompromisso` já está ligado nas duas telas, e o compromisso da Daiane
+existe — **01/09 09:00, origem `motor`, criado às 20:06**, no mesmo minuto da
+mensagem que confirmou. O que falta é marcar SOZINHO, que é fase 2.
+
+### 🟢 A PENDÊNCIA DOS MODELOS FECHOU NO MESMO DIA
+
+O WABA id chegou sozinho no primeiro webhook depois do deploy:
+**`1038933932365273`**. Com ele, os cinco modelos aprovados foram lidos da Meta
+e `modelos_canal.origem` virou `meta`.
+
+⚠ **E a diferença não era teórica:** o corpo aprovado tem **quebra de linha no
+meio das frases**, e a reconstrução tinha juntado as linhas com espaço. Mesmo
+tamanho, texto diferente — o tipo de divergência que ninguém acha olhando. As
+**140** interações do acervo foram corrigidas para o texto exato.
+
+O vigia agora reconfere os modelos **uma vez por dia** (não a cada batida: são
+40 por dia e o texto muda em semanas). A gravação é `update` e só então
+`insert` — **nada de `upsert` com `onConflict`**, pela cicatriz de agosto.
+
+### 🟡 O SITE ENTROU NO AR E A ORIGEM FOI FECHADA
+
+16 links marcados com *"vim pelo site"*, conferidos no domínio real. O lead que
+vem do site deixou de nascer como `whatsapp`. Quem apagar o texto entra como
+`whatsapp` — **origem que se perde é melhor que origem inventada**.
+
+⚠ E o número do canal é **5551994193412**, com o nono dígito. A Meta **exibe**
+sem ele (`+55 51 9419-3412`) e eu escrevi um número inventado num comentário;
+quem pegou foi o fundador, publicando.
+
+### 📊 O DIA
+
+| | |
+|---|---|
+| Rodadas autônomas | **2** (09:01 e 13:16), 26 enviadas, 0 falhas |
+| Respostas de clientes | 10 |
+| `origem_ia` | **27 casos · 77,8%** (era 16 · 75%) |
+| Fechamento | A **Daiane** marcou a experimental para 01/09 |
+
+---
+
 ## 0.00. ⚠ RETOMADA — estado em 30 de agosto de 2026, 17h
 
 > **Leia esta seção primeiro.** Ela substitui o "ponto de pausa" escrito na

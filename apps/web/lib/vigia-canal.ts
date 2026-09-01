@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { credencialDoCanal } from "@/lib/credenciais";
-import { estadoDoNumero } from "@/lib/perfil-canal";
+import { estadoDoNumero, modelosAprovados } from "@/lib/perfil-canal";
 import { avaliarSaude, type Veredito } from "@/lib/saude-canal";
 
 /**
@@ -65,6 +65,16 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
       }
     }
 
+    // ⚠ E OS MODELOS APROVADOS SÃO CONFERIDOS JUNTO, no máximo uma vez por
+    // dia. É o que impede o corpo guardado em `modelos_canal` de envelhecer:
+    // um texto reaprovado na Meta e não atualizado aqui faz o histórico
+    // registrar uma conversa que não aconteceu, e a IA responder a ela.
+    //
+    // Uma vez por dia, e não a cada batida: são 40 batidas por dia e o texto
+    // de um modelo muda em semanas, quando muda. Falhar aqui é engolido de
+    // propósito — vigiar modelo não pode impedir vigiar a saúde do número.
+    await conferirModelos(admin, tenantId, cred, agora);
+
     const r = await estadoDoNumero(cred);
     // Uma forma só para os dois casos: o inserto tem sempre as mesmas colunas,
     // e o que muda é o conteúdo. Duas formas diferentes fariam o TypeScript
@@ -110,4 +120,88 @@ export async function ultimaVerificacao(tenantId: string) {
     messaging_limit_tier: string | null; verified_name: string | null;
     erro: string | null; occurred_at: string;
   } | null) ?? null;
+}
+
+
+/** Quantas horas entre duas leituras dos modelos aprovados. */
+const MODELOS_INTERVALO_H = 24;
+
+/**
+ * Traz da Meta o corpo dos modelos aprovados e guarda em `modelos_canal`.
+ *
+ * ⚠ SÓ COM WABA ID. Ele chega sozinho no `entry[].id` do webhook — antes da
+ * primeira mensagem recebida ele não existe, e aí não há o que conferir.
+ *
+ * ⚠ E ELE GRAVA POR EMPRESA (`tenant_id` preenchido), nunca por cima do texto
+ * do produto: duas academias podem ter modelos de mesmo nome com textos
+ * diferentes, e sobrescrever a linha global faria o texto de uma valer para a
+ * outra. A linha da empresa é a que o envio lê primeiro.
+ */
+async function conferirModelos(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  cred: Awaited<ReturnType<typeof credencialDoCanal>>,
+  agora: Date,
+): Promise<void> {
+  try {
+    if (!cred) return;
+    // paginacao-ok: uma linha, chave primária.
+    const { data: seg } = await admin
+      .from("tenant_secrets")
+      .select("whatsapp_waba_id")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    const wabaId = (seg as { whatsapp_waba_id?: string | null } | null)?.whatsapp_waba_id;
+    if (!wabaId) return;
+
+    // paginacao-ok: `.limit(1)` com ORDER BY — a leitura mais recente.
+    const { data: ultima } = await admin
+      .from("modelos_canal")
+      .select("atualizado_em")
+      .eq("tenant_id", tenantId)
+      .order("atualizado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const quando = (ultima as { atualizado_em?: string } | null)?.atualizado_em;
+    if (quando) {
+      const horas = (agora.getTime() - Date.parse(quando)) / 3_600_000;
+      if (Number.isFinite(horas) && horas >= 0 && horas < MODELOS_INTERVALO_H) return;
+    }
+
+    const r = await modelosAprovados(cred, wabaId);
+    if (!r.ok) {
+      console.warn(`[vigia] nao li os modelos aprovados: ${r.motivo}`);
+      return;
+    }
+    // ⚠ ATUALIZA E SÓ ENTÃO INSERE — nada de `upsert` com `onConflict`.
+    //
+    // A regra da casa nasceu de um estrago: `upsert` com `onConflict` sobre um
+    // índice que o PostgREST não consegue expressar falhou em SILÊNCIO por
+    // dias, com 200 devolvido à Meta e a frase do cliente sumindo. O índice
+    // daqui não é parcial e provavelmente funcionaria — mas "provavelmente"
+    // não é critério para uma gravação que ninguém olha.
+    //
+    // E o `.select()` aqui é o que diz se a linha existia: sem ele, `update`
+    // que não achou nada é indistinguível de `update` que achou.
+    for (const m of r.modelos) {
+      const { data: mexidas, error: erroUpd } = await admin
+        .from("modelos_canal")
+        .update({ corpo: m.corpo, origem: "meta", atualizado_em: agora.toISOString() })
+        .eq("tenant_id", tenantId)
+        .eq("nome", m.nome)
+        .select("id");
+      if (erroUpd) {
+        console.warn(`[vigia] nao atualizei o modelo ${m.nome}: ${erroUpd.message}`);
+        continue;
+      }
+      if ((mexidas ?? []).length > 0) continue;
+
+      const { error: erroIns } = await admin
+        .from("modelos_canal")
+        .insert({ tenant_id: tenantId, nome: m.nome, corpo: m.corpo, origem: "meta", atualizado_em: agora.toISOString() });
+      if (erroIns) console.warn(`[vigia] nao guardei o modelo ${m.nome}: ${erroIns.message}`);
+    }
+  } catch (e) {
+    console.warn(`[vigia] falha ao conferir modelos: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }

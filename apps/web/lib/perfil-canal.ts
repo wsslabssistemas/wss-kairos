@@ -220,3 +220,55 @@ export async function subirImagem(
     return { ok: false, motivo: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/**
+ * OS MODELOS APROVADOS, lidos da Meta.
+ *
+ * ⚠ POR QUE ISTO É A FONTE, e o texto do repositório não é.
+ *
+ * Em 31/ago o corpo dos modelos passou a ser guardado no histórico, para a IA
+ * parar de responder a um "Oi sim" sem saber qual era a pergunta. Só que o
+ * texto veio RECONSTRUÍDO do arquivo onde nós escrevemos os modelos antes de
+ * submetê-los — e a Meta é quem manda a mensagem de verdade. Um texto
+ * reaprovado lá e não atualizado aqui faria o histórico registrar uma conversa
+ * que não aconteceu.
+ *
+ * A leitura exige o WABA id, que não é nenhuma das quatro caixas da instalação
+ * e que três caminhos de descoberta pela API recusaram. Ele chega sozinho no
+ * `entry[].id` de todo webhook (ver `guardarWabaId`).
+ *
+ * ⚠ E A DIFERENÇA NÃO ERA SÓ TEÓRICA: o corpo aprovado tem quebra de linha no
+ * MEIO das frases, e a reconstrução tinha juntado as linhas com espaço. Mesmo
+ * tamanho, texto diferente — o tipo de divergência que ninguém encontra
+ * olhando.
+ */
+export async function modelosAprovados(
+  cred: CredencialCanal,
+  wabaId: string,
+): Promise<{ ok: true; modelos: { nome: string; corpo: string }[] } | { ok: false; motivo: string }> {
+  try {
+    const r = await fetch(
+      `https://graph.facebook.com/${cred.versao}/${wabaId}/message_templates` +
+      `?limit=100&fields=name,status,language,components`,
+      { headers: { Authorization: `Bearer ${cred.token}` }, cache: "no-store" },
+    );
+    const j = (await r.json()) as {
+      data?: { name?: string; status?: string; language?: string; components?: { type?: string; text?: string }[] }[];
+      error?: { message?: string };
+    };
+    if (!r.ok) return { ok: false, motivo: j?.error?.message ?? `A Meta respondeu ${r.status}.` };
+
+    const modelos: { nome: string; corpo: string }[] = [];
+    for (const t of j.data ?? []) {
+      // ⚠ SÓ APROVADO E SÓ pt_BR. Modelo em revisão ou recusado não é o que
+      // sai; guardar o texto dele no histórico registraria uma fala que nunca
+      // existiu. E `hello_world`, que a Meta cria sozinha, é en_US.
+      if (t.status !== "APPROVED" || t.language !== "pt_BR") continue;
+      const corpo = (t.components ?? []).find((c) => c.type === "BODY")?.text ?? "";
+      if (t.name && corpo) modelos.push({ nome: t.name, corpo });
+    }
+    return { ok: true, modelos };
+  } catch (e) {
+    return { ok: false, motivo: e instanceof Error ? e.message : String(e) };
+  }
+}

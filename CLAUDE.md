@@ -338,6 +338,17 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   preço"* — e era carregada só para preencher um `<select>` de encerramento.
   Numa conversa de reativação é o material mais valioso que temos. Ao curar
   qualquer coisa nova, pergunte **quem lê isso na hora de escrever**.
+- **⚠ NÃO PERGUNTE A QUEM OPERA O QUE O CONTEÚDO RESPONDE.** A tela de
+  importação pedia que a pessoa dissesse qual arquivo era qual antes de
+  qualquer leitura — e quem sabe isso é o arquivo. Errar essa escolha não dá
+  erro: dá comparação silenciosa entre coisas diferentes. Identificação
+  automática **roda os leitores de verdade** (lista própria de cabeçalho é uma
+  segunda versão da regra) e **propõe, nunca decide**: a correção fica sempre à
+  mão. Ver `identificarPlanilha`.
+- **⚠ ESCONDER NÃO É CONSERTAR.** `idsComGemeoAtivo` tirava da fila a ficha
+  duplicada — decisão certa, para não falar com quem já é cliente — e com isso
+  o cadastro dobrado ficou invisível por um mês. Toda vez que o sistema
+  esconder algo para se proteger, **alguém precisa ver o que foi escondido**.
 - **O sinal mais rápido de qualidade da IA é a CORREÇÃO DO VENDEDOR.** Quando
   alguém adapta a mensagem antes de enviar, é um vendedor experiente corrigindo
   o modelo no contexto exato, de graça. Isso era jogado fora. Hoje o par

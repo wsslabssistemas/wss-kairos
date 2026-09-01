@@ -142,5 +142,23 @@ verifica(
   true,
 );
 
+// ------------------------- O CORPO DO MODELO VEM DA META (01/set/2026)
+//
+// A pendencia escrita em 31/ago era: o corpo guardado em `modelos_canal` era
+// RECONSTRUIDO do repositorio, nao lido da Meta, porque a leitura exige o
+// WABA id e tres caminhos de descoberta pela API recusaram. Ele chegou
+// sozinho no `entry[].id` do primeiro webhook depois do deploy.
+//
+// ⚠ E A DIFERENCA NAO ERA TEORICA: o corpo aprovado tem quebra de linha no
+// MEIO das frases e a reconstrucao juntou as linhas com espaco. Mesmo
+// tamanho, texto diferente — o tipo de divergencia que ninguem acha olhando.
+const vigia = fonte("apps/web/lib/vigia-canal.ts");
+verifica("o vigia le os modelos aprovados da Meta", vigia.includes("modelosAprovados("), true);
+verifica("e so com o waba id, que chega pelo webhook", vigia.includes("whatsapp_waba_id"), true);
+// ⚠ NADA DE `upsert` COM `onConflict`. A regra nasceu de um estrago: gravacao
+// falhando em SILENCIO por dias, com 200 devolvido a Meta. Aqui e update e,
+// so se nao mexeu em nada, insert.
+verifica("a gravacao nao usa upsert com onConflict", codigo("apps/web/lib/vigia-canal.ts").includes("onConflict"), false);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);
