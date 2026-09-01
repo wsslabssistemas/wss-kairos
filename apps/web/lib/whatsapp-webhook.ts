@@ -136,6 +136,15 @@ export type MensagemRecebida = {
   texto: string;
   /** `text` ou o tipo de mídia da Meta (`audio`, `image`, `document`…). */
   tipo: string;
+  /**
+   * O id da mídia na Meta, quando a mensagem é mídia. `null` para texto.
+   *
+   * ⚠ ELE VALE POUCO TEMPO. A Meta guarda o arquivo por alguns dias e a URL
+   * de download é temporária — quem quiser o conteúdo baixa agora ou não
+   * baixa mais. Hoje só o áudio é usado (ver `lib/audio.ts`); os outros ficam
+   * aqui porque descartar o id é jogar fora a única chance de buscá-los.
+   */
+  midiaId: string | null;
   quando: Date;
   /** O número DA EMPRESA que recebeu — é o que diz de qual tenant é. */
   phoneNumberId: string;
@@ -217,6 +226,20 @@ export type PacoteDoWebhook = {
  * tratado — o cliente que responde com áudio é caso real e frequente, e essa
  * lacuna precisa ser visível antes de alguém reclamar.
  */
+/**
+ * O id do arquivo, que a Meta põe dentro do bloco do próprio tipo:
+ * `{ type: "audio", audio: { id, mime_type } }`.
+ *
+ * ⚠ LÊ PELO TIPO DECLARADO, não varrendo o objeto atrás de qualquer `id`. O
+ * `mm.id` da mensagem também é um id e não é este — trocar os dois faria o
+ * download pedir um arquivo que não existe, com erro que parece da Meta.
+ */
+function idDaMidia(mm: unknown, tipo: string): string | null {
+  const bloco = (mm as Record<string, unknown> | null)?.[tipo];
+  const id = (bloco as { id?: unknown } | null)?.id;
+  return typeof id === "string" && id.trim() ? id.trim() : null;
+}
+
 export function desmontarPacote(corpo: unknown): PacoteDoWebhook {
   const out: PacoteDoWebhook = { mensagens: [], status: [], ignorados: [], wabaId: null };
   const raiz = corpo as { object?: string; entry?: unknown[] } | null;
@@ -307,6 +330,7 @@ export function desmontarPacote(corpo: unknown): PacoteDoWebhook {
           nome: perfis.get(mm.from) ?? null,
           texto,
           tipo,
+          midiaId: idDaMidia(mm, tipo),
           quando: paraData(mm.timestamp),
           phoneNumberId,
           // ⚠ SÓ VEM NA PRIMEIRA MENSAGEM depois do clique no anúncio. Não é

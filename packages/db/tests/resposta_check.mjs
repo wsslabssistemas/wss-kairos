@@ -160,5 +160,26 @@ verifica("e so com o waba id, que chega pelo webhook", vigia.includes("whatsapp_
 // so se nao mexeu em nada, insert.
 verifica("a gravacao nao usa upsert com onConflict", codigo("apps/web/lib/vigia-canal.ts").includes("onConflict"), false);
 
+// ------------------------- VALOR NAO SE RECOMBINA (01/set/2026)
+//
+// ⚠ DUAS MENSAGENS COM PRECO ERRADO CHEGARAM A CLIENTES REAIS. O DNA declarava
+// o mesmo dinheiro em DOIS campos que se contradiziam: `valor` dizia
+// "1x R$ 168,00 + 11x R$ 109,00" (com a adesao ja embutida na primeira
+// parcela) e `condicao` dizia "adesao R$ 59" de novo.
+//
+// A IA nao inventou nada — ela COMBINOU os dois campos, e anunciou
+// "R$ 59 de adesao + 11x R$ 109": uma parcela a menos, R$ 109 a menos no
+// plano. A recepcao enviou sem ler.
+//
+// O dado foi corrigido para a forma que o fundador pediu ("adesao de R$ 59,00
+// + 12x R$ 109,00", aritmeticamente identica e sem ambiguidade). Esta regra e
+// a outra metade: proibir a recombinacao, porque dado ambiguo volta a
+// aparecer no DNA da proxima empresa e ninguem vai lembrar deste dia.
+verifica(
+  "o prompt proibe somar, dividir ou recombinar valor",
+  ia.includes("VALOR SE CITA COMO ESTA, NUNCA SE RECOMBINA") || ia.includes("VALOR SE CITA COMO ESTÁ, NUNCA SE RECOMBINA"),
+  true,
+);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

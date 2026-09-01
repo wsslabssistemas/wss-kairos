@@ -276,6 +276,45 @@ eq("pacote sem metadata devolve null", phoneNumberIdDoPacote(JSON.stringify({ en
 eq("id vazio conta como ausente", phoneNumberIdDoPacote(pacoteCom("   ")), null);
 eq("id que nao e texto nao vira texto", phoneNumberIdDoPacote(pacoteCom(12345)), null);
 
+// ------------------------------ O AUDIO VIRA CONVERSA (01/set/2026)
+//
+// ⚠ ATE HOJE O HISTORICO GUARDAVA SO "(audio recebido — ouca no WhatsApp)".
+// Para o vendedor isso basta: ele abre o WhatsApp e ouve. Para a IA que redige
+// a resposta, e indistinguivel de mensagem VAZIA — ela responde sem saber o
+// que a pessoa disse. E audio e o formato natural de boa parte da clientela.
+//
+// O primeiro passo e guardar o ID DA MIDIA, que a Meta poe dentro do bloco do
+// proprio tipo. Sem ele nao ha o que baixar — e a URL da Meta e temporaria:
+// ou se busca agora, ou nao se busca mais.
+const comAudio2 = {
+  object: "whatsapp_business_account",
+  entry: [{
+    id: "102290129340398",
+    changes: [{
+      field: "messages",
+      value: {
+        metadata: { phone_number_id: "111" },
+        messages: [{
+          from: "5551999998888", id: "wamid.AUDIO", timestamp: "1756000000",
+          type: "audio", audio: { id: "media-123", mime_type: "audio/ogg; codecs=opus" },
+        }],
+      },
+    }],
+  }],
+};
+const pAudio = desmontarPacote(comAudio2);
+eq("o id da midia e guardado", pAudio.mensagens[0]?.midiaId, "media-123");
+// ⚠ LE PELO TIPO DECLARADO, nao varrendo o objeto atras de qualquer `id`. O
+// `mm.id` da mensagem tambem e um id e NAO e este — trocar os dois faria o
+// download pedir um arquivo que nao existe.
+eq("e nao confunde com o id da mensagem", pAudio.mensagens[0]?.wamid, "wamid.AUDIO");
+// Texto puro nao tem midia, e o campo precisa ser null e nao undefined.
+eq("mensagem de texto nao tem midia", p.mensagens[0]?.midiaId, null);
+// ⚠ E A DESCRICAO ANTIGA CONTINUA, porque a transcricao pode nao acontecer:
+// sem chave, sem download ou com o relogio estourado, o historico volta a ela.
+eq("sem transcricao, a descricao de antes continua",
+  pAudio.mensagens[0]?.texto, "(áudio recebido — ouça no WhatsApp)");
+
 // ⚠ O TOTAL É CALCULADO AQUI, no fim. Ele morava no meio do arquivo e por isso
 // contava só as asserções escritas ACIMA dele: a saída dizia "46/41", com mais
 // aprovados do que existem. Número que soma errado num teste é o pior lugar

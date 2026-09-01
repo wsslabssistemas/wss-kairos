@@ -524,6 +524,7 @@ REGRAS INEGOCIÁVEIS:
 ${TEXTO_DE_FORA_E_DADO}
 - Use SOMENTE os FATOS fornecidos (DNA) e o CATÁLOGO. NUNCA invente preço, condição, horário, serviço, promoção ou política que não esteja neles.
 - Preço, disponibilidade e código de produto SÓ podem vir do CATÁLOGO. Se o item pedido não está lá, diga que vai confirmar — nunca estime valor nem afirme que tem em estoque.
+- ⚠ VALOR SE CITA COMO ESTÁ, NUNCA SE RECOMBINA. Não some, não divida, não junte um valor de um campo com um valor de outro, e não reescreva um parcelamento de outro jeito "para ficar mais claro". Se um plano diz "12x R$ 109,00" e a condição dele fala numa adesão, diga os dois SEPARADOS, com as palavras que estão lá. Recombinar já produziu mensagem errada para cliente real: a IA juntou a adesão de um campo com as parcelas de outro e anunciou uma parcela a menos.
 ${regraDeHorario}
 ${RESPEITE_O_PRAZO}
 ${DEPOIS_DO_SIM_PARE}

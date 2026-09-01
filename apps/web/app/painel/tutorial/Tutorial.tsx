@@ -74,19 +74,35 @@ const SECTIONS: Section[] = [
   {
     id: "automacao",
     n: "06",
-    title: "Versão automática (upgrade)",
-    desc: "Ligar o motor sem perder o manual",
+    title: "Automação (ligada)",
+    desc: "O motor já envia sozinho — o que você precisa saber",
     color: "#34d399",
     steps: [
-      { title: "Como é HOJE: a inteligência é nossa, o envio é humano", content: "Hoje o sistema decide QUEM procurar e escreve O QUE dizer — isso é a Fila de envio. O que ele NÃO faz é apertar o botão: você lê, ajusta e envia pelo WhatsApp com um clique.\n\nIsso não é limitação temporária. Envio automático exige a API oficial da Meta, com número dedicado e mensagens aprovadas; e usar provedor não oficial arrisca BANIR o número da sua empresa. O número é o ativo." },
-      { title: "O que muda quando a automação ligar", content: "Quando o volume justificar a burocracia da Meta, a mesma fila passa a enviar sozinha — sem reescrever nada. O que muda é quem aperta o botão. O manual continua disponível o tempo todo." },
-      { title: "Modo de operação", content: "Na aba Automação você escolhe o modo:\n• Desligado — 100% manual.\n• Simulação — gera e conta, mas não envia (para calibrar).\n• Automático — gera e envia dentro das regras." },
+      { title: "Como é HOJE: o motor envia sozinho", content: "A campanha de reativação SAI SOZINHA, pelo número oficial da empresa, sem ninguém clicar. O sistema decide quem procurar, monta a mensagem a partir de um modelo aprovado pela Meta e envia dentro das regras que você configurou.' + NL + NL + 'O que continua humano é RESPONDER: quando a pessoa escreve de volta, a IA sugere o texto e VOCÊ lê, ajusta e envia. Essa parte não é automática — e é justamente por isso que ela é a mais importante." },
+      { title: "⚠ LEIA ANTES DE ENVIAR. Sempre.", content: "A sugestão da IA é uma sugestão. Ela pode errar, e já errou: em 01/09 duas mensagens saíram com o valor do plano anual recorrente ERRADO, porque o cadastro tinha o mesmo preço escrito de duas formas diferentes. Foram enviadas sem ninguém ler.' + NL + NL + 'Preço, prazo e condição são os três lugares onde um erro custa dinheiro e confiança. Se a mensagem cita valor, CONFIRA contra a tabela antes de mandar. Sua leitura é a última trava, e ela não é opcional." },
+      { title: "Quando você edita, o sistema aprende", content: "Se você mudar a sugestão antes de enviar, o sistema guarda o par: o que ele escreveu e o que você mandou. As correções mais recentes voltam para dentro do motor e melhoram as próximas respostas.' + NL + NL + 'Ou seja: corrigir não é retrabalho, é o jeito mais rápido de ensinar o sistema. Enviar sem ler joga essa lição fora — e ainda manda o erro para o cliente." },
+      { title: "Modo de operação", content: "Na aba Automação você escolhe o modo:' + NL + '• Desligado — 100% manual.' + NL + '• Simulação — gera e conta, mas não envia (para calibrar).' + NL + '• Automático — gera e envia dentro das regras." },
+      { title: "Quem o motor NÃO chama", content: "Antes de mandar qualquer coisa, o sistema barra sozinho:' + NL + '• quem tem contrato correndo (não é ex-cliente, mesmo que a etapa diga que é);' + NL + '• quem saiu por um motivo sem volta, como mudança de endereço;' + NL + '• quem pediu para não ser contatado;' + NL + '• quem já tem outra ficha ativa (cadastro duplicado);' + NL + '• quem já recebeu mensagens demais sem responder.' + NL + NL + 'Por isso vale registrar o MOTIVO DE SAÍDA quando alguém contar por que parou: é o que impede o sistema de chamar de novo quem já foi embora de vez." },
       { title: "Regras anti-bloqueio e orçamento", content: "Você define máximo de mensagens por dia, janela de horário, quanto esperar entre contatos, quando parar de insistir e um teto de orçamento mensal. Bateu o teto, a automação suspende até virar o mês — sem surpresa na conta." },
     ],
   },
   {
-    id: "tecnicas",
+    id: "canal",
     n: "07",
+    title: "Canal oficial e conversas",
+    desc: "O número da empresa, e o que muda quando a pessoa responde",
+    color: "#38bdf8",
+    steps: [
+      { title: "O que é o Canal oficial", content: "É o WhatsApp da empresa ligado à API oficial da Meta. É por ele que a campanha sai e é nele que as respostas chegam — tudo numa aba só, com o histórico de cada pessoa do lado.' + NL + NL + 'Não é o WhatsApp pessoal de ninguém. O número é o ativo da empresa: se ele for bloqueado, a operação inteira para." },
+      { title: "A janela de 24 horas", content: "Depois que a pessoa te escreve, existem 24 horas para responder com texto livre. Passou disso, a Meta só entrega MODELO APROVADO — e aí a conversa deixou de ser resposta e virou retomada.' + NL + NL + 'Por isso responder rápido não é só educação: é o que mantém a conversa possível." },
+      { title: "Registre o motivo quando alguém contar por que parou", content: "Se a pessoa disser por que saiu — mudou de endereço, ficou caro, faltou tempo, se machucou — registre isso no encerramento do atendimento.' + NL + NL + 'Não é burocracia: cada motivo tem uma resposta diferente na próxima conversa, e quem se mudou o sistema NUNCA mais chama. Sem o registro, a pessoa volta para a campanha e recebe uma mensagem que não faz sentido para ela." },
+      { title: "De onde a pessoa veio", content: "O sistema marca sozinho quem chega pelo site, pelo Instagram e pelo Facebook — desde que o link tenha a frase que identifica a origem. Quem chega sem marca entra como WhatsApp, porque não dá para provar de onde veio.' + NL + NL + 'Isso decide onde vale gastar: convênio responde 9%, WhatsApp responde 54%. Somar tudo é medir duas coisas e chamar de uma." },
+      { title: "Reação com emoji não é resposta", content: "Quando alguém reage a uma mensagem com 👍 ou ❤️, isso fica no histórico como sinal, mas NÃO conta como mensagem esperando resposta. Responder a um aceno é mensagem paga sem conversa do outro lado." },
+    ],
+  },
+  {
+    id: "tecnicas",
+    n: "08",
     title: "Técnicas de venda (o porquê)",
     desc: "Os princípios por trás das respostas",
     color: "#fb7185",
@@ -100,7 +116,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "erros",
-    n: "08",
+    n: "09",
     title: "Erros comuns a evitar",
     desc: "O que NÃO fazer no atendimento",
     color: "var(--danger)",
@@ -127,9 +143,9 @@ export default function Tutorial() {
         <p style={{ fontWeight: 600, marginBottom: 8 }}>Comece aqui: o fluxo do dia</p>
         <ol className="text-dim" style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.7 }}>
           <li>Abra o <strong>Início</strong> e veja os toques de hoje e os atrasados</li>
-          <li>No <strong>Responder</strong>, escolha o cliente e cole a mensagem</li>
-          <li>Copie a melhor resposta e mande pelo WhatsApp</li>
-          <li>Registre o atendimento e confira a <strong>Agenda</strong></li>
+          <li>Abra o <strong>Canal oficial</strong> e responda quem escreveu — é o mais urgente</li>
+          <li><strong>Leia a sugestão da IA antes de enviar</strong>, principalmente se ela cita preço</li>
+          <li>Registre o combinado, o motivo de saída e confira a <strong>Agenda</strong></li>
         </ol>
       </div>
 

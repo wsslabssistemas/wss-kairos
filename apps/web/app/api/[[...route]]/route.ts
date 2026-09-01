@@ -5,6 +5,8 @@ import { variantesArmazenadas } from "@/lib/phone";
 import { escolherResponsavel } from "@/lib/carteira";
 import { guardarWabaId, empresaDoNumero } from "@/lib/credenciais";
 import { origemDaPrimeiraMensagem } from "@/lib/origem-site";
+import { baixarMidia, transcrever, comoAudio } from "@/lib/audio";
+import { credencialDoCanal } from "@/lib/credenciais";
 import { pediuParaSair } from "@/lib/optout";
 import { tipoDeFecho } from "@/lib/fecho";
 import { rodarTodasAsEmpresas } from "@/lib/motor-rota";
@@ -480,6 +482,40 @@ async function registrar(mensagens: MensagemRecebida[]) {
       if (!contactId) continue;
     }
 
+    // ⚠ ÁUDIO VIRA TEXTO, quando dá. Até 01/set o histórico guardava só
+    // "(áudio recebido — ouça no WhatsApp)", e para a IA que redige isso é
+    // indistinguível de mensagem vazia: ela responde sem saber o que foi dito.
+    // Áudio é o formato natural de boa parte da clientela.
+    //
+    // ⚠ TUDO AQUI DEGRADA PARA O COMPORTAMENTO ANTIGO. Sem chave de
+    // transcrição, com erro no download, com o relógio estourado — a descrição
+    // de antes continua valendo. A mensagem do cliente NUNCA pode se perder
+    // por causa de um recurso opcional.
+    let textoDaMensagem = msg.texto;
+    if (msg.tipo === "audio" && msg.midiaId) {
+      try {
+        const cred = await credencialDoCanal(tenantId);
+        if (cred) {
+          const baixado = await baixarMidia(msg.midiaId, cred);
+          if (!baixado.ok) {
+            console.warn(`[whatsapp] audio nao baixado (${msg.wamid}): ${baixado.motivo}`);
+          } else {
+            const t = await transcrever(baixado.bytes, baixado.mime);
+            if (t === null) {
+              // Sem AUDIO_API_KEY. Não é erro: é o recurso desligado.
+            } else if (!t.ok) {
+              console.warn(`[whatsapp] audio nao transcrito (${msg.wamid}): ${t.motivo}`);
+            } else {
+              textoDaMensagem = comoAudio(t.texto);
+              console.info(`[whatsapp] audio transcrito (${msg.wamid}): ${t.texto.length} caracteres`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[whatsapp] falha na transcricao (${msg.wamid}): ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
     // `external_id` é a chave contra duplicata: a Meta REENVIA o mesmo pacote
     // quando não recebe 200 a tempo, e sem isso a mesma frase do cliente
     // apareceria duas vezes no histórico — e contaria duas vezes na métrica.
@@ -531,7 +567,7 @@ async function registrar(mensagens: MensagemRecebida[]) {
           ? "customer_reaction"
           : "customer_message",
       channel: "whatsapp",
-      content: msg.texto,
+      content: textoDaMensagem,
       occurred_at: msg.quando.toISOString(),
       external_id: msg.wamid,
     });
