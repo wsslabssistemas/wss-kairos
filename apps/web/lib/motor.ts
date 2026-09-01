@@ -25,6 +25,19 @@
 import type { MotivoDaFila } from "./fila";
 
 /** O que o motor precisa saber de cada candidato. Tudo já calculado. */
+/**
+ * Os motivos de saída que TIRAM a pessoa da reativação para sempre.
+ *
+ * ⚠ A LISTA VEM DO MANIFESTO (Lei 1). O núcleo não sabe o que é "mudou de
+ * endereço" — ele sabe que existe motivo de saída e que alguns deles são
+ * definitivos. Quem declara qual é qual é o segmento, em `churn_reasons`, com
+ * `encerra_reativacao: true`.
+ *
+ * Na academia é UM só, e a curadoria já dizia por quê: *"Fora do alcance. Não
+ * insistir — e é o único motivo que tira a pessoa da reativação de vez."*
+ * Preço, tempo e desânimo NÃO entram: quem saiu por eles volta quando a
+ * condição muda, e é exatamente para essa gente que a campanha existe.
+ */
 export type Candidato = {
   contactId: string;
   motivo: MotivoDaFila;
@@ -45,6 +58,16 @@ export type Candidato = {
    * problema de cadastro, não decisão de campanha.
    */
   diasNaEtapa: number | null;
+  /**
+   * O motivo de saída registrado na ficha (`contacts.motivo_saida`), ou `null`.
+   *
+   * ⚠ ELE ERA GRAVADO E NUNCA LIDO. Até 01/set/2026 o campo existia, a tela de
+   * encerramento o preenchia, a biblioteca curada dizia o que fazer com cada
+   * valor — e **nenhuma linha do motor ou da fila o consultava**. O fundador
+   * perguntou, sobre um ex-aluno que avisou ter se mudado: *"o sistema tem que
+   * reconhecer esse público e não chamar mais o cliente?"*. A resposta era não.
+   */
+  motivoSaida: string | null;
   /**
    * A data em que o contrato dele termina (`AAAA-MM-DD`), ou `null`.
    *
@@ -67,6 +90,15 @@ export type Candidato = {
 };
 
 export type RegrasDoMotor = {
+  /**
+   * Os motivos de saída que encerram a reativação, vindos do MANIFESTO.
+   *
+   * ⚠ NÃO É CONFIGURAÇÃO DA EMPRESA, é curadoria do ramo. Deixar isso na tela
+   * de Automação faria cada academia decidir sozinha se "mudou de endereço"
+   * tem volta — e a resposta não depende da empresa, depende do negócio.
+   * Vazio quando o segmento não declara motivos de saída (14 dos 15 hoje).
+   */
+  motivos_que_encerram: string[];
   mode: "off" | "simulation" | "auto";
   max_per_day: number;
   min_hours_between: number;
@@ -305,6 +337,35 @@ export function planejar(entrada: {
     // errado chega por caminhos que ninguém previu, e o veto de última hora é
     // o que sobra quando a origem falha. Vale só para `reativacao` — na
     // renovação, contrato correndo é exatamente o motivo de falar.
+    // ⚠ MOTIVO DE SAÍDA DEFINITIVO — quem avisou que foi embora não é chamado
+    // de novo. Vem ANTES até do veto de contrato, porque aqui não há dúvida a
+    // resolver: a pessoa DISSE, alguém registrou, e a biblioteca do ramo já
+    // classificou aquele motivo como sem volta.
+    //
+    // ⚠ E ISTO É A REGRA CURADA FINALMENTE SENDO CUMPRIDA. O manifesto da
+    // academia diz, sobre mudança de endereço: "Fora do alcance. Não insistir
+    // — e é o único motivo que tira a pessoa da reativação de vez." A frase
+    // estava escrita desde que a Skill nasceu, o campo era preenchido pela
+    // tela de encerramento, e o motor nunca leu nenhum dos dois.
+    //
+    // Vale SÓ para a reativação: numa renovação, quem se mudou pode continuar
+    // cliente à distância dependendo do ramo, e o motivo de saída nem existe.
+    if (
+      c.motivo === "reativacao" &&
+      c.motivoSaida &&
+      regras.motivos_que_encerram.includes(c.motivoSaida)
+    ) {
+      vereditos.push({
+        contactId: c.contactId,
+        enviar: false,
+        motivo:
+          `Ele registrou saída por um motivo que não tem volta ("${c.motivoSaida}"). ` +
+          `A biblioteca deste ramo classifica esse motivo como fora de alcance — ` +
+          `insistir aqui é o caminho mais rápido para um bloqueio.`,
+      });
+      continue;
+    }
+
     if (c.motivo === "reativacao" && c.contratoAte && c.contratoAte >= hojeISO) {
       vereditos.push({
         contactId: c.contactId,

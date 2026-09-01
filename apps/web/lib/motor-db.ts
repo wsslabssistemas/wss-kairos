@@ -137,12 +137,18 @@ export async function rodarMotor(entrada: {
   // ⚠ A VIGÊNCIA DO CONTRATO, para o veto que impede chamar de ex-aluno quem
   // ainda é cliente. Ver `lib/motor.ts` — o caso da Lilian, 28/ago.
   const vigenciaDe = new Map(carga.todos.map((c) => [c.id, c.contract_end ?? null]));
+  // ⚠ O MOTIVO DE SAÍDA, para o veto de quem não volta. Ver `lib/motor.ts`.
+  const saidaDe = new Map(carga.todos.map((c) => [c.id, c.motivo_saida ?? null]));
+  // Os motivos que o RAMO classifica como sem volta. Vazio quando o segmento
+  // não declara motivos de saída — hoje, 14 dos 15.
+  const motivosQueEncerram = carga.churnReasons.filter((m) => m.encerra_reativacao).map((m) => m.key);
 
   const candidatos: Candidato[] = doCanal.map((f) => ({
     contactId: f.contactId,
     motivo: f.motivo,
     diasNaEtapa: diasDesde(entrouNaEtapa.get(f.contactId), agora),
     contratoAte: vigenciaDe.get(f.contactId) ? String(vigenciaDe.get(f.contactId)).slice(0, 10) : null,
+    motivoSaida: saidaDe.get(f.contactId) ?? null,
     horasDesdeUltimoContato: horasDesde(carga.ultimo[f.contactId], agora),
     semResposta: semRespostaDele(carga.interacoes, f.contactId),
     diasSemEngajamento: diasDesdeEntradaDele(carga.interacoes, f.contactId, agora),
@@ -162,7 +168,9 @@ export async function rodarMotor(entrada: {
 
   const plano = planejar({
     candidatos,
-    regras: simular ? { ...regras, mode: "simulation" } : regras,
+    regras: simular
+      ? { ...regras, motivos_que_encerram: motivosQueEncerram, mode: "simulation" as const }
+      : { ...regras, motivos_que_encerram: motivosQueEncerram },
     enviadosHoje,
     // ⚠ A HORA DA EMPRESA, NÃO A DO SERVIDOR. `getHours()` aqui devolvia UTC
     // — às 18h de Porto Alegre o processo lia 21h e se considerava fora da

@@ -38,6 +38,9 @@ const REGRAS = {
   mode: "auto", max_per_day: 30, min_hours_between: 24, max_no_reply: 3,
   cooldown_hours: 48, window_start: 9, window_end: 19, stop_after_days: 14,
   reativacao_max_dias: 90,
+  // Os motivos de saida que o RAMO classifica como sem volta. Na academia e um
+  // so, e a curadoria ja dizia por que: "Fora do alcance. Nao insistir."
+  motivos_que_encerram: ["mudou_endereco"],
   max_por_rodada: 0,
   pausa_entre_envios_seg: 6,
 };
@@ -422,6 +425,50 @@ const meiaCheia = planQ("media", 15);
 verifica("com metade do teto ja gasta, nao sai mais nada", meiaCheia.enviar.length, 0);
 verifica("e o motivo cita a metade, nao o teto cheio",
   /teto do dia caiu para 15/.test(meiaCheia.porque), true);
+
+// ------------------- QUEM AVISOU QUE FOI EMBORA (01/set/2026)
+//
+// ⚠ O CAMPO ERA GRAVADO E NUNCA LIDO. `contacts.motivo_saida` existia, a tela
+// de encerramento o preenchia, a biblioteca curada da academia dizia o que
+// fazer com cada valor — e NENHUMA linha do motor ou da fila o consultava.
+//
+// O fundador perguntou sobre um ex-aluno que avisou ter se mudado: "o sistema
+// tem que reconhecer esse publico e nao chamar mais o cliente?". A resposta
+// era NAO: o Cesar Silva Dias ja estava marcado como `mudou_endereco` na
+// ficha, seguia como ex-aluno sem `do_not_contact`, e entraria na rodada
+// autonoma da manha seguinte.
+//
+// ⚠ E A REGRA JA ESTAVA ESCRITA, palavra por palavra, no manifesto:
+// "Fora do alcance. Nao insistir — e e o unico motivo que tira a pessoa da
+// reativacao de vez." Faltava a maquina cumprir o que a curadoria mandava.
+const mudou = planoHoje({ ...livre("cesar"), motivoSaida: "mudou_endereco" });
+verifica("quem se mudou NAO recebe reativacao", mudou.enviar.length, 0);
+verifica("e o veredito diz que o motivo nao tem volta",
+  /nao tem volta|não tem volta/i.test(mudou.vereditos[0].motivo), true);
+
+// ⚠ SO OS MOTIVOS DECLARADOS PELO RAMO. Preco, tempo e desanimo NAO encerram:
+// quem saiu por eles volta quando a condicao muda, e e exatamente para essa
+// gente que a campanha existe. Barrar todo mundo que tem motivo registrado
+// esvaziaria a reativacao — trocando um defeito por um maior.
+verifica("quem saiu por preco continua na campanha",
+  planoHoje({ ...livre("outro"), motivoSaida: "preco" }).enviar.length, 1);
+verifica("e quem nao tem motivo registrado tambem",
+  planoHoje({ ...livre("terceiro"), motivoSaida: null }).enviar.length, 1);
+
+// ⚠ E VALE SO PARA A REATIVACAO. Numa renovacao o motivo de saida nem existe,
+// e barrar por ele calaria a conversa de quem ainda e cliente.
+verifica("renovacao nao e barrada pelo motivo de saida",
+  planoHoje({ ...livre("quarto"), motivo: "renovacao", motivoSaida: "mudou_endereco" }).enviar.length, 1);
+
+// ⚠ SEGMENTO SEM MOTIVOS DECLARADOS NAO BARRA NINGUEM. Hoje 14 dos 15 ramos
+// nao tem `churn_reasons`; a lista vazia precisa ser inofensiva, senao a
+// correcao de um ramo quebraria os outros catorze.
+verifica("sem motivos declarados, ninguem e barrado",
+  planejar({
+    candidatos: [{ ...livre("quinto"), motivoSaida: "mudou_endereco" }],
+    regras: { ...REGRAS, motivos_que_encerram: [] },
+    enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE,
+  }).enviar.length, 1);
 
 console.log(falhas === 0 ? "\nmotor: tudo certo." : `\nmotor: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

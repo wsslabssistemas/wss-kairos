@@ -119,7 +119,19 @@ export async function getSkillFormConfig(skillKey: string, cliente?: ClienteSupa
          */
         active_stage?: string;
       };
-      churn_reasons?: { key: string; label: string; o_que_fazer?: string }[];
+      churn_reasons?: {
+        key: string;
+        label: string;
+        o_que_fazer?: string;
+        /**
+         * ⚠ ESTE MOTIVO TIRA A PESSOA DA REATIVAÇÃO PARA SEMPRE.
+         *
+         * Quem declara é o segmento, nunca o núcleo (Lei 1): o núcleo sabe
+         * que existe motivo de saída e que alguns são definitivos; o que é
+         * "mudou de endereço" só o ramo sabe. Ver o veto em `lib/motor.ts`.
+         */
+        encerra_reativacao?: boolean;
+      }[];
     } | null) ?? {};
 
   return {

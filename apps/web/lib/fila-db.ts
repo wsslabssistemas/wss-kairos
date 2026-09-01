@@ -54,6 +54,8 @@ export type ContatoDaCarga = {
   /** Marcado como "nao contatar" (0059). Nao entra em lista proativa nenhuma. */
   do_not_contact: boolean;
   do_not_contact_reason: string | null;
+  /** O motivo de saída registrado no encerramento. Ver o veto em `lib/motor.ts`. */
+  motivo_saida: string | null;
 };
 
 export type InteracaoDaCarga = {
@@ -91,6 +93,14 @@ export type CargaDaFila = {
   naoContatar: number;
   /** Cadastros velhos escondidos por ja existir a mesma pessoa como cliente. */
   gemeosAtivos: number;
+  /**
+   * Os motivos de saída do RAMO, com o que fazer em cada um.
+   *
+   * ⚠ Vem daqui porque a carga já leu o manifesto — pedir de novo lá em cima
+   * seria uma segunda leitura do mesmo arquivo, e duas leituras do manifesto
+   * são duas chances de divergirem no dia em que uma for filtrada.
+   */
+  churnReasons: { key: string; label: string; encerra_reativacao?: boolean }[];
 };
 
 /**
@@ -122,7 +132,7 @@ export async function carregarFila(entrada: {
   // nenhuma, e a fila saía VAZIA. O motor então registrava, muito bem
   // comportado, "Nenhum candidato passou nas regras agora" — a frase que
   // esta casa passa o tempo todo tentando distinguir de "está quebrado".
-  const { stages, cadences, recurrence, contract } = await getSkillFormConfig(skillKey, supabase);
+  const { stages, cadences, recurrence, contract, churnReasons } = await getSkillFormConfig(skillKey, supabase);
 
   // ⚠ MANIFESTO SEM ETAPA É DEFEITO, NÃO OPERAÇÃO NORMAL — e precisa PARAR.
   //
@@ -147,7 +157,7 @@ export async function carregarFila(entrada: {
     lerTudo<ContatoDaCarga>(
       (de, ate) => supabase
         .from("contacts")
-        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, contract_start, custom, do_not_contact, do_not_contact_reason")
+        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, contract_start, custom, do_not_contact, do_not_contact_reason, motivo_saida")
         .eq("tenant_id", tenantId)
         .is("deleted_at", null)
         .order("id")
@@ -238,6 +248,7 @@ export async function carregarFila(entrada: {
     toques,
     settings: (tRow?.settings ?? null) as Record<string, unknown> | null,
     hojeISO,
+    churnReasons: (churnReasons ?? []) as { key: string; label: string; encerra_reativacao?: boolean }[],
     naoContatar: cData.length - elegiveis.length,
     /** Cadastros velhos escondidos porque a pessoa ja e cliente em outra linha. */
     gemeosAtivos: comGemeo.size,

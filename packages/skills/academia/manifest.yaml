@@ -344,6 +344,12 @@ churn_reasons:
   - key: mudou_endereco
     label: "Mudou de endereço ou mora longe"
     o_que_fazer: "Fora do alcance. Não insistir — e é o único motivo que tira a pessoa da reativação de vez."
+    # ⚠ ESTA LINHA É O QUE FAZ A FRASE ACIMA VALER. Ela estava escrita desde que
+    # a Skill nasceu, o campo de motivo era preenchido na tela de encerramento,
+    # e o motor NUNCA leu nenhum dos dois — quem avisou que se mudou seguia
+    # entrando na campanha seguinte. Sem esta chave, "não insistir" é conselho
+    # para uma pessoa ler, não regra que a máquina cumpre.
+    encerra_reativacao: true
   - key: outra_academia
     label: "Está treinando em outro lugar"
     o_que_fazer: "Não oferecer desconto: descobrir o que a outra tem. Volta quando aquilo falhar, e a anotação é o que avisa."
