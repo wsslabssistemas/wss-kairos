@@ -177,6 +177,14 @@ jobs:
       # a mensagem saia fluente e sem tecnica nenhuma.
       - name: Resposta — a tecnica curada chega em quem escreve
         run: node packages/db/tests/resposta_check.mjs
+      # DE ONDE A PESSOA VEIO. O nucleo grava a origem e o nucleo nao conhece
+      # segmento (Lei 1) — entao tudo que ele sabe gravar precisa estar
+      # declarado em `lead_sources` de TODOS os manifestos. Em 01/set `site`
+      # faltava em 8 dos 15, inclusive na academia, e `facebook` em quase
+      # todos: o valor entrava no banco, sumia do seletor da ficha e virava
+      # fatia orfa no relatorio, sem erro nenhum.
+      - name: Origem — o que o codigo grava, o manifesto declara
+        run: node packages/db/tests/origem_check.mjs
       # O motor proativo. As seis regras anti-bloqueio da tela de Automacao
       # eram gravadas desde que ela nasceu e NENHUMA linha do sistema as lia —
       # um formulario que salva e ninguem cumpre promete um freio que nao

@@ -203,6 +203,9 @@ lead_sources:
   - festa_anterior
   - cerimonialista
   - fornecedor_parceiro
+  - site
+  - facebook
+  - campanha
   - outro
 
 dna_sections:

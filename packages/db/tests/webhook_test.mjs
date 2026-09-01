@@ -117,6 +117,16 @@ eq("nome do perfil é casado pelo wa_id", p.mensagens[0]?.nome, "Maria");
 // ⚠ E QUEM APAGAR O TEXTO ENTRA COMO "whatsapp", de proposito: nao da para
 // provar de onde veio. Origem que se perde e melhor que origem inventada.
 eq("a frase do site vira origem", origemDaPrimeiraMensagem("Oi! Vim pelo site e quero saber mais"), "site");
+eq("instagram tem marca propria", origemDaPrimeiraMensagem("Oi! Vim pelo Instagram e quero saber os planos"), "instagram");
+eq("o apelido tambem conta", origemDaPrimeiraMensagem("oi, vim pelo insta"), "instagram");
+eq("facebook tem marca propria", origemDaPrimeiraMensagem("Oi! Vim pelo Facebook"), "facebook");
+// ⚠ A ORDEM SO DESEMPATA COM AS DUAS FRASES INTEIRAS na mesma mensagem, que e
+// raro — e a rede ganha, porque ela e a origem e o site e o caminho. Eu tinha
+// escrito este caso como "vim pelo site do instagram" e estava errado: essa
+// frase NAO contem "vim pelo instagram", so "vim pelo site". A trava pegou.
+eq("com as duas marcas inteiras, a rede ganha", origemDaPrimeiraMensagem("vim pelo instagram e vim pelo site"), "instagram");
+// E o que nao tem marca nenhuma continua sem origem inventada.
+eq("mencionar a rede de passagem nao vira origem", origemDaPrimeiraMensagem("vi voces no instagram, quanto custa?"), null);
 eq("sem acento e em caixa alta tambem", origemDaPrimeiraMensagem("OI, VIM PELO SÍTE"), "site");
 eq("mensagem comum nao inventa origem", origemDaPrimeiraMensagem("quanto custa a mensalidade?"), null);
 eq("vazio nao inventa origem", origemDaPrimeiraMensagem(""), null);

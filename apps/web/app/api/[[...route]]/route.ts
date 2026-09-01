@@ -448,7 +448,13 @@ async function registrar(mensagens: MensagemRecebida[]) {
           // vindo dele nasceria como "whatsapp" e o site não teria como
           // provar que trouxe alguém. Ver `lib/origem-site.ts`.
           source: msg.origem
-            ? "campanha meta"
+            // ⚠ `campanha`, NÃO "campanha meta": é o valor que os manifestos
+            // declaram em `lead_sources`. Origem é dimensão de análise, e
+            // dimensão é enum — um valor que o segmento não conhece não aparece
+            // no seletor da ficha e não soma com o resto do relatório. QUAL
+            // anúncio trouxe a pessoa continua guardado em `custom.anuncio_*`,
+            // que é onde o detalhe pertence.
+            ? "campanha"
             : (origemDaPrimeiraMensagem(msg.texto) ?? "whatsapp"),
           // ⚠ E O ANÚNCIO INTEIRO FICA GUARDADO. Ele vem UMA VEZ, junto da
           // primeira mensagem, e não é consultável depois — descartar aqui é

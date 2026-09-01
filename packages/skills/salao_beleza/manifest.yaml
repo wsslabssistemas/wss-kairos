@@ -191,6 +191,9 @@ lead_sources:
   - indicacao
   - passou_na_frente
   - profissional_trouxe
+  - site
+  - facebook
+  - campanha
   - outro
 
 dna_sections:

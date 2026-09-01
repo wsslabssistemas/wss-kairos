@@ -319,6 +319,7 @@ lead_sources:
   - indicacao
   - convenio
   - campanha
+  - site
   - outro
 
 # ---------------------------------------------------------------------

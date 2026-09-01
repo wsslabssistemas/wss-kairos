@@ -200,6 +200,9 @@ lead_sources:
   - guincho
   - aplicativo_motorista
   - prospeccao
+  - site
+  - facebook
+  - campanha
   - outro
 
 dna_sections:

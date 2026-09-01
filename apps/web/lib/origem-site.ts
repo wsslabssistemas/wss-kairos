@@ -39,7 +39,40 @@
 // **Origem que se perde é melhor que origem inventada** — a regra do produto
 // inteiro aplicada à medição dele.
 
-/** O que o link do site manda escrito. Mude aqui E no site, nunca só num. */
+/**
+ * AS FRASES QUE REVELAM DE ONDE A PESSOA VEIO, e a origem de cada uma.
+ *
+ * ⚠ INSTAGRAM E FACEBOOK ENTRARAM EM 01/set, e o motivo é o mesmo do site: os
+ * botões e a bio das redes apontam para o número da automação, e sem marca
+ * toda essa gente nasce como `whatsapp`. A base da Be Fitness já tem 37
+ * contatos marcados como `facebook` e 7 como `instagram` — todos digitados à
+ * mão na importação. Quem chega hoje pelas redes some dentro de `whatsapp`.
+ *
+ * ⚠ A ORDEM: a primeira frase que casar vence, e as redes vêm antes do site —
+ * quando as duas marcas aparecem inteiras, a rede é a origem e o site é o
+ * caminho. É um desempate raro, e ele NÃO cobre "vim pelo site do instagram":
+ * essa frase não contém "vim pelo instagram", contém "vim pelo site", e é como
+ * site que ela entra. Eu tinha escrito o contrário aqui; a trava pegou.
+ *
+ * ⚠ E MENCIONAR A REDE DE PASSAGEM NÃO É MARCA. "vi vocês no instagram, quanto
+ * custa?" entra como `whatsapp` — não temos como provar de onde veio o clique,
+ * e origem que se perde é melhor que origem inventada.
+ *
+ * ⚠ E TODA ORIGEM AQUI PRECISA ESTAR DECLARADA EM `lead_sources` NO MANIFESTO
+ * DE TODO SEGMENTO. Gravar uma origem que o ramo não conhece quebra a regra do
+ * `CLAUDE.md` — dimensão de análise é enum, nunca texto livre — e faz a
+ * pessoa ver na ficha um valor que o seletor dela não oferece. Guardado por
+ * `origem_check.mjs`.
+ */
+export const MARCADORES: { frase: string; origem: string }[] = [
+  { frase: "vim pelo instagram", origem: "instagram" },
+  { frase: "vim pelo insta", origem: "instagram" },
+  { frase: "vim pelo facebook", origem: "facebook" },
+  { frase: "vim pelo face", origem: "facebook" },
+  { frase: "vim pelo site", origem: "site" },
+];
+
+/** Compatibilidade com quem já usava a constante do site. */
 export const FRASE_DO_SITE = "vim pelo site";
 
 /**
@@ -63,5 +96,8 @@ function normalizar(t: string): string {
 export function origemDaPrimeiraMensagem(texto: string | null | undefined): string | null {
   const t = normalizar((texto ?? "").trim());
   if (!t) return null;
-  return t.includes(normalizar(FRASE_DO_SITE)) ? "site" : null;
+  for (const m of MARCADORES) {
+    if (t.includes(normalizar(m.frase))) return m.origem;
+  }
+  return null;
 }

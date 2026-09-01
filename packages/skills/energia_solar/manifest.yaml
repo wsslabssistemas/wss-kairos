@@ -299,6 +299,8 @@ lead_sources:
   - feira
   - parceiro_construtor
   - cliente_antigo
+  - facebook
+  - campanha
   - outro
 
 # ---------------------------------------------------------------------

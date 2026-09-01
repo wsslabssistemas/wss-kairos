@@ -182,6 +182,8 @@ lead_sources:
   - indicacao
   - google
   - campanha
+  - site
+  - facebook
   - outro
 
 dna_sections:

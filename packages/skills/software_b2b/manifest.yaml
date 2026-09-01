@@ -243,6 +243,8 @@ lead_sources:
   - prospeccao
   - site
   - evento
+  - facebook
+  - campanha
   - outro
 
 dna_sections:

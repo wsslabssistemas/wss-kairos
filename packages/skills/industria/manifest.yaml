@@ -248,6 +248,10 @@ lead_sources:
   - licitacao
   - showroom
   - cliente_antigo
+  - instagram
+  - facebook
+  - whatsapp
+  - campanha
   - outro
 
 # ---------------------------------------------------------------------

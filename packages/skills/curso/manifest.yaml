@@ -286,6 +286,7 @@ lead_sources:
   - site
   - empresa_parceira
   - campanha
+  - facebook
   - outro
 
 dna_sections:

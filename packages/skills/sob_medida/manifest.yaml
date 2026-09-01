@@ -175,6 +175,8 @@ lead_sources:
   - site
   - prospeccao
   - licitacao
+  - facebook
+  - campanha
   - outro
 
 dna_sections:
