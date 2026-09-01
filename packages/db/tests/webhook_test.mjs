@@ -83,7 +83,8 @@ const EPOCH_SEG = String(Math.floor(QUANDO.getTime() / 1000));
 const pacoteReal = {
   object: "whatsapp_business_account",
   entry: [{
-    id: "0",
+    // ⚠ ISTO É O WABA ID. Ver a asserção lá embaixo.
+    id: "102290129340398",
     changes: [{
       field: "messages",
       value: {
@@ -104,6 +105,22 @@ eq("uma mensagem de texto é lida", p.mensagens.length, 1);
 eq("wamid", p.mensagens[0]?.wamid, "wamid.AAA");
 eq("remetente", p.mensagens[0]?.de, "5551982512270");
 eq("nome do perfil é casado pelo wa_id", p.mensagens[0]?.nome, "Maria");
+
+// ⚠ O WABA ID CHEGA EM TODO PACOTE E ERA JOGADO FORA (31/ago/2026).
+//
+// `entry[].id` é o ID da conta do WhatsApp Business. Ele NÃO é nenhuma das
+// quatro caixas que a pessoa cola na instalação, e sem ele não dá para ler os
+// modelos aprovados pela API — então o corpo deles fica reconstruído do
+// repositório, e um texto reaprovado na Meta faria o histórico registrar uma
+// conversa diferente da que aconteceu.
+//
+// Três caminhos de descoberta pela API recusam com o token que temos. Este
+// estava no corpo de toda mensagem, o tempo inteiro.
+eq("o WABA id vem de entry[].id", p.wabaId, "102290129340398");
+verdade(
+  "pacote sem id na entrada devolve null, nao string vazia",
+  desmontarPacote({ object: "whatsapp_business_account", entry: [{ changes: [] }] }).wabaId === null,
+);
 eq("texto", p.mensagens[0]?.texto, "oi, quanto custa a mensalidade?");
 eq("phone_number_id — é ele que diz de qual empresa é", p.mensagens[0]?.phoneNumberId, "PHONE_ID_1");
 

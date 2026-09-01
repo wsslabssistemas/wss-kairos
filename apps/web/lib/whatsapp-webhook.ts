@@ -182,6 +182,25 @@ export type PacoteDoWebhook = {
   status: StatusDeEnvio[];
   /** O que veio e não sabemos tratar. Contado, não ignorado — ver nota abaixo. */
   ignorados: string[];
+  /**
+   * ⚠ O ID DA CONTA DO WHATSAPP BUSINESS (WABA), que estava chegando e sendo
+   * jogado fora.
+   *
+   * `entry[].id` do pacote da Meta É o WABA id. Ele não está em lugar nenhum
+   * das credenciais que a pessoa cola (token, id do número, chave secreta,
+   * token de verificação), e sem ele não dá para ler os MODELOS APROVADOS pela
+   * API (`GET /{waba_id}/message_templates`) — que é o que faria o corpo dos
+   * modelos vir da Meta em vez de ser reconstruído do repositório.
+   *
+   * Tentei descobrir por três caminhos e os três recusam: o campo
+   * `whatsapp_business_account` no id do número, os `granular_scopes` do
+   * `debug_token` e as duas arestas de WABA do app. E ele estava no corpo de
+   * toda mensagem recebida, o tempo inteiro.
+   *
+   * Mesma ideia do `idDoApp` em `lib/perfil-canal.ts`: **descobrir em vez de
+   * pedir mais uma caixa no formulário**, que já é o gargalo da instalação.
+   */
+  wabaId: string | null;
 };
 
 /**
@@ -199,7 +218,7 @@ export type PacoteDoWebhook = {
  * lacuna precisa ser visível antes de alguém reclamar.
  */
 export function desmontarPacote(corpo: unknown): PacoteDoWebhook {
-  const out: PacoteDoWebhook = { mensagens: [], status: [], ignorados: [] };
+  const out: PacoteDoWebhook = { mensagens: [], status: [], ignorados: [], wabaId: null };
   const raiz = corpo as { object?: string; entry?: unknown[] } | null;
   if (!raiz || raiz.object !== "whatsapp_business_account" || !Array.isArray(raiz.entry)) {
     out.ignorados.push("pacote fora do formato do WhatsApp Business");
@@ -207,6 +226,13 @@ export function desmontarPacote(corpo: unknown): PacoteDoWebhook {
   }
 
   for (const entrada of raiz.entry) {
+    // ⚠ AQUI MORA O WABA ID. Vale para pacote de mensagem e de status — todo
+    // webhook desta assinatura carrega o mesmo. O primeiro que aparecer serve.
+    const idDaEntrada = (entrada as { id?: unknown })?.id;
+    if (!out.wabaId && typeof idDaEntrada === "string" && idDaEntrada.trim()) {
+      out.wabaId = idDaEntrada.trim();
+    }
+
     const changes = (entrada as { changes?: unknown[] })?.changes;
     if (!Array.isArray(changes)) continue;
 

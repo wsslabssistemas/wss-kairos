@@ -3,7 +3,7 @@ import { handle } from "hono/vercel";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { variantesArmazenadas } from "@/lib/phone";
 import { escolherResponsavel } from "@/lib/carteira";
-import { empresaDoNumero } from "@/lib/credenciais";
+import { guardarWabaId, empresaDoNumero } from "@/lib/credenciais";
 import { pediuParaSair } from "@/lib/optout";
 import { tipoDeFecho } from "@/lib/fecho";
 import { rodarTodasAsEmpresas } from "@/lib/motor-rota";
@@ -207,6 +207,16 @@ app.post("/whatsapp/webhook", async (c) => {
   }
 
   const pacote = desmontarPacote(corpo);
+
+  // ⚠ O WABA ID VEM DE GRAÇA EM TODO PACOTE, e a gente descartava. É o que
+  // falta para ler os modelos aprovados pela API em vez de reconstruir o
+  // corpo deles do repositório (ver `modelos_canal`, 0070). Guardar é
+  // best-effort e roda depois da assinatura conferida: `entry[].id` só vale
+  // como fato porque o pacote já provou ser da Meta.
+  if (pacote.wabaId && dono?.tenantId) {
+    await guardarWabaId(dono.tenantId, pacote.wabaId);
+  }
+
   if (pacote.ignorados.length) {
     // Áudio e imagem caem aqui. Fica no log para "o cliente respondeu e
     // ninguém viu" ser um número, e não um silêncio.

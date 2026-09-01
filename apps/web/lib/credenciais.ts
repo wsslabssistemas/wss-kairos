@@ -202,3 +202,41 @@ export async function desligarCanal(tenantId: string): Promise<{ ok: boolean; er
   if (error) return { ok: false, erro: error.message };
   return { ok: true };
 }
+
+/**
+ * GUARDA O WABA ID DESCOBERTO NO WEBHOOK — uma vez, sem incomodar ninguém.
+ *
+ * ⚠ `entry[].id` de todo pacote da Meta É o ID da conta do WhatsApp Business,
+ * e ele não é nenhuma das quatro caixas que a pessoa cola na instalação. Sem
+ * ele não dá para ler os modelos aprovados pela API, e o corpo deles fica
+ * reconstruído do repositório (ver `modelos_canal`, migration 0070).
+ *
+ * ⚠ SÓ ESCREVE SE ESTIVER VAZIO. Se um dia o valor mudar de verdade, isso é
+ * evento raro e merece ser visto por gente — sobrescrever a cada webhook faria
+ * uma troca inesperada passar sem ninguém notar, que é o oposto do que este
+ * projeto faz com credencial.
+ *
+ * ⚠ E FALHAR AQUI NÃO PODE DERRUBAR O WEBHOOK. Isto é conveniência: a
+ * mensagem do cliente vale infinitamente mais que a descoberta do id.
+ */
+export async function guardarWabaId(tenantId: string, wabaId: string): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    // paginacao-ok: uma linha, chave primária.
+    const { data } = await admin
+      .from("tenant_secrets")
+      .select("whatsapp_waba_id")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if ((data as { whatsapp_waba_id?: string | null } | null)?.whatsapp_waba_id) return;
+
+    const { error } = await admin
+      .from("tenant_secrets")
+      .update({ whatsapp_waba_id: wabaId })
+      .eq("tenant_id", tenantId);
+    if (error) console.warn(`[whatsapp] nao guardei o waba id: ${error.message}`);
+    else console.info(`[whatsapp] waba id descoberto e guardado para o tenant ${tenantId}`);
+  } catch (e) {
+    console.warn(`[whatsapp] falha ao guardar o waba id: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
