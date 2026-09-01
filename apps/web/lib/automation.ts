@@ -34,6 +34,25 @@ export type AutomationSettings = {
    */
   reativacao_max_dias: number;
   /**
+   * A ESCADA DO RECORTE — os degraus que a campanha sobe sozinha quando acaba
+   * o público da faixa atual.
+   *
+   * ⚠ POR QUE ELA EXISTE (02/set/2026). Eu tinha recomendado que o recorte
+   * NÃO se alargasse sozinho, com o argumento de que alargar é decidir falar
+   * com gente mais fria. O fundador recusou, e com razão: *"quando for 100%
+   * automatizado, o sistema tem que ir funcionando e precisa de um humano
+   * apenas para acompanhar"*. Um produto que para e espera um clique não é
+   * automático — é um alarme com passos extras.
+   *
+   * ⚠ E ALARGAR NÃO AUMENTA O VOLUME. O teto do dia, o teto por rodada, o
+   * espaçamento e o freio de qualidade continuam mandando: o que muda é COM
+   * QUEM se fala, no mesmo ritmo. Essa é a diferença entre subir um degrau e
+   * abrir a torneira.
+   *
+   * Vazia = a escada está desligada e o recorte só muda à mão, como antes.
+   */
+  reativacao_escada: number[];
+  /**
    * QUANTAS PODEM SAIR EM UMA RODADA — o teto do dia, fatiado.
    *
    * ⚠ ELE EXISTE PORQUE O TETO DIÁRIO SOZINHO NÃO ESPALHA NADA. Com 40 no dia
@@ -105,6 +124,9 @@ export const AUTOMATION_DEFAULTS: AutomationSettings = {
   // demais aparece na simulação, com o motivo escrito em cada pessoa; o erro
   // de soltar demais aparece na fatura da Meta e no número marcado.
   reativacao_max_dias: 90,
+  // Desligada por padrão: empresa nova não deve começar subindo degrau sozinha
+  // antes de alguém ver a primeira campanha sair.
+  reativacao_escada: [],
   max_por_rodada: 0,
   // 6 segundos: o meio do intervalo que já existia no código (4 a 9).
   pausa_entre_envios_seg: 6,
@@ -132,6 +154,17 @@ export function readAutomation(settings: unknown): AutomationSettings {
     stop_after_days: num(a.stop_after_days, AUTOMATION_DEFAULTS.stop_after_days, 0, 365),
     monthly_budget_credits: num(a.monthly_budget_credits, 0, 0, 100000000),
     reativacao_max_dias: num(a.reativacao_max_dias, AUTOMATION_DEFAULTS.reativacao_max_dias, 0, 3650),
+    // ⚠ ORDENADA E SEM REPETIÇÃO, e o `0` (tudo) fica sempre no fim — ele é o
+    // último degrau por definição. Escada fora de ordem faria a campanha
+    // ENCOLHER o recorte sozinha, que é o oposto do que ela existe para fazer.
+    reativacao_escada: (() => {
+      const bruto = Array.isArray(a.reativacao_escada) ? a.reativacao_escada : [];
+      const limpos = [...new Set(
+        bruto.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x >= 0 && x <= 3650),
+      )];
+      const zero = limpos.includes(0);
+      return [...limpos.filter((x) => x > 0).sort((x, y) => x - y), ...(zero ? [0] : [])];
+    })(),
     max_por_rodada: num(a.max_por_rodada, AUTOMATION_DEFAULTS.max_por_rodada, 0, 1000),
     // O teto de 120s não é capricho: acima disso um lote grande não cabe no
     // tempo da função, e o relógio do lote corta pela metade.

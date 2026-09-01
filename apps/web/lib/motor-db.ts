@@ -166,11 +166,44 @@ export async function rodarMotor(entrada: {
   let ultima: Awaited<ReturnType<typeof ultimaVerificacao>> = null;
   try { ultima = await ultimaVerificacao(tenantId); } catch { ultima = null; }
 
-  const plano = planejar({
+  /**
+   * ⚠ A ESCADA DO RECORTE — o que faz a campanha continuar sem um clique.
+   *
+   * Quando TODO candidato foi barrado pelo recorte (e só por ele), o público
+   * daquela faixa acabou. Sem escada, a campanha para e fica esperando alguém
+   * abrir a tela de Automação e digitar um número maior — o que é aceitável
+   * numa operação assistida e é o fim da automação numa que roda sozinha.
+   *
+   * ⚠ UM DEGRAU POR RODADA, nunca dois. Quem acompanha precisa ver cada
+   * alargamento acontecer; pular do recorte de 180 para "tudo" numa tacada
+   * transformaria uma decisão de campanha em efeito colateral.
+   *
+   * ⚠ E SÓ QUANDO A CAUSA É O RECORTE. Se ninguém saiu porque todo mundo está
+   * em cooldown, ou porque o teto do dia fechou, alargar não resolve nada e
+   * gastaria um degrau à toa — trocando um problema temporário por uma decisão
+   * permanente.
+   *
+   * ⚠ SIMULAÇÃO NÃO SOBE DEGRAU. Ela existe para conferir o que aconteceria
+   * hoje; se ela mexesse na configuração, conferir mudaria a operação.
+   */
+  const subirDegrau = (atual: number): number | null => {
+    const escada = regras.reativacao_escada;
+    if (!escada.length) return null;
+    // O `0` significa "sem recorte" e é sempre o topo — por isso ele não entra
+    // na comparação numérica: 0 seria o MENOR, e a escada andaria para trás.
+    const proximo = escada.find((d) => d === 0 ? atual !== 0 : d > atual);
+    return proximo === undefined ? null : proximo;
+  };
+
+  // As regras que valem nesta rodada, montadas UMA vez — a escada do recorte
+  // replaneja com elas mais abaixo, e duas montagens diferentes divergiriam.
+  const regrasDoPlano = simular
+    ? { ...regras, motivos_que_encerram: motivosQueEncerram, mode: "simulation" as const }
+    : { ...regras, motivos_que_encerram: motivosQueEncerram };
+
+  let plano = planejar({
     candidatos,
-    regras: simular
-      ? { ...regras, motivos_que_encerram: motivosQueEncerram, mode: "simulation" as const }
-      : { ...regras, motivos_que_encerram: motivosQueEncerram },
+    regras: regrasDoPlano,
     enviadosHoje,
     // ⚠ A HORA DA EMPRESA, NÃO A DO SERVIDOR. `getHours()` aqui devolvia UTC
     // — às 18h de Porto Alegre o processo lia 21h e se considerava fora da
@@ -187,6 +220,58 @@ export async function rodarMotor(entrada: {
     // conferir antes de a janela abrir; quem ENVIA continua preso a ela.
     ignorarJanela: simular,
   });
+
+  // A subida acontece DEPOIS do primeiro plano, porque só o veredito diz se a
+  // causa foi o recorte. Uma volta só: subiu, replaneja, e para.
+  let degrauNovo: number | null = null;
+  if (
+    !simular &&
+    !plano.ativo &&
+    plano.vereditos.length > 0 &&
+    plano.foraDoRecorte === plano.vereditos.length
+  ) {
+    degrauNovo = subirDegrau(regras.reativacao_max_dias);
+    if (degrauNovo !== null) {
+      const { error } = await admin
+        .from("tenants")
+        .update({
+          settings: {
+            ...(carga.settings ?? {}),
+            automation: {
+              ...((carga.settings?.automation as Record<string, unknown>) ?? {}),
+              reativacao_max_dias: degrauNovo,
+            },
+          },
+        })
+        .eq("id", tenantId);
+      if (error) {
+        console.warn(`[motor] nao subi o degrau do recorte: ${error.message}`);
+        degrauNovo = null;
+      } else {
+        const antes = regras.reativacao_max_dias;
+        plano = planejar({
+          candidatos,
+          regras: { ...regrasDoPlano, reativacao_max_dias: degrauNovo },
+          enviadosHoje,
+          horaLocal: horaLocal(agora, fuso),
+          hojeISO: diaLocalISO(agora, fuso),
+          qualidade: nivelDeQualidade(ultima?.ok ? ultima.quality_rating : null),
+          ignorarJanela: simular,
+        });
+        // ⚠ A SUBIDA VAI ESCRITA NO REGISTRO DA RODADA. Campanha que muda de
+        // público sozinha e não conta para ninguém é a definição de mudança
+        // silenciosa — e esta muda COM QUEM a empresa fala.
+        plano = {
+          ...plano,
+          porque:
+            `Acabou o público do recorte de ${antes} dias. ` +
+            `A campanha subiu para ${degrauNovo === 0 ? "todo o acervo" : `${degrauNovo} dias`} e ` +
+            plano.porque.charAt(0).toLowerCase() + plano.porque.slice(1),
+        };
+        console.info(`[motor] recorte subiu de ${antes} para ${degrauNovo} dias no tenant ${tenantId}`);
+      }
+    }
+  }
 
   const motivoPorContato: Record<string, MotivoDaFila> = {};
   for (const f of doCanal) motivoPorContato[f.contactId] = f.motivo;

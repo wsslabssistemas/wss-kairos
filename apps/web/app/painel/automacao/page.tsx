@@ -471,7 +471,7 @@ export default async function AutomacaoPage({
                       type="number"
                       min={f.min}
                       max={f.max}
-                      defaultValue={a[f.key]}
+                      defaultValue={typeof a[f.key] === "number" ? (a[f.key] as number) : undefined}
                       disabled={!canEdit}
                     />
                     <p className="text-faint" style={{ fontSize: 12, marginTop: 4 }}>{f.hint}</p>

@@ -41,6 +41,7 @@ const REGRAS = {
   // Os motivos de saida que o RAMO classifica como sem volta. Na academia e um
   // so, e a curadoria ja dizia por que: "Fora do alcance. Nao insistir."
   motivos_que_encerram: ["mudou_endereco"],
+  reativacao_escada: [],
   max_por_rodada: 0,
   pausa_entre_envios_seg: 6,
 };
@@ -469,6 +470,60 @@ verifica("sem motivos declarados, ninguem e barrado",
     regras: { ...REGRAS, motivos_que_encerram: [] },
     enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE,
   }).enviar.length, 1);
+
+// ------------------- A ESCADA DO RECORTE (02/set/2026)
+//
+// ⚠ EU TINHA RECOMENDADO O CONTRARIO, e o fundador recusou com razao: "quando
+// for 100% automatizado, o sistema tem que ir funcionando e precisa de um
+// humano apenas para acompanhar". Produto que para e espera um clique nao e
+// automatico — e um alarme com passos extras.
+//
+// ⚠ E ALARGAR NAO AUMENTA O VOLUME: teto do dia, teto por rodada, espacamento
+// e freio de qualidade continuam mandando. Muda COM QUEM se fala, no mesmo
+// ritmo — a diferenca entre subir um degrau e abrir a torneira.
+//
+// O que o motor precisa entregar para a escada funcionar e o CONTADOR: quantos
+// foram barrados pelo recorte, e so por ele. Sem isso, "acabou o publico desta
+// faixa" seria indistinguivel de "todo mundo esta em cooldown" — e alargar no
+// segundo caso troca um problema temporario por uma decisao permanente.
+const soRecorte = planejar({
+  candidatos: [
+    { ...livre("velho1"), diasNaEtapa: 500 },
+    { ...livre("velho2"), diasNaEtapa: 800 },
+  ],
+  regras: { ...REGRAS, reativacao_max_dias: 90 },
+  enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE,
+});
+verifica("ninguem sai quando todos estao fora do recorte", soRecorte.enviar.length, 0);
+verifica("e o contador diz que foram TODOS por recorte", soRecorte.foraDoRecorte, 2);
+
+// ⚠ COOLDOWN NAO E RECORTE. Aqui o candidato esta DENTRO da faixa e barrado por
+// outra regra: o contador tem que ficar em zero, senao a escada subiria um
+// degrau para resolver um problema que passa sozinho em algumas horas.
+const porCooldown = planejar({
+  candidatos: [{ ...livre("recente"), diasNaEtapa: 10, horasDesdeRespostaDele: 2 }],
+  regras: { ...REGRAS, reativacao_max_dias: 90 },
+  enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE,
+});
+verifica("barrado por cooldown nao conta como recorte", porCooldown.foraDoRecorte, 0);
+
+// Mistura: um fora do recorte e um em cooldown. A escada NAO deve subir, porque
+// nem todo mundo foi barrado pela faixa — ainda ha gente dentro dela.
+const misto = planejar({
+  candidatos: [
+    { ...livre("velho"), diasNaEtapa: 500 },
+    { ...livre("recente"), diasNaEtapa: 10, horasDesdeRespostaDele: 2 },
+  ],
+  regras: { ...REGRAS, reativacao_max_dias: 90 },
+  enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE,
+});
+verifica("com gente dentro da faixa, nem todos sao recorte",
+  [misto.foraDoRecorte, misto.vereditos.length], [1, 2]);
+
+// Plano que nem chegou a avaliar (automacao desligada) tem contador zerado — a
+// escada nunca sobe degrau por causa de uma empresa que esta `off`.
+verifica("plano vazio tem contador zerado",
+  planejar({ candidatos: [livre("a")], regras: { ...REGRAS, mode: "off" }, enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE }).foraDoRecorte, 0);
 
 console.log(falhas === 0 ? "\nmotor: tudo certo." : `\nmotor: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

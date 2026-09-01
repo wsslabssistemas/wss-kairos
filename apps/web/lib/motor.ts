@@ -132,6 +132,14 @@ export type Veredito =
     };
 
 export type PlanoDoMotor = {
+  /**
+   * Quantos candidatos o RECORTE barrou — e só ele.
+   *
+   * ⚠ EXISTE PARA A ESCADA DO RECORTE poder distinguir "acabou o público desta
+   * faixa" de "todo mundo está em cooldown". Alargar a faixa no segundo caso
+   * seria trocar um problema temporário por uma decisão permanente.
+   */
+  foraDoRecorte: number;
   /** `false` quando NADA sai agora — e `porque` diz o motivo, sempre. */
   ativo: boolean;
   porque: string;
@@ -241,7 +249,7 @@ export function planejar(entrada: {
   const hojeISO = entrada.hojeISO ?? new Date().toISOString().slice(0, 10);
 
   const vazio = (porque: string): PlanoDoMotor => ({
-    ativo: false, porque, enviar: [], vereditos: [],
+    ativo: false, porque, enviar: [], vereditos: [], foraDoRecorte: 0,
     simulado: regras.mode === "simulation", foraDaJanela: false,
   });
 
@@ -462,6 +470,7 @@ export function planejar(entrada: {
   const foraDoRecorte = vereditos.filter((v) => !v.enviar && v.recorte).length;
 
   return {
+    foraDoRecorte,
     ativo: enviar.length > 0,
     porque: enviar.length
       ? `${enviar.length} de ${candidatos.length} podem sair agora (restavam ${resta} no teto do dia).`
