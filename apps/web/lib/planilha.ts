@@ -435,3 +435,111 @@ export function lerRecebimentos(texto: string): LeituraRecebimentos {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// QUE ARQUIVO É ESTE — a pergunta que o sistema fazia para a pessoa errada.
+//
+// ⚠ O PROBLEMA, dito pelo fundador em 01/set/2026: *"o sistema da Be Fitness é
+// tão ruim que não tenho todas as informações em apenas uma planilha, sempre
+// fico com dúvida do tipo de importação que devo fazer"*.
+//
+// A tela de sincronização tinha duas caixas rotuladas — "Matrículas" e
+// "Recebimentos" — e exigia que ele soubesse qual arquivo era qual ANTES de
+// qualquer leitura. Só que quem sabe isso é o conteúdo do arquivo, não a
+// pessoa: os nomes que o sistema da academia exporta não batem com os nossos,
+// e a mesma exportação já veio com 304 e com 362 linhas em dias diferentes.
+//
+// **Era o produto delegando a quem opera uma decisão que ele mesmo consegue
+// tomar** — e errar essa decisão não dá erro: dá uma comparação silenciosa
+// entre coisas diferentes.
+//
+// ⚠ E A IDENTIFICAÇÃO NÃO REIMPLEMENTA NADA. Ela roda os DOIS leitores de
+// verdade e observa qual aceitou o arquivo. Uma lista própria de cabeçalhos
+// aqui seria uma segunda versão da regra, divergindo em silêncio da primeira
+// no dia em que alguém mexesse num leitor só — o defeito que este repositório
+// documenta em cinco lugares diferentes.
+//
+// ⚠ E ELA PROPÕE, NUNCA DECIDE SOZINHA. A tela mostra o que entendeu e de
+// onde tirou isso; quem confirma é gente. Identificação errada aplicada em
+// silêncio seria trocar a dúvida honesta do fundador por uma certeza falsa.
+// ---------------------------------------------------------------------------
+
+export type TipoDePlanilha = "matriculas" | "recebimentos" | "desconhecido";
+
+export type Identificacao = {
+  tipo: TipoDePlanilha;
+  /** A frase que vai para a tela, dizendo o que decidiu. */
+  porque: string;
+  /** Os cabeçalhos lidos — é o que a pessoa reconhece do arquivo dela. */
+  cabecalhos: string[];
+  /** Quantas linhas de dado o leitor vencedor aproveitou. */
+  aproveitadas: number;
+  /**
+   * Os DOIS leitores aceitaram. Não impede nada — só faz a tela mostrar a
+   * escolha em aberto, em vez de esconder que houve dúvida.
+   */
+  ambiguo: boolean;
+};
+
+/**
+ * Descobre se o arquivo é a relação de matrículas ou o relatório de
+ * recebimentos, rodando os leitores de verdade.
+ *
+ * ⚠ RECEBIMENTOS GANHA O EMPATE, e não é arbitrário: aquele leitor exige
+ * código + data de pagamento + valor na mesma linha, e essas três colunas só
+ * aparecem juntas num relatório financeiro. A relação de matrículas passa no
+ * leitor de matrículas E quase passa no de recebimentos, porque os dois
+ * começam com código e nome — a assimetria de exigência é o que desempata.
+ */
+export function identificarPlanilha(texto: string): Identificacao {
+  const linhas = linhasDe(texto);
+  const cabecalhos = linhas[0] ?? [];
+
+  const rec = lerRecebimentos(texto);
+  const mat = ler(texto);
+
+  const recOk = !rec.erro && rec.pagantes.length > 0;
+  const matOk = !mat.erro && mat.linhas.length > 0;
+
+  if (recOk) {
+    return {
+      tipo: "recebimentos",
+      porque:
+        `Isto é o relatório de RECEBIMENTOS: achei as colunas de ` +
+        `${rec.entendeu.chave}, ${rec.entendeu.pagamento} e ${rec.entendeu.valor}, ` +
+        `e li ${rec.pagantes.length} pessoa(s) que já pagaram.`,
+      cabecalhos,
+      aproveitadas: rec.pagantes.length,
+      ambiguo: matOk,
+    };
+  }
+
+  if (matOk) {
+    const temVigencia = mat.entendeu.vigencia && mat.entendeu.vigencia !== "—";
+    return {
+      tipo: "matriculas",
+      porque:
+        `Isto é a relação de MATRÍCULAS: a chave é ${mat.entendeu.chave}` +
+        (temVigencia ? `, a vigência vem de ${mat.entendeu.vigencia}` : ", e ela não traz vigência") +
+        `, e li ${mat.linhas.length} pessoa(s).`,
+      cabecalhos,
+      ambiguo: false,
+      aproveitadas: mat.linhas.length,
+    };
+  }
+
+  // ⚠ NENHUM ACEITOU: a tela mostra POR QUE cada um recusou e os cabeçalhos
+  // lidos. É o que transforma "não deu certo" em "faltou a coluna X" — e o
+  // fundador reconhece o arquivo dele pelos cabeçalhos, não pelo nosso jargão.
+  const motivos = [rec.erro, mat.erro].filter(Boolean).join(" / ");
+  return {
+    tipo: "desconhecido",
+    porque:
+      `Não reconheci este arquivo. ${motivos || "Ele veio vazio ou só com cabeçalho."} ` +
+      `Se ele for de um relatório que o sistema ainda não conhece, mande do jeito que está — ` +
+      `o cabeçalho acima é o que preciso ver para ensinar o sistema a ler.`,
+    cabecalhos,
+    aproveitadas: 0,
+    ambiguo: false,
+  };
+}

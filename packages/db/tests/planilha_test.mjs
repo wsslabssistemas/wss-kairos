@@ -14,7 +14,7 @@
  * o contrato ANTIGO como verdade — que é o defeito da Maria Isabel
  * reintroduzido pela porta dos fundos.
  *
- * ESPERADO: 14/14.
+ * ESPERADO: 20/20.
  *
  *   node packages/db/tests/planilha_test.mjs
  */
@@ -22,7 +22,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const { ler } = await import(pathToFileURL(path.join(ROOT, "apps/web/lib/planilha.ts")).href);
+const { ler, identificarPlanilha } = await import(pathToFileURL(path.join(ROOT, "apps/web/lib/planilha.ts")).href);
 
 let falhas = 0;
 function verifica(nome, obtido, esperado) {
@@ -101,5 +101,44 @@ const comBuraco = ler(["Código;Nome;Vencimento", ";Sem código;10/08/2026", "9;
 verifica("linha sem chave é ignorada com motivo",
   [comBuraco.linhas.length, comBuraco.ignoradas[0].motivo.includes("sem chave")], [1, true]);
 
-console.log(falhas === 0 ? "\nOK — 14/14" : `\nFALHOU — ${falhas} de 14`);
+
+// ------------------------------------- QUE ARQUIVO E ESTE (01/set/2026)
+//
+// ⚠ A TELA PERGUNTAVA PARA A PESSOA ERRADA. Havia duas caixas rotuladas,
+// "Matriculas" e "Recebimentos", e era preciso saber qual arquivo era qual
+// ANTES de qualquer leitura. O fundador descreveu o custo: "o sistema da Be
+// Fitness e tao ruim que nao tenho todas as informacoes em apenas uma
+// planilha, sempre fico com duvida do tipo de importacao que devo fazer".
+//
+// Quem sabe que arquivo e aquele e o CONTEUDO. E errar essa escolha nao da
+// erro: da uma comparacao silenciosa entre coisas diferentes.
+//
+// ⚠ E A IDENTIFICACAO RODA OS LEITORES DE VERDADE, nao uma lista propria de
+// cabecalhos — lista propria seria uma segunda versao da regra, divergindo em
+// silencio no dia em que alguem mexesse num leitor so.
+const RECEBIMENTOS = [
+  "Codigo;Nome;Vencimento;Pagamento;Valor;Codigo-do-Recebimento",
+  "101;Maria Silva;01/07/2026;03/07/2026;169,00;R1",
+  "102;Joao Souza;01/08/2026;01/08/2026;99,00;R3",
+].join("\n");
+const MATRICULAS = [
+  "Codigo;Nome;Celular;Plano;Meses;Inicio;Vencimento",
+  "101;Maria Silva;51999999999;Anual;12;01/01/2026;01/01/2027",
+].join("\n");
+
+verifica("reconhece o relatorio de recebimentos", identificarPlanilha(RECEBIMENTOS).tipo, "recebimentos");
+verifica("reconhece a relacao de matriculas", identificarPlanilha(MATRICULAS).tipo, "matriculas");
+
+// ⚠ RECEBIMENTOS GANHA O EMPATE, e a razao e a assimetria de exigencia:
+// aquele leitor pede codigo + data de pagamento + valor na mesma linha, e as
+// tres so aparecem juntas num relatorio financeiro.
+verifica("o empate e declarado, nao escondido", identificarPlanilha(RECEBIMENTOS).ambiguo, true);
+
+// ⚠ ARQUIVO ESTRANHO NAO VIRA CHUTE. Volta `desconhecido` com os cabecalhos
+// lidos — o que a pessoa reconhece do arquivo dela.
+const estranho = identificarPlanilha(["Coluna A;Coluna B", "1;2"].join("\n"));
+verifica("arquivo estranho nao e chutado", estranho.tipo, "desconhecido");
+verifica("e os cabecalhos voltam para a tela", estranho.cabecalhos, ["Coluna A", "Coluna B"]);
+verifica("vazio nao quebra", identificarPlanilha("").tipo, "desconhecido");
+console.log(falhas === 0 ? "\nOK — 20/20" : `\nFALHOU — ${falhas} de 20`);
 process.exit(falhas === 0 ? 0 : 1);

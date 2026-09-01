@@ -4,6 +4,8 @@ import { getActiveTenant } from "@/lib/auth";
 import { getSkillFormConfig } from "@/lib/skill";
 import { lerTudo } from "@/lib/paginado";
 import { acharContradicoes, ROTULO_CONTRADICAO, type ContatoParaConferir } from "@/lib/contradicoes";
+import { paresDeGemeos } from "@/lib/gemeo";
+import { paraE164BR } from "@/lib/phone";
 import { moverParaSaida, marcarConferido } from "./actions";
 
 export const metadata = { title: "Conferir" };
@@ -65,11 +67,28 @@ export default async function ContradicoesPage({
     { rotulo: "contatos para conferir" },
   );
 
+  const hojeISO = new Date().toISOString();
+
+  // ⚠ AS FICHAS DOBRADAS, com a MESMA varredura que já esconde o cadastro
+  // velho da fila. Ela sabia disso desde agosto e nunca contou para ninguém:
+  // esconder impede a mensagem errada e deixa o cadastro torto para sempre.
+  //
+  // O telefone é normalizado por `paraE164BR`, que DERIVA e nunca grava — o
+  // caso da Lilian era exatamente um dígito a menos digitado na segunda ficha.
+  const gemeos = paresDeGemeos(
+    contatos.map((c) => {
+      const n = paraE164BR(c.phone);
+      return { id: c.id, digitos: n.ok ? n.digitos : null, contract_end: c.contract_end };
+    }),
+    hojeISO,
+  );
+
   const achados = acharContradicoes({
     contatos,
     etapasGanhas: new Set(stages.filter((s) => s.won).map((s) => s.key)),
     usaContrato: !!contract?.enabled,
-    hojeISO: new Date().toISOString(),
+    hojeISO,
+    gemeos,
   });
 
   const temSaida = !!contract?.ended_stage;

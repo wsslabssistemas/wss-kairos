@@ -45,11 +45,30 @@ export type LinhaParaGemeo = {
  * motivos dele (renovação, recompra) — o que sai é o cadastro velho, que é o
  * que não deveria estar falando com ninguém.
  */
-export function idsComGemeoAtivo(
+/** O cadastro velho e o cliente vivo que ele repete. */
+export type ParDeGemeos = { velhoId: string; ativoId: string };
+
+/**
+ * OS PARES, não só os ids a esconder.
+ *
+ * ⚠ POR QUE ISTO PASSOU A EXISTIR (01/set/2026). `idsComGemeoAtivo` resolve o
+ * problema da FILA — tirar o cadastro velho de circulação — e ao resolver ele
+ * ESCONDE o defeito: a pessoa duplicada some da lista e ninguém nunca vê que
+ * há duas fichas da mesma pessoa. O caso da Lilian continua no banco até hoje.
+ *
+ * Esconder é a decisão certa para não falar com quem não deve. **Mas esconder
+ * não é consertar**, e um defeito escondido sem aparecer em lugar nenhum é a
+ * assinatura desta casa. Os pares alimentam a tela de contradições, onde uma
+ * pessoa decide o que fazer com as duas fichas.
+ *
+ * ⚠ E `idsComGemeoAtivo` PASSOU A SER DERIVADO DAQUI, de propósito: duas
+ * varreduras do mesmo telefone divergiriam no dia em que alguém mexesse numa
+ * só, e aí a fila esconderia um conjunto e a tela mostraria outro.
+ */
+export function paresDeGemeos(
   linhas: LinhaParaGemeo[],
   hojeISO: string,
-): Set<string> {
-  // Telefone → ids que têm contrato vigente.
+): ParDeGemeos[] {
   const ativosPorTelefone = new Map<string, Set<string>>();
   for (const l of linhas) {
     if (!l.digitos || !l.contract_end) continue;
@@ -59,16 +78,23 @@ export function idsComGemeoAtivo(
     ativosPorTelefone.set(l.digitos, s);
   }
 
-  const excluir = new Set<string>();
+  const pares: ParDeGemeos[] = [];
   for (const l of linhas) {
     if (!l.digitos) continue;
     const ativos = ativosPorTelefone.get(l.digitos);
     if (!ativos) continue;
-    // Só exclui quem NÃO é o próprio ativo. Se o único ativo naquele telefone
-    // é ele mesmo, não há gêmeo — há uma pessoa só, e ela segue na fila.
-    if (ativos.size === 1 && ativos.has(l.id)) continue;
     if (ativos.has(l.id)) continue;
-    excluir.add(l.id);
+    // O ativo mais "baixo" por id, para o par ser estável entre execuções —
+    // par que troca de dono a cada leitura vira linha nova na tela toda vez.
+    const ativoId = [...ativos].sort()[0];
+    pares.push({ velhoId: l.id, ativoId });
   }
-  return excluir;
+  return pares;
+}
+
+export function idsComGemeoAtivo(
+  linhas: LinhaParaGemeo[],
+  hojeISO: string,
+): Set<string> {
+  return new Set(paresDeGemeos(linhas, hojeISO).map((p) => p.velhoId));
 }

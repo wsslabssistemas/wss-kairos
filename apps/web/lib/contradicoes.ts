@@ -34,6 +34,7 @@ export type ContatoParaConferir = {
 };
 
 export type TipoDeContradicao =
+  | "duplicata"
   | "fora_da_fonte"
   | "sem_pagamento"
   | "vigencia_vencida"
@@ -50,6 +51,7 @@ export type Contradicao = {
 };
 
 export const ROTULO_CONTRADICAO: Record<TipoDeContradicao, string> = {
+  duplicata: "Duas fichas, uma pessoa",
   fora_da_fonte: "A fonte não conhece",
   sem_pagamento: "Nunca pagou",
   vigencia_vencida: "Vigência vencida",
@@ -65,10 +67,16 @@ export const ROTULO_CONTRADICAO: Record<TipoDeContradicao, string> = {
  * importação futura.
  */
 const PESO: Record<TipoDeContradicao, number> = {
-  fora_da_fonte: 0,
-  vigencia_vencida: 1,
-  sem_pagamento: 2,
-  sem_vigencia: 3,
+  // ⚠ DUPLICATA VEM PRIMEIRO desde 01/set, e ela desbanca o "fora da fonte"
+  // pelo mesmo critério: custo de estar errado. Foi a única contradição que já
+  // produziu mensagem errada para uma pessoa REAL do cliente — a Lilian, que
+  // tinha rematriculado e recebeu "você treinou com a gente e acabou parando"
+  // porque havia uma segunda ficha dela parada em ex-aluna.
+  duplicata: 0,
+  fora_da_fonte: 1,
+  vigencia_vencida: 2,
+  sem_pagamento: 3,
+  sem_vigencia: 4,
 };
 
 const dia = (v: unknown) => (typeof v === "string" ? v.slice(0, 10) : null);
@@ -88,13 +96,55 @@ export function acharContradicoes(params: {
   etapasGanhas: Set<string>;
   usaContrato: boolean;
   hojeISO: string;
+  /**
+   * Os pares de cadastro repetido, vindos de `paresDeGemeos` (`lib/gemeo.ts`).
+   *
+   * ⚠ VEM DE FORA E NÃO É CALCULADO AQUI. A mesma varredura já governa quem
+   * some da fila; refazê-la neste arquivo criaria duas respostas para "quem
+   * está duplicado" — e no dia em que discordassem, a fila esconderia um
+   * conjunto e a tela mostraria outro.
+   */
+  gemeos?: { velhoId: string; ativoId: string }[];
 }): Contradicao[] {
-  const { contatos, etapasGanhas, usaContrato, hojeISO } = params;
+  const { contatos, etapasGanhas, usaContrato, hojeISO, gemeos = [] } = params;
   if (!usaContrato) return [];
 
   const out: Contradicao[] = [];
+  const porId = new Map(contatos.map((c) => [c.id, c]));
+
+  // ⚠ A DUPLICATA É A ÚNICA QUE OLHA QUEM ESTÁ FORA DA ETAPA DE CLIENTE — e é
+  // por isso que ela ficava invisível. O laço abaixo só examina quem está
+  // marcado como cliente ativo; a ficha duplicada quase sempre está na etapa
+  // de saída, exatamente onde ninguém procura.
+  //
+  // E o sistema já SABIA: `idsComGemeoAtivo` esconde essa ficha da fila desde
+  // agosto, para não falar com quem não deve. Esconder é a decisão certa e
+  // **não é conserto** — o cadastro segue torto, contando como ex-cliente na
+  // carteira, e ninguém nunca é avisado.
+  const duplicados = new Set<string>();
+  for (const par of gemeos) {
+    const velho = porId.get(par.velhoId);
+    const ativo = porId.get(par.ativoId);
+    if (!velho || !ativo) continue;
+    duplicados.add(velho.id);
+    out.push({
+      contactId: velho.id,
+      nome: velho.name,
+      tipo: "duplicata",
+      descricao:
+        `Esta ficha tem o mesmo telefone de ${ativo.name}, que está como cliente com contrato ` +
+        `${ativo.contract_end ? `até ${String(ativo.contract_end).slice(0, 10).split("-").reverse().join("/")}` : "correndo"}. ` +
+        `São a mesma pessoa em dois cadastros — e esta aqui conta como ex-cliente na carteira.`,
+      sugestao:
+        "O sistema já impede esta ficha de receber mensagem, mas o cadastro segue dobrado. " +
+        "Confira as duas e apague a que sobra, ou junte o histórico na que está ativa.",
+    });
+  }
 
   for (const c of contatos) {
+    // A ficha duplicada já foi reportada acima; os outros defeitos dela são
+    // consequência de ser uma ficha morta, e listá-los de novo vira ruído.
+    if (duplicados.has(c.id)) continue;
     if (!etapasGanhas.has(c.journey_stage)) continue;
     // Quem já foi marcado como encerrado não é contradição: é história.
     if (c.custom?.["contrato_encerrado_em"]) continue;

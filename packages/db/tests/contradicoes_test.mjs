@@ -115,6 +115,49 @@ eq("o que a fonte não conhece vem antes do resto",
   }).map((a) => a.tipo), ["fora_da_fonte", "sem_vigencia"]);
 
 console.log();
+
+// ------------------------------- DUAS FICHAS, UMA PESSOA (01/set/2026)
+//
+// ⚠ O SISTEMA JA SABIA E NUNCA CONTOU. `idsComGemeoAtivo` esconde da fila,
+// desde agosto, o cadastro velho de quem tem outra ficha com contrato
+// correndo — para nao mandar reativacao para quem e cliente. Esconder e a
+// decisao certa e NAO e conserto: o cadastro segue dobrado, contando como
+// ex-cliente na carteira, e ninguem nunca e avisado.
+//
+// E o caso tem nome: a Lilian rematriculou, alguem criou ficha nova com um
+// digito a menos no telefone, e a ficha velha recebeu 'voce treinou com a
+// gente e acabou parando'. Unica contradicao que ja chegou numa pessoa real.
+const DUPLA = [
+  { id: "velha", name: "Lilian Cabral", journey_stage: "ex_aluno", contract_end: null, phone: "51999998888", custom: { codigo_sistema: "1" } },
+  { id: "ativa", name: "Lilian Cabral Leao", journey_stage: "convertido", contract_end: "2027-08-09", phone: "51999998888", custom: { codigo_sistema: "2" } },
+];
+
+const comGemeo = acharContradicoes({
+  contatos: DUPLA,
+  etapasGanhas: new Set(["convertido"]),
+  usaContrato: true,
+  hojeISO: "2026-09-01",
+  gemeos: [{ velhoId: "velha", ativoId: "ativa" }],
+});
+eq("a ficha dobrada vira contradicao", comGemeo.filter((c) => c.tipo === "duplicata").length, 1);
+eq("e ela aponta a ficha VELHA, nao a ativa", comGemeo.find((c) => c.tipo === "duplicata")?.contactId, "velha");
+// ⚠ A DESCRICAO NOMEIA A OUTRA FICHA. Sem o nome do gemeo, a pessoa nao tem
+// como achar as duas para juntar — e a lista viraria mais uma que ninguem usa.
+eq("e nomeia com quem ela se repete", comGemeo.find((c) => c.tipo === "duplicata")?.descricao.includes("Lilian Cabral Leao"), true);
+// Duplicata vem primeiro: e a de maior custo de estar errada.
+eq("duplicata encabeca a lista", comGemeo[0]?.tipo, "duplicata");
+
+// ⚠ SEM PARES, NADA MUDA. A varredura mora em `lib/gemeo.ts` e vem de fora;
+// este arquivo nao recalcula telefone, senao existiriam duas respostas para
+// 'quem esta duplicado' e a fila esconderia um conjunto diferente da tela.
+const semGemeo = acharContradicoes({
+  contatos: DUPLA,
+  etapasGanhas: new Set(["convertido"]),
+  usaContrato: true,
+  hojeISO: "2026-09-01",
+});
+eq("sem os pares, nenhuma duplicata e inventada", semGemeo.filter((c) => c.tipo === "duplicata").length, 0);
+
 if (falhas.length) {
   console.log(`✗ FALHOU — ${ok}/${ok + falhas.length}`);
   for (const f of falhas) console.log(`  ✗ ${f}`);
