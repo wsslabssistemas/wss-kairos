@@ -60,9 +60,15 @@ export function desmontarInstagram(corpo: unknown): PacoteDoInstagram {
     const e = entrada as { id?: unknown; messaging?: unknown[] };
     const conta = typeof e.id === "string" ? e.id : "";
     if (!Array.isArray(e.messaging)) {
-      // Comentario, mencao, reacao a story — tudo chega por outros campos.
-      // Contado para "chegou algo e ninguem viu" ser um NUMERO, nao silencio.
-      out.ignorados.push("entrada sem `messaging`");
+      // ⚠ NAO ENTENDI + O QUE VEIO. "Entrada sem `messaging`" sozinho e um
+      // beco: se o formato real do direct um dia for outro, o sintoma seria
+      // exatamente esta linha, e ninguem saberia POR QUE. Listar as chaves do
+      // pacote transforma "nao entendi" em "nao entendi, e olha o que chegou"
+      // — a diferenca entre um defeito que se acha em minutos e um que dura
+      // dias. Sao nomes de campo, nunca conteudo: mensagem de cliente nao vai
+      // para log.
+      const chaves = Object.keys((entrada ?? {}) as Record<string, unknown>).join(", ");
+      out.ignorados.push(`entrada sem \`messaging\` (veio com: ${chaves || "nada"})`);
       continue;
     }
 
