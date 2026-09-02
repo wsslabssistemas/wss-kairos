@@ -3,9 +3,10 @@ import { handle } from "hono/vercel";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { variantesArmazenadas } from "@/lib/phone";
 import { escolherResponsavel } from "@/lib/carteira";
-import { guardarWabaId, empresaDoNumero } from "@/lib/credenciais";
+import { VERSAO_GRAPH, guardarWabaId, empresaDoNumero } from "@/lib/credenciais";
 import { origemDaPrimeiraMensagem } from "@/lib/origem-site";
 import { baixarMidia, transcrever, comoAudio } from "@/lib/audio";
+import { desmontarInstagram, type DirectRecebido } from "@/lib/instagram-webhook";
 import { credencialDoCanal } from "@/lib/credenciais";
 import { pediuParaSair } from "@/lib/optout";
 import { tipoDeFecho } from "@/lib/fecho";
@@ -96,6 +97,76 @@ app.post("/motor/rodar", async (c) => {
     // reenviando, e um agendador que recebe 200 numa falha nunca avisa.
     return c.json({ erro }, 500);
   }
+});
+
+// =====================================================================
+// O WEBHOOK DO INSTAGRAM
+//
+// ⚠ ENDERECO SEPARADO, e nao um `if` dentro do webhook do WhatsApp. Os dois
+// pacotes tem formatos diferentes, segredos diferentes e regras de janela
+// diferentes — juntar seria a segunda versao da regra, com o agravante de que
+// um erro no ramo do Instagram derrubaria o canal que hoje fatura.
+//
+// ⚠ E AQUI SO SE RECEBE. No Instagram nao existe modelo aprovado nem envio
+// proativo: o webhook so dispara depois que a pessoa escreve, e ha 24h para
+// responder (7 dias com a marca de atendimento humano). Campanha de reativacao
+// nao roda aqui, e prometer isso seria vender o que a plataforma nao entrega.
+// =====================================================================
+
+/**
+ * A verificacao de posse do endereco — a Meta chama uma vez, no cadastro.
+ *
+ * ⚠ O TOKEN E DO APP, nao da empresa. No WhatsApp cada cliente tem o proprio
+ * app e o proprio token; no Instagram e UM app do fabricante servindo todas as
+ * contas conectadas, entao quem responde ao desafio e o `INSTAGRAM_VERIFY_TOKEN`
+ * do ambiente. Sem ele configurado, RECUSA — "ainda nao configurei" nao pode
+ * ser o estado em que a porta fica aberta.
+ */
+app.get("/instagram/webhook", (c) => {
+  const params = new URL(c.req.url).searchParams;
+  const esperado = process.env.INSTAGRAM_VERIFY_TOKEN;
+  if (!esperado) {
+    console.error("[instagram] INSTAGRAM_VERIFY_TOKEN nao configurado — verificacao recusada");
+    return c.text("Webhook do Instagram nao configurado.", 403);
+  }
+  const r = respostaDoDesafio(params, esperado);
+  if (!r.ok) {
+    console.warn(`[instagram] verificacao recusada: ${r.motivo}`);
+    return c.text(r.motivo, 403);
+  }
+  return c.text(r.desafio, 200);
+});
+
+app.post("/instagram/webhook", async (c) => {
+  const cru = await c.req.text();
+
+  // ⚠ A ASSINATURA USA A CHAVE SECRETA DO APP DO INSTAGRAM, que e OUTRA,
+  // diferente da do WhatsApp. Ela aparece no painel, no cartao "Conheca a API
+  // do Instagram". Conferir com a chave errada recusa todo pacote legitimo — e
+  // do lado da Meta isso aparece como "webhook com falha".
+  const assin = assinaturaConfere(cru, c.req.header("x-hub-signature-256"), process.env.INSTAGRAM_APP_SECRET);
+  if (!assin.ok) {
+    console.warn(`[instagram] pacote recusado: ${assin.motivo}`);
+    return c.text("assinatura invalida", 403);
+  }
+
+  let corpo: unknown;
+  try { corpo = JSON.parse(cru); } catch { return c.text("ok", 200); }
+
+  const pacote = desmontarInstagram(corpo);
+  if (pacote.ignorados.length) {
+    console.info(`[instagram] ignorados: ${pacote.ignorados.join(", ")}`);
+  }
+
+  try {
+    await registrarDirects(pacote.mensagens);
+  } catch (e) {
+    // 200 mesmo assim: a Meta reenvia o que falha e desativa a assinatura
+    // depois de muitas falhas seguidas. Erro nosso ao gravar vira log.
+    console.error(`[instagram] falha ao gravar: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  return c.text("ok", 200);
 });
 
 app.get("/health", (c) =>
@@ -319,55 +390,182 @@ async function registrarStatus(status: StatusDeEnvio[]) {
  * `auth.uid()` para a RLS avaliar. É o uso legítimo do papel: entrada de
  * sistema, com o `tenant_id` decidido aqui e não pelo pacote.
  */
-async function registrar(mensagens: MensagemRecebida[]) {
+// ⚠ SUBIU PARA O ESCOPO DO MODULO em 02/set: os directs do Instagram criam
+// lead do mesmo jeito, e duas versoes de "quem recebe o lead novo" dariam
+// carteiras diferentes para o mesmo canal. Uma regra, dois consumidores.
+/**
+ * Quem recebe um lead que chegou sozinho pelo canal.
+ *
+ * Cache por empresa dentro do lote: um pacote da Meta pode trazer várias
+ * mensagens, e consultar a equipe inteira por mensagem seria caro à toa. O
+ * desequilíbrio dentro de um lote é de poucas unidades e a próxima chamada
+ * já corrige, porque a escolha é sempre a MENOR carteira.
+ */
+const carteirasPorTenant = new Map<string, string | null>();
+async function donoParaContatoNovo(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cliente: any,
+  tenantId: string,
+): Promise<string | null> {
+  if (carteirasPorTenant.has(tenantId)) return carteirasPorTenant.get(tenantId)!;
+
+  const { data: mems } = await cliente
+    .from("memberships")
+    .select("id, role")
+    .eq("tenant_id", tenantId)
+    .eq("status", "active")
+    .order("id");
+  const ativos = ((mems as { id: string; role: string }[] | null) ?? []);
+  // Agente é quem atende. Sem nenhum, o dono da empresa recebe — melhor com
+  // quem responde pela empresa do que com ninguém.
+  const alvos = ativos.filter((m) => m.role === "agent");
+  const agentes = alvos.length ? alvos : ativos;
+
+  // paginacao-ok: só o TAMANHO de cada carteira, sem trazer linha nenhuma —
+  // é o `count` do PostgREST, que não sofre o corte de 1.000.
+  const carga: Record<string, number> = {};
+  for (const a of agentes) {
+    const { count } = await cliente
+      .from("contacts")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("owner_id", a.id)
+      .is("deleted_at", null);
+    carga[a.id] = count ?? 0;
+  }
+
+  const escolhido = escolherResponsavel(agentes, carga);
+  carteirasPorTenant.set(tenantId, escolhido);
+  return escolhido;
+}
+
+/**
+ * GRAVA OS DIRECTS DO INSTAGRAM.
+ *
+ * ⚠ A CHAVE DO CONTATO AQUI NAO E O TELEFONE. Quem escreve por direct pode
+ * nunca ter dado um numero, e o id do Instagram e por app e por conta — a
+ * mesma pessoa tem ids diferentes em dois apps. Por isso `contacts.instagram_id`
+ * existe AO LADO do telefone, nunca no lugar dele (`0073`).
+ *
+ * ⚠ E O NOME VEM DA META, numa chamada a parte. Sem ele o contato nasceria
+ * chamado por um numero de 17 digitos, e quem abre a Fila nao reconhece
+ * ninguem. Falhar em buscar o nome NAO impede a gravacao: a mensagem do
+ * cliente vale mais que o rotulo dela.
+ */
+async function registrarDirects(mensagens: DirectRecebido[]) {
   if (!mensagens.length) return;
   const admin = createAdminClient();
 
-  /**
-   * Quem recebe um lead que chegou sozinho pelo canal.
-   *
-   * Cache por empresa dentro do lote: um pacote da Meta pode trazer várias
-   * mensagens, e consultar a equipe inteira por mensagem seria caro à toa. O
-   * desequilíbrio dentro de um lote é de poucas unidades e a próxima chamada
-   * já corrige, porque a escolha é sempre a MENOR carteira.
-   */
-  const carteirasPorTenant = new Map<string, string | null>();
-  async function donoParaContatoNovo(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cliente: any,
-    tenantId: string,
-  ): Promise<string | null> {
-    if (carteirasPorTenant.has(tenantId)) return carteirasPorTenant.get(tenantId)!;
+  // Cache por conta dentro do lote: um pacote pode trazer varias mensagens.
+  const donoPorConta = new Map<string, { tenantId: string; token: string | null } | null>();
 
-    const { data: mems } = await cliente
-      .from("memberships")
-      .select("id, role")
-      .eq("tenant_id", tenantId)
-      .eq("status", "active")
-      .order("id");
-    const ativos = ((mems as { id: string; role: string }[] | null) ?? []);
-    // Agente é quem atende. Sem nenhum, o dono da empresa recebe — melhor com
-    // quem responde pela empresa do que com ninguém.
-    const alvos = ativos.filter((m) => m.role === "agent");
-    const agentes = alvos.length ? alvos : ativos;
+  for (const msg of mensagens) {
+    // ⚠ ECO NAO E FALA DO CLIENTE. A Meta reenvia o que o proprio app mandou.
+    // Gravar isso como mensagem recebida encheria o historico do lado errado e
+    // faria a janela de 24h parecer aberta por uma mensagem nossa.
+    if (msg.eco) continue;
 
-    // paginacao-ok: só o TAMANHO de cada carteira, sem trazer linha nenhuma —
-    // é o `count` do PostgREST, que não sofre o corte de 1.000.
-    const carga: Record<string, number> = {};
-    for (const a of agentes) {
-      const { count } = await cliente
-        .from("contacts")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .eq("owner_id", a.id)
-        .is("deleted_at", null);
-      carga[a.id] = count ?? 0;
+    if (!donoPorConta.has(msg.contaDaEmpresa)) {
+      // paginacao-ok: busca exata pelo id da conta — no maximo uma linha.
+      const { data } = await admin
+        .from("tenant_secrets")
+        .select("tenant_id, instagram_token")
+        .eq("instagram_account_id", msg.contaDaEmpresa)
+        .maybeSingle();
+      const d = data as { tenant_id: string; instagram_token: string | null } | null;
+      donoPorConta.set(msg.contaDaEmpresa, d ? { tenantId: d.tenant_id, token: d.instagram_token } : null);
+    }
+    const dono = donoPorConta.get(msg.contaDaEmpresa);
+    if (!dono) {
+      // ⚠ CONTA DESCONHECIDA E AVISO, NAO SILENCIO. Significa que alguem
+      // conectou um Instagram na Meta e nao cadastrou o id aqui — e a mensagem
+      // do cliente dessa empresa esta sendo descartada agora.
+      console.warn(`[instagram] direct para a conta ${msg.contaDaEmpresa}, que nenhuma empresa cadastrou`);
+      continue;
     }
 
-    const escolhido = escolherResponsavel(agentes, carga);
-    carteirasPorTenant.set(tenantId, escolhido);
-    return escolhido;
+    // paginacao-ok: busca exata pelo id do Instagram — no maximo uma linha.
+    const { data: achado } = await admin
+      .from("contacts")
+      .select("id")
+      .eq("tenant_id", dono.tenantId)
+      .eq("instagram_id", msg.de)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    let contactId = (achado as { id: string } | null)?.id ?? null;
+
+    if (!contactId) {
+      const nome = await nomeNoInstagram(msg.de, dono.token);
+      const responsavel = await donoParaContatoNovo(admin, dono.tenantId);
+      const { data: novo, error: erroNovo } = await admin
+        .from("contacts")
+        .insert({
+          tenant_id: dono.tenantId,
+          name: nome ?? `Instagram ${msg.de.slice(-6)}`,
+          instagram_id: msg.de,
+          // A origem e o Instagram, e desta vez sem depender de marca nenhuma
+          // no texto: quem chega por direct veio de la, e ponto.
+          source: "instagram",
+          owner_id: responsavel,
+        })
+        .select("id")
+        .maybeSingle();
+      if (erroNovo) {
+        console.error(`[instagram] falha ao criar lead de ${msg.de}: ${erroNovo.message}`);
+        continue;
+      }
+      contactId = (novo as { id: string } | null)?.id ?? null;
+      if (!contactId) continue;
+    }
+
+    const { error } = await admin.from("interactions").insert({
+      tenant_id: dono.tenantId,
+      contact_id: contactId,
+      direction: "inbound",
+      input_kind: tipoDeFecho(msg.texto) === "sem_conteudo" ? "customer_reaction" : "customer_message",
+      channel: "instagram",
+      content: msg.texto,
+      occurred_at: msg.quando.toISOString(),
+      // `mid` e a chave contra duplicata, como o `wamid`: a Meta REENVIA o
+      // mesmo pacote quando nao recebe 200 a tempo.
+      external_id: msg.mid,
+    });
+    // 23505 = duplicata, que aqui e sucesso: o pacote ja tinha sido gravado.
+    if (error && error.code !== "23505") {
+      console.error(`[instagram] MENSAGEM PERDIDA de ${msg.de} (${msg.mid}): ${error.message}`);
+    }
   }
+}
+
+/**
+ * O nome de quem escreveu, perguntado a Meta.
+ *
+ * ⚠ BEST-EFFORT DE PROPOSITO. Sem token, com erro ou com a conta sem nome
+ * publico, o contato nasce com um rotulo derivado do id — feio, mas achavel.
+ * Recusar a mensagem por falta de nome seria perder o cliente para nao perder
+ * a estetica.
+ */
+async function nomeNoInstagram(igId: string, token: string | null): Promise<string | null> {
+  if (!token) return null;
+  try {
+    const r = await fetch(
+      `https://graph.facebook.com/${VERSAO_GRAPH}/${igId}?fields=name,username`,
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+    );
+    const j = (await r.json()) as { name?: string; username?: string };
+    if (!r.ok) return null;
+    const nome = (j.name ?? "").trim();
+    const user = (j.username ?? "").trim();
+    return nome || (user ? `@${user}` : null);
+  } catch {
+    return null;
+  }
+}
+
+async function registrar(mensagens: MensagemRecebida[]) {
+  if (!mensagens.length) return;
+  const admin = createAdminClient();
 
   // O `phone_number_id` diz de qual EMPRESA é o número que recebeu. Ele vem
   // do pacote, mas não é o pacote que decide o tenant: procuramos o número
