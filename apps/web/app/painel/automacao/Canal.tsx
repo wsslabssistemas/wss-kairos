@@ -22,6 +22,9 @@ export function Canal({
   temAppSecret,
   atualizadoEm,
   urlDoWebhook,
+  contaInstagram,
+  temTokenInstagram,
+  urlDoWebhookInstagram,
 }: {
   configurado: boolean;
   phoneId: string | null;
@@ -29,6 +32,9 @@ export function Canal({
   temAppSecret: boolean;
   atualizadoEm: string | null;
   urlDoWebhook: string;
+  contaInstagram: string | null;
+  temTokenInstagram: boolean;
+  urlDoWebhookInstagram: string;
 }) {
   const [numero, setNumero] = useState("");
   const [testando, setTestando] = useState(false);
@@ -135,6 +141,36 @@ export function Canal({
           secreta o sistema <strong>recusa tudo que a Meta manda</strong> — inclusive as
           respostas dos clientes.
         </p>
+        {/* ⚠ O INSTAGRAM MORA NO MESMO FORMULÁRIO, e não numa tela nova. É o
+            mesmo cofre (`tenant_secrets`) e a mesma decisão: por onde a
+            empresa fala. Separar em duas telas faria alguém configurar metade
+            e achar que terminou. */}
+        <hr className="divider" />
+        <p className="eyebrow" style={{ marginBottom: 4 }}>Instagram (opcional)</p>
+        <p className="text-faint" style={{ fontSize: 12, margin: "0 0 10px" }}>
+          Recebe os directs no mesmo lugar das conversas.{" "}
+          <strong>No Instagram só dá para responder</strong> — não existe modelo
+          aprovado nem campanha, e a janela é de 24h depois que a pessoa escreve.
+        </p>
+        <label className="text-dim" style={{ fontSize: 13 }}>
+          ID da conta do Instagram {contaInstagram && <span className="badge badge-success">definido</span>}
+          <span className="text-faint" style={{ display: "block", fontSize: 11 }}>
+            É o número da CONTA (começa com 1784…), não o do app. No painel da Meta:
+            caso de uso do Instagram → <strong>Gerar tokens de acesso</strong>.
+          </span>
+          <input type="text" name="instagram_account_id" autoComplete="new-password" inputMode="numeric"
+            placeholder={contaInstagram ? `salvo: ${contaInstagram} — preencha só para trocar` : "17841401344986585"} />
+        </label>
+        <label className="text-dim" style={{ fontSize: 13 }}>
+          Token do Instagram {temTokenInstagram && <span className="badge badge-success">definido</span>}
+          <span className="text-faint" style={{ display: "block", fontSize: 11 }}>
+            No mesmo lugar do ID, botão de gerar token. Começa com <code>IGAA…</code>.
+            {" "}<strong>Ele vence</strong> — o sistema avisa quantos dias faltam, você não precisa anotar.
+          </span>
+          <input type="password" name="instagram_token" autoComplete="new-password"
+            placeholder={temTokenInstagram ? "já configurado — preencha só para trocar" : "IGAA…"} />
+        </label>
+
         <button type="submit" className="btn btn-sm" style={{ alignSelf: "flex-start" }}>
           Salvar credencial
         </button>
@@ -143,6 +179,10 @@ export function Canal({
       <div className="card mt-16" style={{ background: "var(--bg-elev)" }}>
         <p className="eyebrow" style={{ marginBottom: 6 }}>Na Meta, aponte o webhook para</p>
         <code style={{ fontSize: 12, wordBreak: "break-all" }}>{urlDoWebhook}</code>
+        <p className="text-faint" style={{ fontSize: 12, margin: "10px 0 4px" }}>
+          E o do Instagram, que é <strong>outro endereço</strong>:
+        </p>
+        <code style={{ fontSize: 12, wordBreak: "break-all" }}>{urlDoWebhookInstagram}</code>
       </div>
 
       {/* ⚠ O TESTE VEM ANTES DE QUALQUER CLIENTE REAL. O provedor foi escrito

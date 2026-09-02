@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { credencialDoCanal } from "@/lib/credenciais";
-import { estadoDoNumero, modelosAprovados } from "@/lib/perfil-canal";
+import { estadoDoNumero, validadeDoToken, modelosAprovados } from "@/lib/perfil-canal";
 import { avaliarSaude, type Veredito } from "@/lib/saude-canal";
 
 /**
@@ -76,6 +76,17 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
     await conferirModelos(admin, tenantId, cred, agora);
 
     const r = await estadoDoNumero(cred);
+
+    // ⚠ A VALIDADE DO TOKEN VAI JUNTO, na mesma passada. Token vencido não dá
+    // erro visível: a Meta recusa, o motor registra falha, e do lado de fora
+    // aparece como "o sistema parou de responder". Perguntar aqui é o que
+    // transforma um silêncio futuro em manutenção agendada — e ninguém precisa
+    // ANOTAR data nenhuma, que era o pedido do fundador.
+    //
+    // Best-effort: falhar em saber a validade não pode impedir o registro da
+    // saúde do número, que é o motivo principal desta função existir.
+    let validade: Awaited<ReturnType<typeof validadeDoToken>> | null = null;
+    try { validade = await validadeDoToken(cred); } catch { validade = null; }
     // Uma forma só para os dois casos: o inserto tem sempre as mesmas colunas,
     // e o que muda é o conteúdo. Duas formas diferentes fariam o TypeScript
     // discutir e, pior, deixariam colunas fora do registro conforme o caminho.
@@ -87,6 +98,11 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
       messaging_limit_tier: r.ok ? r.estado.messaging_limit_tier ?? null : null,
       verified_name: r.ok ? r.estado.verified_name ?? null : null,
       erro: r.ok ? null : r.motivo,
+      // `null` quando não deu para perguntar OU quando o token não vence
+      // (`expires_at: 0`, dos permanentes). São casos diferentes com o mesmo
+      // valor, e `token_valido` é o que os separa.
+      token_expira_em: validade?.ok ? validade.expiraEm?.toISOString() ?? null : null,
+      token_valido: validade?.ok ? validade.valido : null,
     };
 
     const { error } = await admin.from("canal_verificacoes").insert(linha);
@@ -110,7 +126,7 @@ export async function ultimaVerificacao(tenantId: string) {
   // paginacao-ok: `.limit(1)` com ORDER BY.
   const { data } = await admin
     .from("canal_verificacoes")
-    .select("ok, quality_rating, name_status, messaging_limit_tier, verified_name, erro, occurred_at")
+    .select("ok, quality_rating, name_status, messaging_limit_tier, verified_name, erro, occurred_at, token_expira_em, token_valido")
     .eq("tenant_id", tenantId)
     .order("occurred_at", { ascending: false })
     .limit(1)
@@ -119,6 +135,7 @@ export async function ultimaVerificacao(tenantId: string) {
     ok: boolean; quality_rating: string | null; name_status: string | null;
     messaging_limit_tier: string | null; verified_name: string | null;
     erro: string | null; occurred_at: string;
+    token_expira_em: string | null; token_valido: boolean | null;
   } | null) ?? null;
 }
 

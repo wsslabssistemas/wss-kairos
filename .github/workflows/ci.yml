@@ -201,6 +201,13 @@ jobs:
       # mensagem nossa.
       - name: Instagram — o direct desmontado sem confundir com o WhatsApp
         run: node packages/db/tests/instagram_test.mjs
+      # A VALIDADE DO TOKEN. Token vencido nao da erro visivel: a Meta recusa, o
+      # motor registra falha, e do lado de fora parece "o sistema parou de
+      # responder". O pedido foi "alerta de lembrete"; a saida foi melhor —
+      # perguntar ao `debug_token` e contar os dias na tela, sem ninguem anotar
+      # data nenhuma.
+      - name: Token — a validade perguntada, nunca anotada
+        run: node packages/db/tests/token_check.mjs
       # O motor proativo. As seis regras anti-bloqueio da tela de Automacao
       # eram gravadas desde que ela nasceu e NENHUMA linha do sistema as lia —
       # um formulario que salva e ninguem cumpre promete um freio que nao

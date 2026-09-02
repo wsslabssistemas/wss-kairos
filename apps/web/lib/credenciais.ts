@@ -145,12 +145,16 @@ export async function statusDoCanal(tenantId: string): Promise<{
   temVerifyToken: boolean;
   temAppSecret: boolean;
   atualizadoEm: string | null;
+  /** O ID da conta do Instagram aparece INTEIRO na tela: não é segredo, é
+      identificador — e ver o número salvo é como se confere que é o certo. */
+  contaInstagram: string | null;
+  temTokenInstagram: boolean;
 }> {
   const admin = createAdminClient();
   // paginacao-ok: uma linha, chave primária.
   const { data } = await admin
     .from("tenant_secrets")
-    .select("whatsapp_token, whatsapp_phone_id, whatsapp_verify_token, whatsapp_app_secret, updated_at")
+    .select("whatsapp_token, whatsapp_phone_id, whatsapp_verify_token, whatsapp_app_secret, updated_at, instagram_account_id, instagram_token")
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
@@ -161,6 +165,8 @@ export async function statusDoCanal(tenantId: string): Promise<{
     temVerifyToken: !!data?.whatsapp_verify_token?.trim(),
     temAppSecret: !!data?.whatsapp_app_secret?.trim(),
     atualizadoEm: data?.updated_at ?? null,
+    contaInstagram: data?.instagram_account_id?.trim() || null,
+    temTokenInstagram: !!data?.instagram_token?.trim(),
   };
 }
 
@@ -174,7 +180,11 @@ export async function statusDoCanal(tenantId: string): Promise<{
 export async function salvarCredencial(
   tenantId: string,
   membershipId: string,
-  campos: { token?: string; phoneId?: string; verifyToken?: string; appSecret?: string },
+  campos: {
+    token?: string; phoneId?: string; verifyToken?: string; appSecret?: string;
+    /** Conta e token do Instagram — o mesmo cofre, o mesmo formulário. */
+    instagramAccountId?: string; instagramToken?: string;
+  },
 ): Promise<{ ok: boolean; erro?: string }> {
   const admin = createAdminClient();
   const patch: Record<string, unknown> = {
@@ -186,6 +196,11 @@ export async function salvarCredencial(
   if (campos.phoneId?.trim()) patch.whatsapp_phone_id = campos.phoneId.trim();
   if (campos.verifyToken?.trim()) patch.whatsapp_verify_token = campos.verifyToken.trim();
   if (campos.appSecret?.trim()) patch.whatsapp_app_secret = campos.appSecret.trim();
+  // ⚠ CAMPO EM BRANCO NÃO APAGA, aqui como nos de cima. Formulário que
+  // reenvia o que já existe transforma "salvar uma coisa" em "regravar
+  // tudo" — foi assim que uma aba antiga trocou o número da empresa.
+  if (campos.instagramAccountId?.trim()) patch.instagram_account_id = campos.instagramAccountId.trim();
+  if (campos.instagramToken?.trim()) patch.instagram_token = campos.instagramToken.trim();
 
   const { error } = await admin.from("tenant_secrets").upsert(patch, { onConflict: "tenant_id" });
   if (error) return { ok: false, erro: error.message };

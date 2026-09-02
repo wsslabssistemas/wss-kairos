@@ -272,3 +272,51 @@ export async function modelosAprovados(
     return { ok: false, motivo: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/**
+ * QUANDO O TOKEN VENCE — perguntado à Meta, nunca anotado por alguém.
+ *
+ * ⚠ POR QUE ISTO EXISTE (02/set/2026). O fundador, ao ouvir que o token do
+ * Instagram vence em 60 dias: *"todo o trabalho manual é ruim, ainda mais os
+ * que dependem da memória de um humano, então vamos ter que colocar alertas de
+ * lembrete de token expirando"*.
+ *
+ * Ele está certo — e existe saída melhor que lembrete. O `debug_token`
+ * DEVOLVE a data de expiração do próprio token. Ninguém precisa anotar nada:
+ * o vigia pergunta a cada leitura e a tela mostra quantos dias faltam.
+ *
+ * ⚠ E TOKEN VENCIDO NÃO DÁ ERRO VISÍVEL. A Meta recusa a chamada, o motor
+ * registra falha, e do lado de fora aparece como "o sistema parou de
+ * responder" — o mesmo padrão que esta casa paga desde agosto: a falha que se
+ * apresenta como silêncio. Um número na tela é o que transforma isso em
+ * manutenção agendada.
+ *
+ * ⚠ `expires_at: 0` SIGNIFICA "NUNCA VENCE", não "venceu em 1970". É o valor
+ * dos tokens permanentes de usuário do sistema, e ler isso como data faria a
+ * tela gritar todo dia sobre um token que está perfeito.
+ */
+export async function validadeDoToken(
+  cred: CredencialCanal,
+): Promise<{ ok: true; expiraEm: Date | null; valido: boolean } | { ok: false; motivo: string }> {
+  try {
+    const r = await fetch(
+      `https://graph.facebook.com/${cred.versao}/debug_token?input_token=${encodeURIComponent(cred.token)}`,
+      { headers: { Authorization: `Bearer ${cred.token}` }, cache: "no-store" },
+    );
+    const j = (await r.json()) as {
+      data?: { expires_at?: number; is_valid?: boolean };
+      error?: { message?: string };
+    };
+    if (!r.ok || !j.data) return { ok: false, motivo: j?.error?.message ?? `A Meta respondeu ${r.status}.` };
+
+    const seg = Number(j.data.expires_at);
+    const expiraEm = Number.isFinite(seg) && seg > 0 ? new Date(seg * 1000) : null;
+    return { ok: true, expiraEm, valido: j.data.is_valid !== false };
+  } catch (e) {
+    return { ok: false, motivo: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// A conta dos dias e o limiar do alarme moram num arquivo puro, para o teste
+// alcançá-los sem rede. Ver `lib/token-validade.ts`.
+export { diasAteVencer, DIAS_DE_ALERTA } from "@/lib/token-validade";

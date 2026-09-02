@@ -17,6 +17,7 @@ import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 import { dataHoraLocal } from "@/lib/fuso";
 import { ultimaVerificacao } from "@/lib/vigia-canal";
+import { diasAteVencer, DIAS_DE_ALERTA } from "@/lib/perfil-canal";
 import { alcanceDaReativacao } from "@/lib/alcance";
 import { avaliarSaude } from "@/lib/saude-canal";
 
@@ -202,6 +203,18 @@ export default async function AutomacaoPage({
    * Ver `lib/vigia-canal.ts` e a `0069`.
    */
   const vigia = await ultimaVerificacao(tenant.id);
+  /**
+   * ⚠ QUANTOS DIAS O TOKEN AINDA TEM — e ninguém anotou nada para isso.
+   *
+   * O pedido do fundador foi "alertas de lembrete de token expirando". A
+   * resposta é melhor que lembrete: o `debug_token` da Meta devolve a data, o
+   * vigia pergunta a cada leitura e a tela mostra. Zero memória humana.
+   *
+   * `null` = o token não vence (permanente) ou não deu para perguntar. Os dois
+   * casos são silêncio na tela, de propósito: alarme para o que está certo é
+   * como se aprende a ignorar alarme.
+   */
+  const diasDoToken = diasAteVencer(vigia?.token_expira_em ? new Date(vigia.token_expira_em) : null);
   const saude = vigia
     ? avaliarSaude(
         vigia.ok
@@ -350,6 +363,39 @@ export default async function AutomacaoPage({
                       {vigia.messaging_limit_tier ? ` · degrau de envio ${vigia.messaging_limit_tier}` : ""}
                       {vigia.verified_name ? ` · quem recebe vê "${vigia.verified_name}"` : ""}
                     </p>
+                    {/* ⚠ A VALIDADE DO TOKEN, PERGUNTADA À META — não anotada por
+                        ninguém. Token vencido não dá erro visível: a Meta recusa, o
+                        motor registra falha, e do lado de fora parece "o sistema
+                        parou de responder". Um número aqui transforma um silêncio
+                        futuro em manutenção agendada.
+
+                        ⚠ E SÓ APARECE QUANDO IMPORTA. Token que não vence, ou com
+                        muitos dias pela frente, não vira linha na tela — alarme
+                        para o que está certo é como se aprende a ignorar alarme. */}
+                    {vigia.token_valido === false && (
+                      <p className="badge badge-danger" style={{ marginTop: 8, whiteSpace: "normal", textAlign: "left" }}>
+                        O token deste canal <strong>não é mais válido</strong>. A Meta está
+                        recusando tudo: nada entra e nada sai. Gere um token novo e cole em
+                        Canal oficial.
+                      </p>
+                    )}
+                    {diasDoToken !== null && diasDoToken <= DIAS_DE_ALERTA && vigia.token_valido !== false && (
+                      <p
+                        className={diasDoToken <= 3 ? "badge badge-danger" : "badge badge-warn"}
+                        style={{ marginTop: 8, whiteSpace: "normal", textAlign: "left" }}
+                      >
+                        {diasDoToken <= 0
+                          ? "O token deste canal vence HOJE."
+                          : `O token deste canal vence em ${diasDoToken} dia${diasDoToken === 1 ? "" : "s"}.`}{" "}
+                        Gere um novo na Meta e cole em Canal oficial — depois que vencer, o
+                        canal fica mudo sem avisar.
+                      </p>
+                    )}
+                    {diasDoToken !== null && diasDoToken > DIAS_DE_ALERTA && (
+                      <p className="text-faint" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                        Token válido por mais {diasDoToken} dias.
+                      </p>
+                    )}
                     {minutosSemVigia !== null && minutosSemVigia > 180 && (
                       <p className="text-dim" style={{ fontSize: 12, margin: "6px 0 0" }}>
                         ⚠ Esta resposta tem mais de 3 horas. O vigia roda junto com o agendador — se ele
@@ -512,6 +558,9 @@ export default async function AutomacaoPage({
                 temAppSecret={status.temAppSecret}
                 atualizadoEm={status.atualizadoEm}
                 urlDoWebhook={`${await origemDoSite()}/api/whatsapp/webhook`}
+                contaInstagram={status.contaInstagram}
+                temTokenInstagram={status.temTokenInstagram}
+                urlDoWebhookInstagram={`${await origemDoSite()}/api/instagram/webhook`}
               />
             )}
 
