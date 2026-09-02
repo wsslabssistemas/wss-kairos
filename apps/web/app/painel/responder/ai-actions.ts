@@ -344,7 +344,11 @@ export async function gerarResposta(input: {
   const motivosDeSaida =
     contract?.ended_stage && etapaAtualDoContato === contract.ended_stage && churnReasons.length
       ? churnReasons
-          .map((m) => `- ${m.label}: ${m.o_que_fazer ?? ""}`)
+          // ⚠ A ABORDAGEM VAI JUNTO quando existe. `o_que_fazer` diz o que NÃO
+          // fazer; a abordagem diz COMO abrir a conversa — e sem ela a IA
+          // reaproveita o tom de campanha exatamente onde ele não cabe, que é
+          // o caso de quem se afastou por saúde.
+          .map((m) => `- ${m.label}: ${m.o_que_fazer ?? ""}${m.abordagem ? ` ABORDAGEM: ${m.abordagem}` : ""}`)
           .join("\n")
       : "";
 

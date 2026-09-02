@@ -31,7 +31,7 @@ import type { MotivoDaFila } from "./fila";
  * ⚠ A LISTA VEM DO MANIFESTO (Lei 1). O núcleo não sabe o que é "mudou de
  * endereço" — ele sabe que existe motivo de saída e que alguns deles são
  * definitivos. Quem declara qual é qual é o segmento, em `churn_reasons`, com
- * `encerra_reativacao: true`.
+ * `fora_da_campanha: true`.
  *
  * Na academia é UM só, e a curadoria já dizia por quê: *"Fora do alcance. Não
  * insistir — e é o único motivo que tira a pessoa da reativação de vez."*

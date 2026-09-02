@@ -100,7 +100,7 @@ export type CargaDaFila = {
    * seria uma segunda leitura do mesmo arquivo, e duas leituras do manifesto
    * são duas chances de divergirem no dia em que uma for filtrada.
    */
-  churnReasons: { key: string; label: string; encerra_reativacao?: boolean }[];
+  churnReasons: { key: string; label: string; fora_da_campanha?: boolean; pausa_dias?: number; abordagem?: string }[];
 };
 
 /**
@@ -248,7 +248,7 @@ export async function carregarFila(entrada: {
     toques,
     settings: (tRow?.settings ?? null) as Record<string, unknown> | null,
     hojeISO,
-    churnReasons: (churnReasons ?? []) as { key: string; label: string; encerra_reativacao?: boolean }[],
+    churnReasons: (churnReasons ?? []) as { key: string; label: string; fora_da_campanha?: boolean; pausa_dias?: number; abordagem?: string }[],
     naoContatar: cData.length - elegiveis.length,
     /** Cadastros velhos escondidos porque a pessoa ja e cliente em outra linha. */
     gemeosAtivos: comGemeo.size,

@@ -124,13 +124,29 @@ export async function getSkillFormConfig(skillKey: string, cliente?: ClienteSupa
         label: string;
         o_que_fazer?: string;
         /**
-         * ⚠ ESTE MOTIVO TIRA A PESSOA DA REATIVAÇÃO PARA SEMPRE.
+         * ⚠ ESTE MOTIVO TIRA A PESSOA DA CAMPANHA AUTOMÁTICA.
          *
-         * Quem declara é o segmento, nunca o núcleo (Lei 1): o núcleo sabe
-         * que existe motivo de saída e que alguns são definitivos; o que é
-         * "mudou de endereço" só o ramo sabe. Ver o veto em `lib/motor.ts`.
+         * Ela **continua na lista de quem uma pessoa pode procurar** — o que
+         * sai é o disparo automático, com o modelo aprovado que diz "você
+         * acabou parando". Chamava-se `encerra_reativacao` até 02/set;
+         * "encerra" prometia mais do que entrega, e nome que promete demais
+         * vira decisão errada seis meses depois.
+         *
+         * Quem declara é o segmento, nunca o núcleo (Lei 1).
          */
-        encerra_reativacao?: boolean;
+        fora_da_campanha?: boolean;
+        /**
+         * Dias de silêncio antes de alguém procurar de novo. Só faz sentido
+         * junto de `fora_da_campanha`: é o intervalo entre o motivo ter sido
+         * registrado e a conversa voltar a ser apropriada.
+         */
+        pausa_dias?: number;
+        /**
+         * COMO abordar quando a conversa voltar — texto para quem escreve, não
+         * para o cliente. Vai junto no prompt: sem ele, a IA reaproveitaria o
+         * tom de campanha exatamente onde ele não cabe.
+         */
+        abordagem?: string;
       }[];
     } | null) ?? {};
 

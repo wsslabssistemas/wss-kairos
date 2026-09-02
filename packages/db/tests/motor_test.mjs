@@ -40,7 +40,7 @@ const REGRAS = {
   reativacao_max_dias: 90,
   // Os motivos de saida que o RAMO classifica como sem volta. Na academia e um
   // so, e a curadoria ja dizia por que: "Fora do alcance. Nao insistir."
-  motivos_que_encerram: ["mudou_endereco"],
+  motivos_que_encerram: ["mudou_endereco", "saude"],
   reativacao_escada: [],
   max_por_rodada: 0,
   pausa_entre_envios_seg: 6,
@@ -444,6 +444,19 @@ verifica("e o motivo cita a metade, nao o teto cheio",
 // reativacao de vez." Faltava a maquina cumprir o que a curadoria mandava.
 const mudou = planoHoje({ ...livre("cesar"), motivoSaida: "mudou_endereco" });
 verifica("quem se mudou NAO recebe reativacao", mudou.enviar.length, 0);
+// ⚠ SAUDE TAMBEM SAI DA CAMPANHA — decidido em 02/set, com a Gisele.
+//
+// O modelo aprovado diz "voce treinou com a gente e acabou parando". Mandar
+// isso para quem se afastou por lesao ou gravidez e cobrar ausencia de quem
+// teve um motivo. O fundador queria marca-la como "mudou de endereco" para
+// calar a campanha — o que resolveria hoje e estragaria o dado para sempre,
+// porque a lista de motivos existe para poder SOMAR.
+//
+// A saida foi a que ele mesmo descreveu em seguida: fora da campanha
+// automatica, e depois de 30 dias uma pessoa procura para SABER DELA. Ela
+// continua na lista de quem da para procurar; o que sai e o disparo.
+const saude = planoHoje({ ...livre("gisele"), motivoSaida: "saude" });
+verifica("quem parou por saude NAO recebe campanha automatica", saude.enviar.length, 0);
 verifica("e o veredito diz que o motivo nao tem volta",
   /nao tem volta|não tem volta/i.test(mudou.vereditos[0].motivo), true);
 

@@ -349,7 +349,12 @@ churn_reasons:
     # e o motor NUNCA leu nenhum dos dois — quem avisou que se mudou seguia
     # entrando na campanha seguinte. Sem esta chave, "não insistir" é conselho
     # para uma pessoa ler, não regra que a máquina cumpre.
-    encerra_reativacao: true
+    #
+    # ⚠ O NOME MUDOU EM 02/set, de `encerra_reativacao` para `fora_da_campanha`.
+    # O que a chave faz é tirar a pessoa da campanha AUTOMÁTICA — ela continua
+    # na lista de quem uma pessoa pode procurar. "Encerra" prometia mais do que
+    # entrega, e nome que promete demais vira decisão errada seis meses depois.
+    fora_da_campanha: true
   - key: outra_academia
     label: "Está treinando em outro lugar"
     o_que_fazer: "Não oferecer desconto: descobrir o que a outra tem. Volta quando aquilo falhar, e a anotação é o que avisa."
@@ -362,6 +367,18 @@ churn_reasons:
   - key: saude
     label: "Lesão, gravidez ou orientação médica"
     o_que_fazer: "Não vender. Perguntar quando libera e marcar a data — insistir aqui é constrangedor e não converte."
+    # ⚠ FORA DA CAMPANHA, MAS NÃO ESQUECIDA — e a diferença é o produto inteiro.
+    #
+    # O modelo aprovado da reativação diz "você treinou com a gente e acabou
+    # parando". Mandar isso para quem se afastou por lesão ou gravidez é cobrar
+    # ausência de alguém que teve um motivo — o constrangimento que a linha
+    # acima já avisava e que a máquina ignorava.
+    #
+    # Ela sai da campanha automática e vira trabalho de gente, depois de uma
+    # pausa. Quem escreve recebe a abordagem pronta, e ela NÃO vende.
+    fora_da_campanha: true
+    pausa_dias: 30
+    abordagem: "Depois de 30 dias, procure para SABER DELA, não para vender. Cite o que ela disse, sem detalhar o problema de saúde, e faça uma pergunta aberta. Exemplo: 'Bom dia, Gisele! Da última vez que conversamos você tinha dito que precisou se ausentar por motivo de saúde. Hoje estou passando só para saber de você — como você está?'. Não fale de plano, valor nem retorno nesta mensagem: se ela quiser voltar, ela mesma traz o assunto."
   - key: desmotivou
     label: "Desanimou, não via resultado"
     o_que_fazer: "É acompanhamento, não desconto. Falar do professor presente e da avaliação — o que faltou foi companhia, não plano."

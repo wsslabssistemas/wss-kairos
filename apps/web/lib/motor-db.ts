@@ -141,7 +141,7 @@ export async function rodarMotor(entrada: {
   const saidaDe = new Map(carga.todos.map((c) => [c.id, c.motivo_saida ?? null]));
   // Os motivos que o RAMO classifica como sem volta. Vazio quando o segmento
   // não declara motivos de saída — hoje, 14 dos 15.
-  const motivosQueEncerram = carga.churnReasons.filter((m) => m.encerra_reativacao).map((m) => m.key);
+  const motivosQueEncerram = carga.churnReasons.filter((m) => m.fora_da_campanha).map((m) => m.key);
 
   const candidatos: Candidato[] = doCanal.map((f) => ({
     contactId: f.contactId,
