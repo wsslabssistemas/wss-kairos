@@ -57,7 +57,11 @@ export default async function ConfirmarPage({
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({
       token_hash: hash,
-      type: t as "invite" | "recovery" | "signup" | "email",
+      // ⚠ `email_change` E `magiclink` ENTRAM AQUI TAMBÉM. Desde 02/set os
+      // e-mails que o próprio Supabase envia apontam para esta página (com
+      // `{{ .TokenHash }}` no modelo) em vez do `/auth/v1/verify` dele — um
+      // caminho só para todo link, sem fragmento e sem JavaScript no meio.
+      type: t as "invite" | "recovery" | "signup" | "email" | "email_change" | "magiclink",
     });
 
     if (error) {
