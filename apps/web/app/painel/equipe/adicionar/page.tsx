@@ -69,6 +69,21 @@ export default async function AdicionarMembroPage({
             <option value="admin">Administrador (admin)</option>
           </select>
         </label>
+        {/* ⚠ DUAS ENTREGAS, UMA ESCOLHA — nunca as duas. O link do convite é
+            de uso único, e gerar outro invalida o anterior: mandar por e-mail
+            E mostrar na tela deixaria dois links por aí, um morto, sem nada
+            dizendo qual. */}
+        <label className="row" style={{ gap: 8, alignItems: "flex-start", fontSize: 13, marginTop: 4 }}>
+          <input type="checkbox" name="por_email" value="1" defaultChecked style={{ marginTop: 3 }} />
+          <span>
+            <strong>Enviar o convite por e-mail</strong>
+            <span style={{ display: "block", opacity: 0.75, fontSize: 12, marginTop: 2 }}>
+              A pessoa recebe sozinha e cria a senha. Desmarque para receber um link
+              na tela e mandar você mesmo — resolve na hora, sem depender de caixa
+              de entrada.
+            </span>
+          </span>
+        </label>
         <button
           type="submit"
           style={{
@@ -82,7 +97,7 @@ export default async function AdicionarMembroPage({
             cursor: "pointer",
           }}
         >
-          Gerar convite
+          Adicionar à equipe
         </button>
         {erro && <p style={{ color: "var(--danger)", fontSize: 13 }}>{erro}</p>}
       </form>

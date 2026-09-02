@@ -106,5 +106,38 @@ verifica(
   true,
 );
 
+// ------------------- O CONVITE POR E-MAIL (02/set/2026)
+//
+// ⚠ ATE 02/set O CONVITE NUNCA MANDAVA E-MAIL NENHUM. `generateLink` GERA e
+// nao ENVIA — o fundador tinha que entregar o link a mao, sempre. Nao era
+// descuido: o e-mail nativo da Supabase tinha teto de 2 por hora e travou a
+// equipe da Be Fitness por horas em 10/ago. Com o SMTP proprio no ar, passou a
+// fazer sentido enviar.
+//
+// ⚠ DUAS ENTREGAS, UM TOKEN CADA — e por isso e uma ESCOLHA, nunca as duas. O
+// link e de uso unico e gerar outro invalida o anterior: mandar por e-mail E
+// mostrar na tela deixaria dois links por ai, um morto, sem nada dizendo qual.
+// A pessoa clicaria no errado.
+const acoes = fonte("apps/web/app/painel/equipe/actions.ts");
+verifica("o convite por e-mail usa inviteUserByEmail, que ENVIA", acoes.includes("inviteUserByEmail"), true);
+verifica("e quem ja tem conta recebe recuperacao, que tambem envia", acoes.includes("resetPasswordForEmail"), true);
+// ⚠ FALHOU O ENVIO? CAI PARA O LINK, nao para o vazio. O teto de e-mails por
+// hora existe e e atingivel — e a pessoa do outro lado nao pode ficar sem nada
+// por causa dele. E a regra escrita: destrave a pessoa primeiro.
+verifica(
+  "envio que falha cai para o link, nao deixa a pessoa sem nada",
+  acoes.includes("nao enviei o e-mail para"),
+  true,
+);
+// ⚠ "ENVIEI" E DIFERENTE DE "PRONTO". Quem escolheu e-mail fica sem link na
+// tela; sem uma faixa dizendo isso, nao teria como saber se ainda deve mandar
+// alguma coisa.
+verifica("a tela distingue enviado de gerado", fonte("apps/web/app/painel/equipe/page.tsx").includes("Convite enviado"), true);
+verifica(
+  "e a escolha e da pessoa, na hora de adicionar",
+  fonte("apps/web/app/painel/equipe/adicionar/page.tsx").includes('name="por_email"'),
+  true,
+);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

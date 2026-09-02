@@ -27,9 +27,25 @@ export async function inviteMember(formData: FormData) {
   if (!email) redirect("/painel/equipe/adicionar?erro=Informe+o+e-mail");
   if (!nome) redirect("/painel/equipe/adicionar?erro=" + encodeURIComponent("Diga o nome da pessoa — é como ela vai aparecer para a equipe."));
 
+  /**
+   * ⚠ DUAS ENTREGAS, UM TOKEN CADA — e por isso é uma escolha, não os dois.
+   *
+   * O link do convite é de USO ÚNICO, e gerar um novo invalida o anterior.
+   * Mandar por e-mail E mostrar na tela deixaria dois links por aí, um deles
+   * morto, sem nada dizendo qual — e a pessoa clicaria no errado.
+   *
+   * Por e-mail (o padrão desde 02/set, quando o SMTP próprio entrou no ar): a
+   * pessoa recebe sozinha, em português, e ninguém precisa estar por perto.
+   * Pelo link: resolve na hora, sem depender de caixa de entrada — foi o que
+   * destravou a equipe da Be Fitness no dia em que o e-mail nativo travou, e
+   * continua sendo a saída quando alguém está esperando do outro lado.
+   */
+  const porEmail = String(formData.get("por_email") ?? "") === "1";
+
   const admin = createAdminClient();
   let userId: string | null = null;
   let link: string | null = null;
+  let enviado = false;
 
   // Convida: cria a conta (se nova) e gera o link para a pessoa definir a senha.
   //
@@ -53,18 +69,28 @@ export async function inviteMember(formData: FormData) {
   //
   // Com `token_hash`, `/auth/confirmar` troca o token por sessão no servidor,
   // gravando os cookies pelo caminho normal.
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: "invite",
-    email,
-    options: { redirectTo: `${site}/auth/confirmar` },
-  });
+  // ⚠ `inviteUserByEmail` ENVIA; `generateLink` só GERA. A diferença é o
+  // motivo de este ramo existir: até 02/set o convite nunca mandava e-mail
+  // nenhum, e o fundador tinha que entregar o link à mão, sempre.
+  const convite = porEmail
+    ? await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${site}/auth/confirmar` })
+    : await admin.auth.admin.generateLink({
+        type: "invite",
+        email,
+        options: { redirectTo: `${site}/auth/confirmar` },
+      });
+  const { data, error } = convite as {
+    data: { user?: { id: string } | null; properties?: { hashed_token?: string } } | null;
+    error: { message?: string } | null;
+  };
 
   const montar = (hash: string | undefined, tipo: string) =>
     hash ? `${site}/auth/confirmar?token_hash=${hash}&type=${tipo}` : null;
 
   if (!error && data?.user) {
     userId = data.user.id;
-    link = montar(data.properties?.hashed_token, "invite");
+    if (porEmail) enviado = true;
+    else link = montar(data.properties?.hashed_token, "invite");
   } else {
     // JÁ TEM CONTA — e aqui estava o defeito que o fundador viu.
     //
@@ -81,12 +107,35 @@ export async function inviteMember(formData: FormData) {
     userId = (uid as string | null) ?? null;
 
     if (userId) {
-      const { data: rec } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email,
-        options: { redirectTo: `${site}/auth/confirmar` },
-      });
-      link = montar(rec?.properties?.hashed_token, "recovery");
+      if (porEmail) {
+        // ⚠ QUEM JÁ TEM CONTA NÃO RECEBE CONVITE, RECEBE RECUPERAÇÃO — e pelo
+        // cliente normal, não pelo admin: `resetPasswordForEmail` é o único
+        // caminho que DISPARA o e-mail. Do lado de quem recebe, é o mesmo
+        // convite: leva à mesma tela de criar senha.
+        const publico = await createClient();
+        const { error: eRec } = await publico.auth.resetPasswordForEmail(email, {
+          redirectTo: `${site}/auth/confirmar`,
+        });
+        if (eRec) {
+          // ⚠ FALHOU O ENVIO? CAI PARA O LINK, não para o vazio. O teto de
+          // e-mails por hora existe e é atingível — e a pessoa do outro lado
+          // não pode ficar sem nada por causa dele.
+          console.warn(`[equipe] nao enviei o e-mail para ${email}: ${eRec.message}`);
+          const { data: rec } = await admin.auth.admin.generateLink({
+            type: "recovery", email, options: { redirectTo: `${site}/auth/confirmar` },
+          });
+          link = montar(rec?.properties?.hashed_token, "recovery");
+        } else {
+          enviado = true;
+        }
+      } else {
+        const { data: rec } = await admin.auth.admin.generateLink({
+          type: "recovery",
+          email,
+          options: { redirectTo: `${site}/auth/confirmar` },
+        });
+        link = montar(rec?.properties?.hashed_token, "recovery");
+      }
     }
   }
 
@@ -120,6 +169,10 @@ export async function inviteMember(formData: FormData) {
 
   revalidatePath("/painel/equipe");
   if (link) redirect(`/painel/equipe?convite=${encodeURIComponent(link)}`);
+  // ⚠ "ENVIADO" É DIFERENTE DE "OK", e a tela precisa dizer qual foi. Sem
+  // isso, quem escolheu e-mail fica sem saber se deve mandar alguma coisa —
+  // e no caso de o envio ter caído para o link, o link aparece.
+  if (enviado) redirect(`/painel/equipe?enviado=${encodeURIComponent(email)}`);
   redirect("/painel/equipe?ok=1");
 }
 

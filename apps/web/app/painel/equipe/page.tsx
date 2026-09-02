@@ -21,7 +21,7 @@ const ROLES = ["owner", "admin", "manager", "agent"];
 export default async function EquipePage({
   searchParams,
 }: {
-  searchParams: Promise<{ convite?: string; ok?: string; erro?: string }>;
+  searchParams: Promise<{ convite?: string; ok?: string; erro?: string; enviado?: string }>;
 }) {
   const sp = await searchParams;
   const membership = await getActiveTenant();
@@ -151,6 +151,7 @@ export default async function EquipePage({
   );
 
   const inviteLink = sp.convite ? decodeURIComponent(sp.convite) : null;
+  const enviadoPara = sp.enviado ? decodeURIComponent(sp.enviado) : null;
 
   return (
     <main>
@@ -191,6 +192,24 @@ export default async function EquipePage({
             falar com mais gente. Lista grande demais faz a pessoa parar de executar, e
             centenas de mensagens em poucos dias é o padrão que faz o WhatsApp banir o
             número da empresa.
+          </p>
+        </div>
+      )}
+
+      {/* ⚠ "ENVIEI" PRECISA SER DIFERENTE DE "PRONTO". Quem escolheu e-mail
+          fica sem link nenhum na tela — e sem esta faixa não teria como saber
+          se ainda precisa mandar alguma coisa para a pessoa. */}
+      {enviadoPara && (
+        <div className="card mt-16" style={{ borderColor: "var(--border-brand)" }}>
+          <p style={{ margin: 0, fontSize: 13 }}>
+            <span className="badge badge-success" style={{ marginRight: 8 }}>Convite enviado</span>
+            O e-mail foi para <strong>{enviadoPara}</strong>. Ela cria a senha por lá —
+            você não precisa mandar mais nada.
+          </p>
+          <p className="text-faint" style={{ fontSize: 12, margin: "8px 0 0" }}>
+            Se não chegar em alguns minutos, peça para conferir o spam. E se
+            preferir resolver na hora, o botão <strong>Gerar acesso</strong> ao
+            lado do nome dela cria um link para você mandar direto.
           </p>
         </div>
       )}
