@@ -72,5 +72,39 @@ verifica(
   true,
 );
 
+// ------------------- SENHA FRACA NAO E LOGIN RECUSADO (02/set/2026)
+//
+// ⚠ ESTA TRAVA EXISTE POR UMA PERGUNTA DO FUNDADOR, feita ANTES de mexer em
+// nada: "subir o minimo de senha para 8 nao vai dar problema para quem ja
+// cadastrou com 6?".
+//
+// Dava — e nao pela regra da Supabase. Quando a politica fica mais exigente, o
+// `signInWithPassword` devolve `AuthWeakPasswordError` para quem tem senha
+// curta, **no campo `error`, embora a sessao TENHA sido criada**. O login
+// olhava so `error` e mandava a pessoa de volta com uma mensagem em ingles
+// sobre senha fraca. Ela nunca mais entraria, e nada estaria quebrado: a
+// politica teria funcionado exatamente como configurada.
+//
+// ⚠ E A CONDICAO OLHA A SESSAO, nao o nome do erro. Se a sessao existe, a
+// pessoa ENTROU — e isso e um fato, nao uma classificacao do provedor que pode
+// mudar de versao para versao.
+const login = fonte("apps/web/app/login/actions.ts");
+verifica(
+  "o login distingue senha fraca de credencial errada",
+  login.includes("error && data?.session"),
+  true,
+);
+verifica(
+  "e quem entrou com senha fraca vai trocar, nao volta para o login",
+  login.includes("/definir-senha?fraca=1"),
+  true,
+);
+// ⚠ E A TELA EXPLICA. Tela de senha que aparece do nada e lida como "deu erro".
+verifica(
+  "a tela diz que a pessoa entrou e que a regra mudou",
+  fonte("apps/web/app/definir-senha/page.tsx").includes("Você entrou normalmente"),
+  true,
+);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

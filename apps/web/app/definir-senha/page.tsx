@@ -10,9 +10,9 @@ export const metadata = { title: "Criar senha" };
 export default async function DefinirSenhaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string; primeiro?: string }>;
+  searchParams: Promise<{ erro?: string; primeiro?: string; fraca?: string }>;
 }) {
-  const { erro, primeiro } = await searchParams;
+  const { erro, primeiro, fraca } = await searchParams;
 
   // Sem sessão não há o que definir. Mostrar o formulário assim mesmo faria a
   // pessoa digitar a senha duas vezes para só então descobrir que o link
@@ -42,11 +42,18 @@ export default async function DefinirSenhaPage({
             </>
           ) : (
             <>
-              <h1 style={{ fontSize: 20 }}>{primeiro ? "Bem-vindo" : "Criar senha nova"}</h1>
+              <h1 style={{ fontSize: 20 }}>
+                {fraca ? "Atualize sua senha" : primeiro ? "Bem-vindo" : "Criar senha nova"}
+              </h1>
+              {/* ⚠ QUEM CHEGA POR AQUI ENTROU — ele não foi recusado, e o texto
+                  precisa dizer isso. Uma tela de senha que aparece do nada, sem
+                  explicar, é lida como "deu erro" e a pessoa desiste. */}
               <p className="text-dim" style={{ fontSize: 14, marginTop: 4, marginBottom: 22 }}>
-                {primeiro
-                  ? `Crie uma senha para entrar no ${BRAND_NAME} daqui em diante.`
-                  : "Escolha a senha que você vai usar para entrar."}
+                {fraca
+                  ? "Você entrou normalmente. Só que a regra de senha mudou desde a última vez, e a sua ficou abaixo do mínimo — escolha uma nova para continuar."
+                  : primeiro
+                    ? `Crie uma senha para entrar no ${BRAND_NAME} daqui em diante.`
+                    : "Escolha a senha que você vai usar para entrar."}
               </p>
               <p className="text-faint" style={{ fontSize: 12, marginTop: -14, marginBottom: 18 }}>
                 {user.email}
