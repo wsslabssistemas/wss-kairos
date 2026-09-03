@@ -33,6 +33,22 @@ export type DirectRecebido = {
    * a janela de 24h parecer aberta por uma mensagem que nao foi dele.
    */
   eco: boolean;
+  /**
+   * ⚠ O ANEXO VEM COMO URL, NÃO COMO ID — e supor o contrário custou a
+   * primeira mensagem real com arquivo, em 03/set.
+   *
+   * O WhatsApp manda um `media_id` para buscar depois; o Instagram e o
+   * Messenger mandam `attachments[].payload.url`, um endereço direto do CDN
+   * da Meta. Duas plataformas da mesma empresa, dois formatos. Como o resto
+   * do pacote era idêntico ao do Messenger, eu assumi que a mídia também
+   * seguiria o padrão do WhatsApp — e o anexo chegou sem existir para ninguém.
+   *
+   * ⚠ E ELE EXPIRA. É link temporário: quem quiser o arquivo baixa enquanto o
+   * CDN responde.
+   */
+  anexoUrl: string | null;
+  /** `image`, `video`, `audio`, `file`, `share`… como a Meta declarou. */
+  anexoTipo: string | null;
 };
 
 export type PacoteDoInstagram = {
@@ -109,11 +125,22 @@ export function desmontarInstagram(
       if (!mid || !de || !conta) { out.ignorados.push("mensagem sem id, remetente ou conta"); continue; }
 
       const texto = typeof msg.text === "string" ? msg.text.trim() : "";
-      // ⚠ MIDIA VIRA DESCRICAO, como no WhatsApp. Audio de direct tambem da
-      // para transcrever um dia; hoje o que importa e a mensagem EXISTIR, para
-      // a conversa aparecer e alguem responder.
-      const conteudo = texto || (Array.isArray(msg.attachments) && msg.attachments.length
-        ? "(anexo recebido no direct — veja no Instagram)"
+
+      // O primeiro anexo com endereço. A Meta manda uma lista, mas mensagem
+      // com mais de um arquivo é rara e a conversa é uma só: guardar o
+      // primeiro é melhor que inventar uma interação por anexo.
+      const anexos = (Array.isArray(msg.attachments) ? msg.attachments : []) as {
+        type?: unknown; payload?: { url?: unknown };
+      }[];
+      const primeiro = anexos.find((a) => typeof a?.payload?.url === "string");
+      const anexoUrl = (primeiro?.payload?.url as string | undefined) ?? null;
+      const anexoTipo = typeof primeiro?.type === "string" ? primeiro.type : null;
+
+      // ⚠ A DESCRIÇÃO PAROU DE MANDAR PARA O INSTAGRAM. Mesma lição do
+      // "abra no WhatsApp": o anexo agora abre no painel, e um rótulo que
+      // manda a pessoa para outro lugar é pior que um rótulo curto.
+      const conteudo = texto || (anexos.length
+        ? `(${anexoTipo === "image" ? "imagem" : anexoTipo === "video" ? "vídeo" : anexoTipo === "audio" ? "áudio" : "anexo"} recebido no direct)`
         : "");
       if (!conteudo) { out.ignorados.push("mensagem sem texto e sem anexo"); continue; }
 
@@ -124,6 +151,8 @@ export function desmontarInstagram(
         texto: conteudo,
         quando: paraData(mm.timestamp),
         eco: msg.is_echo === true,
+        anexoUrl,
+        anexoTipo,
       });
     }
   }

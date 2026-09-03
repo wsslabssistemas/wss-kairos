@@ -35,12 +35,45 @@ export async function GET(
   // paginacao-ok: uma linha, chave primária — filtrada pela empresa de quem pediu.
   const { data } = await admin
     .from("interactions")
-    .select("media_id, media_tipo")
+    .select("media_id, media_tipo, media_url")
     .eq("id", id)
     .eq("tenant_id", m.tenant.id)
     .maybeSingle();
 
-  const linha = data as { media_id: string | null; media_tipo: string | null } | null;
+  const linha = data as { media_id: string | null; media_tipo: string | null; media_url: string | null } | null;
+
+  /**
+   * ⚠ DOIS CAMINHOS, PORQUE SÃO DUAS APIS. O WhatsApp manda um `media_id` e a
+   * gente busca; o Instagram e o Messenger mandam o endereço direto. Supor
+   * simetria entre as duas foi o defeito de 03/set, quando o primeiro anexo
+   * real do direct chegou e não existia para ninguém.
+   */
+  if (linha?.media_url) {
+    try {
+      const r = await fetch(linha.media_url, { cache: "no-store" });
+      if (!r.ok) {
+        return NextResponse.json(
+          { erro: `O endereço do anexo respondeu ${r.status}. Links do Instagram expiram em pouco tempo — peça para reenviar.` },
+          { status: 410 },
+        );
+      }
+      const bytes = await r.arrayBuffer();
+      const mime = r.headers.get("content-type") ?? "application/octet-stream";
+      return new NextResponse(bytes, {
+        headers: {
+          "Content-Type": mime.split(";")[0],
+          "Content-Disposition": `inline; filename="anexo-${id.slice(0, 8)}"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
+    } catch (e) {
+      return NextResponse.json(
+        { erro: `Não consegui buscar o anexo: ${e instanceof Error ? e.message : String(e)}` },
+        { status: 502 },
+      );
+    }
+  }
+
   if (!linha?.media_id) {
     return NextResponse.json(
       { erro: "Esta mensagem não tem arquivo guardado. As recebidas antes de 02/09 não guardavam a chave da mídia." },

@@ -24,6 +24,7 @@ const { desmontarInstagram } = await import(
 
 const RAIZ = ROOT;
 let falhas = 0;
+const verdade = (nome, cond) => eq(nome, !!cond, true);
 const eq = (nome, obtido, esperado) => {
   const ok = JSON.stringify(obtido) === JSON.stringify(esperado);
   if (!ok) falhas++;
@@ -70,7 +71,29 @@ const anexo = desmontarInstagram(pacote([{
   sender: { id: "IGSID-9" }, recipient: { id: "17841400000000000" }, timestamp: 1756000000000,
   message: { mid: "mid.IMG", attachments: [{ type: "image" }] },
 }]));
-eq("anexo vira descricao, nao some", anexo.mensagens[0]?.texto, "(anexo recebido no direct — veja no Instagram)");
+eq("anexo vira descricao, nao some", anexo.mensagens[0]?.texto, "(anexo recebido no direct)");
+
+// ⚠ O ANEXO VEM COMO URL, NAO COMO ID — e supor o contrario custou a primeira
+// mensagem real com arquivo, em 03/set.
+//
+// O WhatsApp manda um `media_id` para buscar depois; o Instagram e o Messenger
+// mandam `attachments[].payload.url`, endereco direto do CDN. Duas plataformas
+// da MESMA empresa, dois formatos. Como o resto do pacote era identico ao do
+// Messenger, eu assumi que a midia seguiria o padrao do WhatsApp — e o anexo
+// chegou sem existir para ninguem.
+const comUrl = desmontarInstagram(pacote([{
+  sender: { id: "IGSID-9" }, recipient: { id: "17841400000000000" }, timestamp: 1756000000000,
+  message: { mid: "mid.ANEXO", attachments: [{ type: "image", payload: { url: "https://cdn.meta/foto.jpg" } }] },
+}]));
+eq("o endereco do anexo e guardado", comUrl.mensagens[0]?.anexoUrl, "https://cdn.meta/foto.jpg");
+eq("e o tipo tambem", comUrl.mensagens[0]?.anexoTipo, "image");
+// ⚠ E A DESCRICAO DIZ O QUE E, sem mandar a pessoa para outro lugar. Mesma
+// licao do "abra no WhatsApp": o anexo abre no painel.
+eq("a descricao nomeia o tipo", comUrl.mensagens[0]?.texto, "(imagem recebido no direct)");
+verdade("e nao manda ninguem para o Instagram", !comUrl.mensagens[0]?.texto.includes("veja no Instagram"));
+
+// Anexo sem endereco nao inventa link nenhum.
+eq("anexo sem url fica sem endereco", anexo.mensagens[0]?.anexoUrl, null);
 
 // ------------------------------------------------- o que nao e mensagem
 // Confirmacao de leitura e de entrega chegam pelo mesmo caminho e NAO sao

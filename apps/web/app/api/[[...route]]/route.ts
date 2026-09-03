@@ -593,6 +593,11 @@ async function registrarDirects(mensagens: DirectRecebido[], plataforma: Platafo
       input_kind: tipoDeFecho(msg.texto) === "sem_conteudo" ? "customer_reaction" : "customer_message",
       channel: plataforma,
       content: msg.texto,
+      // ⚠ AQUI VAI URL, NÃO ID. O WhatsApp manda `media_id` para buscar
+      // depois; Instagram e Messenger mandam o endereço direto. Colunas
+      // separadas para o download não ter que adivinhar qual é qual.
+      media_url: msg.anexoUrl,
+      media_tipo: msg.anexoTipo,
       occurred_at: msg.quando.toISOString(),
       // `mid` e a chave contra duplicata, como o `wamid`: a Meta REENVIA o
       // mesmo pacote quando nao recebe 200 a tempo.
@@ -616,15 +621,31 @@ async function registrarDirects(mensagens: DirectRecebido[], plataforma: Platafo
 async function nomeNoInstagram(igId: string, token: string | null): Promise<string | null> {
   if (!token) return null;
   try {
-    const r = await fetch(
-      `https://graph.facebook.com/${VERSAO_GRAPH}/${igId}?fields=name,username`,
-      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
-    );
-    const j = (await r.json()) as { name?: string; username?: string };
-    if (!r.ok) return null;
-    const nome = (j.name ?? "").trim();
-    const user = (j.username ?? "").trim();
-    return nome || (user ? `@${user}` : null);
+    // ⚠ SÃO DOIS HOSTS, E EU CHUTEI O ERRADO. A "API do Instagram com login do
+    // Instagram" — que é a configuração desta conta — responde em
+    // `graph.instagram.com`; o `graph.facebook.com` é o caminho de quem entra
+    // pelo login do Facebook. Com o host errado a busca falha em silêncio
+    // (`return null`) e o contato nasce como "Instagram 869579", que foi
+    // exatamente o que aconteceu com as duas primeiras pessoas reais.
+    //
+    // Tenta os dois, na ordem provável: falhar no primeiro não pode custar o
+    // nome, e nenhum dos dois impede a mensagem de ser gravada.
+    for (const host of ["graph.instagram.com", `graph.facebook.com/${VERSAO_GRAPH}`]) {
+      try {
+        const r = await fetch(`https://${host}/${igId}?fields=name,username`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (!r.ok) continue;
+        const j = (await r.json()) as { name?: string; username?: string };
+        const nome = (j.name ?? "").trim();
+        const user = (j.username ?? "").trim();
+        if (nome || user) return nome || `@${user}`;
+      } catch {
+        // host fora do ar ou recusando: tenta o próximo
+      }
+    }
+    return null;
   } catch {
     return null;
   }
