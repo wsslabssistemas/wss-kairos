@@ -40,6 +40,17 @@ export type PacoteDoInstagram = {
   ignorados: string[];
 };
 
+/**
+ * De onde veio o pacote. O Instagram manda `object: "instagram"`; a página do
+ * Facebook manda `object: "page"` — e o resto do formato é IDÊNTICO.
+ *
+ * ⚠ A PLATAFORMA NÃO É DETALHE COSMÉTICO. Ela decide em qual coluna o contato
+ * é procurado: o mesmo ser humano tem um id no Instagram e OUTRO no Facebook,
+ * e casar os dois na mesma coluna faria o histórico de uma pessoa aparecer na
+ * conversa de outra.
+ */
+export type Plataforma = "instagram" | "facebook";
+
 const paraData = (ts: unknown): Date => {
   const n = Number(ts);
   // O Instagram manda milissegundos; o WhatsApp manda segundos. Confundir os
@@ -48,11 +59,22 @@ const paraData = (ts: unknown): Date => {
   return Number.isFinite(n) && n > 0 ? new Date(n) : new Date();
 };
 
-export function desmontarInstagram(corpo: unknown): PacoteDoInstagram {
+/**
+ * @param plataforma Qual dos dois o chamador está esperando. Declarado, e não
+ *   deduzido do pacote, de propósito: cada endereço tem o seu SEGREDO de
+ *   assinatura, e aceitar o outro formato ali seria conferir a assinatura com
+ *   a chave errada — ou pior, aceitar com a chave certa um pacote que o
+ *   chamador não sabe tratar.
+ */
+export function desmontarInstagram(
+  corpo: unknown,
+  plataforma: Plataforma = "instagram",
+): PacoteDoInstagram {
   const out: PacoteDoInstagram = { mensagens: [], ignorados: [] };
+  const esperado = plataforma === "instagram" ? "instagram" : "page";
   const raiz = corpo as { object?: string; entry?: unknown[] } | null;
-  if (!raiz || raiz.object !== "instagram" || !Array.isArray(raiz.entry)) {
-    out.ignorados.push("pacote fora do formato do Instagram");
+  if (!raiz || raiz.object !== esperado || !Array.isArray(raiz.entry)) {
+    out.ignorados.push(`pacote fora do formato esperado (${esperado})`);
     return out;
   }
 

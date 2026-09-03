@@ -592,6 +592,9 @@ export default async function AutomacaoPage({
                 contaInstagram={status.contaInstagram}
                 temTokenInstagram={status.temTokenInstagram}
                 urlDoWebhookInstagram={`${await origemDoSite()}/api/instagram/webhook`}
+                paginaFacebook={status.paginaFacebook}
+                temTokenFacebook={status.temTokenFacebook}
+                urlDoWebhookFacebook={`${await origemDoSite()}/api/facebook/webhook`}
               />
             )}
 

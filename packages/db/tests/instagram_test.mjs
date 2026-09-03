@@ -13,6 +13,7 @@
  *
  *   node packages/db/tests/instagram_test.mjs
  */
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -21,6 +22,7 @@ const { desmontarInstagram } = await import(
   pathToFileURL(path.join(ROOT, "apps/web/lib/instagram-webhook.ts")).href
 );
 
+const RAIZ = ROOT;
 let falhas = 0;
 const eq = (nome, obtido, esperado) => {
   const ok = JSON.stringify(obtido) === JSON.stringify(esperado);
@@ -83,6 +85,49 @@ eq("e fica contada em ignorados", leitura.ignorados.length, 1);
 const doWhats = desmontarInstagram({ object: "whatsapp_business_account", entry: [] });
 eq("pacote do WhatsApp e recusado", [doWhats.mensagens.length, doWhats.ignorados.length], [0, 1]);
 eq("corpo vazio nao quebra", desmontarInstagram(null).mensagens.length, 0);
+
+// ------------------ A PAGINA DO FACEBOOK (03/set/2026)
+//
+// Mesmo formato interno (`entry[].messaging[]`), `object` diferente: a pagina
+// manda `page`. O desmontador e o mesmo e a plataforma e DECLARADA por quem
+// chama, nunca deduzida do pacote.
+//
+// ⚠ POR QUE DECLARADA. Cada endereco tem o seu SEGREDO de assinatura — o
+// Instagram usa a chave do "app do Instagram" e a pagina usa a do app.
+// Deduzir do corpo faria um endereco aceitar o formato do outro, conferido com
+// a chave errada; e o que aceitasse com a chave certa entregaria ao codigo um
+// pacote que ele nao sabe tratar.
+const doFacebook = {
+  object: "page",
+  entry: [{ id: "PAGINA-123", time: 1756000000000, messaging: [{
+    sender: { id: "PSID-999" }, recipient: { id: "PAGINA-123" },
+    timestamp: 1756000000000, message: { mid: "mid.FB", text: "voces abrem sabado?" },
+  }] }],
+};
+const pFb = desmontarInstagram(doFacebook, "facebook");
+eq("le a mensagem da pagina do Facebook", pFb.mensagens.length, 1);
+eq("o remetente e o PSID", pFb.mensagens[0]?.de, "PSID-999");
+eq("e a conta e o id da PAGINA", pFb.mensagens[0]?.contaDaEmpresa, "PAGINA-123");
+
+// ⚠ E CADA ENDERECO SO ACEITA O SEU. Pacote do Facebook chegando no
+// desmontador do Instagram e recusado, e vice-versa: se um dia os dois
+// apontarem para o mesmo lugar, o errado nao pode "quase funcionar".
+eq("pacote do Facebook e recusado pelo desmontador do Instagram",
+  desmontarInstagram(doFacebook, "instagram").mensagens.length, 0);
+eq("e o do Instagram e recusado pelo do Facebook",
+  desmontarInstagram(pacote([{ sender: { id: "a" }, recipient: { id: "b" }, message: { mid: "m", text: "oi" } }]), "facebook").mensagens.length, 0);
+
+// ⚠ E A GRAVACAO USA COLUNAS DIFERENTES POR PLATAFORMA. O mesmo ser humano tem
+// um id no Instagram e OUTRO no Facebook; procurar os dois na mesma coluna
+// faria o historico de uma pessoa aparecer na conversa de outra — pior que nao
+// achar ninguem.
+const rotaFonte = fs.readFileSync(
+  path.join(RAIZ, "apps/web/app/api/[[...route]]/route.ts"), "utf8",
+).split(String.fromCharCode(13)).join("");
+eq("a coluna do contato muda com a plataforma",
+  rotaFonte.includes('const coluna = plataforma === "instagram" ? "instagram_id" : "facebook_id"'), true);
+eq("e a conta da empresa tambem",
+  rotaFonte.includes('"instagram_account_id" : "facebook_page_id"'), true);
 
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

@@ -6,7 +6,7 @@ import { escolherResponsavel } from "@/lib/carteira";
 import { VERSAO_GRAPH, guardarWabaId, empresaDoNumero } from "@/lib/credenciais";
 import { origemDaPrimeiraMensagem } from "@/lib/origem-site";
 import { baixarMidia, transcrever, comoAudio } from "@/lib/audio";
-import { desmontarInstagram, type DirectRecebido } from "@/lib/instagram-webhook";
+import { desmontarInstagram, type DirectRecebido, type Plataforma } from "@/lib/instagram-webhook";
 import { credencialDoCanal } from "@/lib/credenciais";
 import { pediuParaSair } from "@/lib/optout";
 import { tipoDeFecho } from "@/lib/fecho";
@@ -159,11 +159,68 @@ app.post("/instagram/webhook", async (c) => {
   }
 
   try {
-    await registrarDirects(pacote.mensagens);
+    await registrarDirects(pacote.mensagens, "instagram");
   } catch (e) {
     // 200 mesmo assim: a Meta reenvia o que falha e desativa a assinatura
     // depois de muitas falhas seguidas. Erro nosso ao gravar vira log.
     console.error(`[instagram] falha ao gravar: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  return c.text("ok", 200);
+});
+
+// =====================================================================
+// O WEBHOOK DA PAGINA DO FACEBOOK (Messenger)
+//
+// ⚠ ENDERECO PROPRIO, e nao um ramo dentro do do Instagram — pelo motivo que
+// decide tudo: a ASSINATURA usa um segredo diferente. O Instagram tem a chave
+// do "app do Instagram"; a pagina usa a chave do app. Conferir com a errada
+// recusaria todo pacote legitimo, e do lado da Meta isso aparece como "webhook
+// com falha", que engana.
+//
+// O formato interno e IGUAL (`entry[].messaging[]`), entao o desmontador e o
+// mesmo — ele so precisa saber qual `object` esperar.
+//
+// ⚠ E AQUI TAMBEM SO SE RECEBE. Nao existe modelo aprovado nem campanha no
+// Messenger: a janela e de 24h depois que a pessoa escreve.
+// =====================================================================
+
+app.get("/facebook/webhook", (c) => {
+  const params = new URL(c.req.url).searchParams;
+  const esperado = process.env.FACEBOOK_VERIFY_TOKEN;
+  if (!esperado) {
+    console.error("[facebook] FACEBOOK_VERIFY_TOKEN nao configurado — verificacao recusada");
+    return c.text("Webhook do Facebook nao configurado.", 403);
+  }
+  const r = respostaDoDesafio(params, esperado);
+  if (!r.ok) {
+    console.warn(`[facebook] verificacao recusada: ${r.motivo}`);
+    return c.text(r.motivo, 403);
+  }
+  return c.text(r.desafio, 200);
+});
+
+app.post("/facebook/webhook", async (c) => {
+  const cru = await c.req.text();
+
+  const assin = assinaturaConfere(cru, c.req.header("x-hub-signature-256"), process.env.FACEBOOK_APP_SECRET);
+  if (!assin.ok) {
+    console.warn(`[facebook] pacote recusado: ${assin.motivo}`);
+    return c.text("assinatura invalida", 403);
+  }
+
+  let corpo: unknown;
+  try { corpo = JSON.parse(cru); } catch { return c.text("ok", 200); }
+
+  const pacote = desmontarInstagram(corpo, "facebook");
+  if (pacote.ignorados.length) {
+    console.info(`[facebook] ignorados: ${pacote.ignorados.join(", ")}`);
+  }
+
+  try {
+    await registrarDirects(pacote.mensagens, "facebook");
+  } catch (e) {
+    console.error(`[facebook] falha ao gravar: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   return c.text("ok", 200);
@@ -452,7 +509,14 @@ async function donoParaContatoNovo(
  * ninguem. Falhar em buscar o nome NAO impede a gravacao: a mensagem do
  * cliente vale mais que o rotulo dela.
  */
-async function registrarDirects(mensagens: DirectRecebido[]) {
+async function registrarDirects(mensagens: DirectRecebido[], plataforma: Plataforma = "instagram") {
+  // ⚠ CADA PLATAFORMA TEM A SUA CHAVE. O mesmo ser humano tem um id no
+  // Instagram e OUTRO no Facebook; procurar os dois na mesma coluna faria o
+  // histórico de uma pessoa aparecer na conversa de outra — e isso é pior
+  // que não achar ninguém.
+  const coluna = plataforma === "instagram" ? "instagram_id" : "facebook_id";
+  const colunaDaConta = plataforma === "instagram" ? "instagram_account_id" : "facebook_page_id";
+  const colunaDoToken = plataforma === "instagram" ? "instagram_token" : "facebook_token";
   if (!mensagens.length) return;
   const admin = createAdminClient();
 
@@ -469,18 +533,21 @@ async function registrarDirects(mensagens: DirectRecebido[]) {
       // paginacao-ok: busca exata pelo id da conta — no maximo uma linha.
       const { data } = await admin
         .from("tenant_secrets")
-        .select("tenant_id, instagram_token")
-        .eq("instagram_account_id", msg.contaDaEmpresa)
+        .select(`tenant_id, ${colunaDoToken}`)
+        .eq(colunaDaConta, msg.contaDaEmpresa)
         .maybeSingle();
-      const d = data as { tenant_id: string; instagram_token: string | null } | null;
-      donoPorConta.set(msg.contaDaEmpresa, d ? { tenantId: d.tenant_id, token: d.instagram_token } : null);
+      const d = data as Record<string, string | null> | null;
+      donoPorConta.set(
+        msg.contaDaEmpresa,
+        d?.tenant_id ? { tenantId: d.tenant_id, token: d[colunaDoToken] ?? null } : null,
+      );
     }
     const dono = donoPorConta.get(msg.contaDaEmpresa);
     if (!dono) {
       // ⚠ CONTA DESCONHECIDA E AVISO, NAO SILENCIO. Significa que alguem
       // conectou um Instagram na Meta e nao cadastrou o id aqui — e a mensagem
       // do cliente dessa empresa esta sendo descartada agora.
-      console.warn(`[instagram] direct para a conta ${msg.contaDaEmpresa}, que nenhuma empresa cadastrou`);
+      console.warn(`[${plataforma}] mensagem para a conta ${msg.contaDaEmpresa}, que nenhuma empresa cadastrou`);
       continue;
     }
 
@@ -489,7 +556,7 @@ async function registrarDirects(mensagens: DirectRecebido[]) {
       .from("contacts")
       .select("id")
       .eq("tenant_id", dono.tenantId)
-      .eq("instagram_id", msg.de)
+      .eq(coluna, msg.de)
       .is("deleted_at", null)
       .maybeSingle();
 
@@ -502,17 +569,17 @@ async function registrarDirects(mensagens: DirectRecebido[]) {
         .from("contacts")
         .insert({
           tenant_id: dono.tenantId,
-          name: nome ?? `Instagram ${msg.de.slice(-6)}`,
-          instagram_id: msg.de,
-          // A origem e o Instagram, e desta vez sem depender de marca nenhuma
-          // no texto: quem chega por direct veio de la, e ponto.
-          source: "instagram",
+          name: nome ?? `${plataforma === "instagram" ? "Instagram" : "Facebook"} ${msg.de.slice(-6)}`,
+          [coluna]: msg.de,
+          // A origem sai da PLATAFORMA, sem depender de marca nenhuma no texto:
+          // quem chega por mensagem direta veio de lá, e ponto.
+          source: plataforma,
           owner_id: responsavel,
         })
         .select("id")
         .maybeSingle();
       if (erroNovo) {
-        console.error(`[instagram] falha ao criar lead de ${msg.de}: ${erroNovo.message}`);
+        console.error(`[${plataforma}] falha ao criar lead de ${msg.de}: ${erroNovo.message}`);
         continue;
       }
       contactId = (novo as { id: string } | null)?.id ?? null;
@@ -524,7 +591,7 @@ async function registrarDirects(mensagens: DirectRecebido[]) {
       contact_id: contactId,
       direction: "inbound",
       input_kind: tipoDeFecho(msg.texto) === "sem_conteudo" ? "customer_reaction" : "customer_message",
-      channel: "instagram",
+      channel: plataforma,
       content: msg.texto,
       occurred_at: msg.quando.toISOString(),
       // `mid` e a chave contra duplicata, como o `wamid`: a Meta REENVIA o
@@ -533,7 +600,7 @@ async function registrarDirects(mensagens: DirectRecebido[]) {
     });
     // 23505 = duplicata, que aqui e sucesso: o pacote ja tinha sido gravado.
     if (error && error.code !== "23505") {
-      console.error(`[instagram] MENSAGEM PERDIDA de ${msg.de} (${msg.mid}): ${error.message}`);
+      console.error(`[${plataforma}] MENSAGEM PERDIDA de ${msg.de} (${msg.mid}): ${error.message}`);
     }
   }
 }

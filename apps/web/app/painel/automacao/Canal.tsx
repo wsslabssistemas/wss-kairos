@@ -25,6 +25,9 @@ export function Canal({
   contaInstagram,
   temTokenInstagram,
   urlDoWebhookInstagram,
+  paginaFacebook,
+  temTokenFacebook,
+  urlDoWebhookFacebook,
 }: {
   configurado: boolean;
   phoneId: string | null;
@@ -35,6 +38,9 @@ export function Canal({
   contaInstagram: string | null;
   temTokenInstagram: boolean;
   urlDoWebhookInstagram: string;
+  paginaFacebook: string | null;
+  temTokenFacebook: boolean;
+  urlDoWebhookFacebook: string;
 }) {
   const [numero, setNumero] = useState("");
   const [testando, setTestando] = useState(false);
@@ -171,6 +177,26 @@ export function Canal({
             placeholder={temTokenInstagram ? "já configurado — preencha só para trocar" : "IGAA…"} />
         </label>
 
+        <hr className="divider" />
+        <p className="eyebrow" style={{ marginBottom: 4 }}>Facebook (opcional)</p>
+        <p className="text-faint" style={{ fontSize: 12, margin: "0 0 10px" }}>
+          As mensagens da página do Facebook, no mesmo lugar. Como no Instagram,
+          <strong> aqui só dá para responder</strong> — janela de 24h, sem campanha.
+        </p>
+        <label className="text-dim" style={{ fontSize: 13 }}>
+          ID da página {paginaFacebook && <span className="badge badge-success">definido</span>}
+          <input type="text" name="facebook_page_id" autoComplete="new-password" inputMode="numeric"
+            placeholder={paginaFacebook ? `salvo: ${paginaFacebook} — preencha só para trocar` : "o número da página, no painel da Meta"} />
+        </label>
+        <label className="text-dim" style={{ fontSize: 13 }}>
+          Token da página {temTokenFacebook && <span className="badge badge-success">definido</span>}
+          <span className="text-faint" style={{ display: "block", fontSize: 11 }}>
+            É o <strong>token da PÁGINA</strong>, não o seu de usuário.
+          </span>
+          <input type="password" name="facebook_token" autoComplete="new-password"
+            placeholder={temTokenFacebook ? "já configurado — preencha só para trocar" : "EAA…"} />
+        </label>
+
         <button type="submit" className="btn btn-sm" style={{ alignSelf: "flex-start" }}>
           Salvar credencial
         </button>
@@ -183,6 +209,10 @@ export function Canal({
           E o do Instagram, que é <strong>outro endereço</strong>:
         </p>
         <code style={{ fontSize: 12, wordBreak: "break-all" }}>{urlDoWebhookInstagram}</code>
+        <p className="text-faint" style={{ fontSize: 12, margin: "10px 0 4px" }}>
+          E o da página do Facebook, que é um <strong>terceiro endereço</strong>:
+        </p>
+        <code style={{ fontSize: 12, wordBreak: "break-all" }}>{urlDoWebhookFacebook}</code>
       </div>
 
       {/* ⚠ O TESTE VEM ANTES DE QUALQUER CLIENTE REAL. O provedor foi escrito

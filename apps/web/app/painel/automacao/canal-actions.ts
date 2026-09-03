@@ -38,6 +38,8 @@ export async function salvarCanal(formData: FormData) {
     appSecret: String(formData.get("app_secret") ?? ""),
     instagramAccountId: String(formData.get("instagram_account_id") ?? ""),
     instagramToken: String(formData.get("instagram_token") ?? ""),
+    facebookPageId: String(formData.get("facebook_page_id") ?? ""),
+    facebookToken: String(formData.get("facebook_token") ?? ""),
   });
 
   revalidatePath("/painel/automacao");

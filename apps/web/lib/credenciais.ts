@@ -149,12 +149,14 @@ export async function statusDoCanal(tenantId: string): Promise<{
       identificador — e ver o número salvo é como se confere que é o certo. */
   contaInstagram: string | null;
   temTokenInstagram: boolean;
+  paginaFacebook: string | null;
+  temTokenFacebook: boolean;
 }> {
   const admin = createAdminClient();
   // paginacao-ok: uma linha, chave primária.
   const { data } = await admin
     .from("tenant_secrets")
-    .select("whatsapp_token, whatsapp_phone_id, whatsapp_verify_token, whatsapp_app_secret, updated_at, instagram_account_id, instagram_token")
+    .select("whatsapp_token, whatsapp_phone_id, whatsapp_verify_token, whatsapp_app_secret, updated_at, instagram_account_id, instagram_token, facebook_page_id, facebook_token")
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
@@ -167,6 +169,8 @@ export async function statusDoCanal(tenantId: string): Promise<{
     atualizadoEm: data?.updated_at ?? null,
     contaInstagram: data?.instagram_account_id?.trim() || null,
     temTokenInstagram: !!data?.instagram_token?.trim(),
+    paginaFacebook: data?.facebook_page_id?.trim() || null,
+    temTokenFacebook: !!data?.facebook_token?.trim(),
   };
 }
 
@@ -184,6 +188,8 @@ export async function salvarCredencial(
     token?: string; phoneId?: string; verifyToken?: string; appSecret?: string;
     /** Conta e token do Instagram — o mesmo cofre, o mesmo formulário. */
     instagramAccountId?: string; instagramToken?: string;
+    /** Página e token do Facebook — mesmo cofre, mesmo formulário. */
+    facebookPageId?: string; facebookToken?: string;
   },
 ): Promise<{ ok: boolean; erro?: string }> {
   const admin = createAdminClient();
@@ -201,6 +207,8 @@ export async function salvarCredencial(
   // tudo" — foi assim que uma aba antiga trocou o número da empresa.
   if (campos.instagramAccountId?.trim()) patch.instagram_account_id = campos.instagramAccountId.trim();
   if (campos.instagramToken?.trim()) patch.instagram_token = campos.instagramToken.trim();
+  if (campos.facebookPageId?.trim()) patch.facebook_page_id = campos.facebookPageId.trim();
+  if (campos.facebookToken?.trim()) patch.facebook_token = campos.facebookToken.trim();
 
   const { error } = await admin.from("tenant_secrets").upsert(patch, { onConflict: "tenant_id" });
   if (error) return { ok: false, erro: error.message };
