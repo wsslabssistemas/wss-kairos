@@ -307,17 +307,44 @@ export function desmontarPacote(corpo: unknown): PacoteDoWebhook {
         // registrado é que ALGO chegou, com o tipo — o suficiente para a
         // janela abrir, para a cadência quitar e para o vendedor saber que há
         // algo esperando no aplicativo.
+        // ⚠ "VEJA NO WHATSAPP" ERA UMA INSTRUÇÃO IMPOSSÍVEL DE SEGUIR.
+        //
+        // O número é da Cloud API: ele NÃO aparece em nenhum aplicativo de
+        // WhatsApp. Quem lesse "abra no WhatsApp" ia procurar num lugar que
+        // não existe — foi o que aconteceu com o comprovante da Ana Clara em
+        // 02/set, e o fundador só descobriu precisando do arquivo, no meio de
+        // uma reclamação de cobrança.
+        //
+        // Desde que a chave da mídia passou a ser guardada, estes quatro
+        // ABREM no painel, e o texto diz isso. Um rótulo que manda a pessoa
+        // para o lugar errado é pior que um rótulo curto.
         const DESCRICAO: Record<string, string> = {
-          audio: "(áudio recebido — ouça no WhatsApp)",
-          image: "(imagem recebida — veja no WhatsApp)",
-          video: "(vídeo recebido — veja no WhatsApp)",
-          document: "(documento recebido — abra no WhatsApp)",
+          audio: "(áudio recebido)",
+          image: "(imagem recebida)",
+          video: "(vídeo recebido)",
+          document: "(documento recebido)",
           sticker: "(figurinha recebida)",
-          location: "(localização recebida — veja no WhatsApp)",
-          contacts: "(contato compartilhado — veja no WhatsApp)",
+          // ⚠ ESTES DOIS NÃO SÃO ARQUIVO e por isso não abrem: localização é
+          // um par de coordenadas e contato é um cartão. Não há mídia para
+          // buscar na Meta — o que dá para fazer é aproveitar o que veio, e é
+          // o que a linha da localização faz logo abaixo.
+          contacts: "(contato compartilhado — peça os dados por escrito)",
         };
 
-        const texto = corpo || DESCRICAO[tipo] || `(mensagem do tipo "${tipo}" — veja no WhatsApp)`;
+        // ⚠ LOCALIZAÇÃO VIRA UM LINK QUE ABRE O MAPA. Ela chegava como
+        // "(localização recebida — veja no WhatsApp)", e o dado — que é útil,
+        // principalmente para quem pergunta se a academia é perto — ia junto
+        // com a frase impossível.
+        const loc = (mm as { location?: { latitude?: number; longitude?: number; name?: string } }).location;
+        const localizacao = loc && Number.isFinite(Number(loc.latitude)) && Number.isFinite(Number(loc.longitude))
+          ? `(localização recebida${loc.name ? `: ${loc.name}` : ""}) https://maps.google.com/?q=${loc.latitude},${loc.longitude}`
+          : null;
+
+        const texto =
+          corpo ||
+          localizacao ||
+          DESCRICAO[tipo] ||
+          `(mensagem do tipo "${tipo}" — este formato o sistema ainda não lê)`;
 
         // Continua contado, porque "chegou mídia" é informação de operação: se
         // metade das respostas for áudio, isso muda o que o produto precisa

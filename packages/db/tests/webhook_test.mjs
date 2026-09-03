@@ -181,7 +181,7 @@ comAudio.entry[0].changes[0].value.messages = [
 const pa = desmontarPacote(comAudio);
 eq("áudio VIRA interação, senão a janela de 24h não abre", pa.mensagens.length, 1);
 eq("com uma descrição legível no lugar do conteúdo",
-  pa.mensagens[0]?.texto, "(áudio recebido — ouça no WhatsApp)");
+  pa.mensagens[0]?.texto, "(áudio recebido)");
 eq("e o tipo preservado, para a operação saber o que chegou", pa.mensagens[0]?.tipo, "audio");
 // Continua contado: se metade das respostas for áudio, isso muda o que o
 // produto precisa fazer, e esse número não pode sumir.
@@ -315,7 +315,7 @@ eq("mensagem de texto nao tem midia", p.mensagens[0]?.midiaId, null);
 // ⚠ E A DESCRICAO ANTIGA CONTINUA, porque a transcricao pode nao acontecer:
 // sem chave, sem download ou com o relogio estourado, o historico volta a ela.
 eq("sem transcricao, a descricao de antes continua",
-  pAudio.mensagens[0]?.texto, "(áudio recebido — ouça no WhatsApp)");
+  pAudio.mensagens[0]?.texto, "(áudio recebido)");
 
 // ------------- O ARQUIVO QUE O CLIENTE MANDA (02/set/2026)
 //
@@ -353,7 +353,9 @@ const pDoc = desmontarPacote(comDocumento);
 eq("documento guarda a chave da midia", pDoc.mensagens[0]?.midiaId, "media-doc-77");
 eq("e o tipo vem junto, para o download saber a extensao", pDoc.mensagens[0]?.tipo, "document");
 // A descricao continua, porque ela e o que a pessoa LE na lista antes de abrir.
-eq("a descricao continua na conversa", pDoc.mensagens[0]?.texto, "(documento recebido — abra no WhatsApp)");
+// A descricao continua, porque e o que a pessoa LE na lista antes de abrir —
+// mas sem a instrucao impossivel: ver o bloco de "veja no WhatsApp" abaixo.
+eq("a descricao continua na conversa", pDoc.mensagens[0]?.texto, "(documento recebido)");
 
 // ⚠ IMAGEM TAMBEM. Comprovante mandado como foto e o caso mais comum de todos.
 const comFoto = JSON.parse(JSON.stringify(comDocumento));
@@ -369,6 +371,38 @@ const rota = fs.readFileSync(
   path.join(RAIZ, "apps/web/app/api/[[...route]]/route.ts"), "utf8",
 ).split(String.fromCharCode(13)).join("");
 verdade("o webhook grava media_id na interacao", rota.includes("media_id: msg.midiaId"));
+
+// ------- "VEJA NO WHATSAPP" ERA IMPOSSIVEL DE SEGUIR (02/set/2026)
+//
+// O numero e da Cloud API: ele NAO aparece em aplicativo nenhum de WhatsApp.
+// Quem lesse "abra no WhatsApp" ia procurar num lugar que nao existe — foi o
+// que aconteceu com o comprovante da Ana Clara, e o fundador so descobriu
+// precisando do arquivo, no meio de uma reclamacao de cobranca.
+const semInstrucaoFalsa = (tipo, bloco) => {
+  const p = JSON.parse(JSON.stringify(comDocumento));
+  const m = p.entry[0].changes[0].value.messages[0];
+  delete m.document;
+  m.type = tipo;
+  Object.assign(m, bloco);
+  return desmontarPacote(p).mensagens[0]?.texto ?? "";
+};
+eq("imagem nao manda ninguem para o WhatsApp",
+  semInstrucaoFalsa("image", { image: { id: "m1" } }), "(imagem recebida)");
+eq("documento tambem nao", semInstrucaoFalsa("document", { document: { id: "m2" } }), "(documento recebido)");
+verdade("nenhuma descricao de arquivo diz 'no WhatsApp'",
+  !["image", "document", "audio", "video"].some((t) =>
+    semInstrucaoFalsa(t, { [t]: { id: "m" } }).includes("WhatsApp")));
+
+// ⚠ LOCALIZACAO VIRA LINK DE MAPA. Ela e o unico "nao arquivo" que carrega um
+// dado aproveitavel — e ele ia junto com a frase impossivel.
+const comLocal = semInstrucaoFalsa("location", {
+  location: { latitude: -30.0346, longitude: -51.2177, name: "Be Fitness" },
+});
+verdade("localizacao vira link de mapa", comLocal.includes("maps.google.com/?q=-30.0346,-51.2177"));
+verdade("e leva o nome do lugar quando vem", comLocal.includes("Be Fitness"));
+// Sem coordenadas validas nao inventa link nenhum.
+verdade("localizacao sem coordenada nao vira link falso",
+  !semInstrucaoFalsa("location", { location: {} }).includes("maps.google.com"));
 
 // ⚠ O TOTAL É CALCULADO AQUI, no fim. Ele morava no meio do arquivo e por isso
 // contava só as asserções escritas ACIMA dele: a saída dizia "46/41", com mais
