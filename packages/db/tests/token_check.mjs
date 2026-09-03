@@ -69,5 +69,21 @@ const canal = fonte("apps/web/app/painel/automacao/Canal.tsx");
 verifica("o token do Instagram tem campo proprio", canal.includes('name="instagram_token"'), true);
 verifica("e o id da conta tambem", canal.includes('name="instagram_account_id"'), true);
 
+// ⚠ E O SEGUNDO TOKEN — o que de fato vence (03/set/2026).
+//
+// A primeira versao vigiava so `credencialDoCanal`, que devolve o token do
+// WHATSAPP — e o do WhatsApp costuma ser PERMANENTE (`expires_at: 0`). O do
+// Instagram vale 60 dias. Ou seja: a peca construida para avisar sobre
+// expiracao estava olhando o token que nao expira e ignorando o que expira.
+//
+// Achado por uma pergunta do fundador uma hora depois de ele colar o token:
+// "ja esta pronto?". Nao estava — e a pergunta valia mais que a resposta.
+verifica("o vigia confere TAMBEM o token do Instagram", vigia.includes("instagram_token"), true);
+verifica("e guarda as colunas dele", vigia.includes("token_ig_expira_em") && vigia.includes("token_ig_valido"), true);
+verifica("a tela avisa sobre o token do Instagram", tela.includes("diasDoTokenIg"), true);
+// ⚠ E DIZ QUAL DOS DOIS. "Token vencendo" sem dizer qual manda a pessoa trocar
+// o errado — e o certo continua vencendo.
+verifica("e os avisos dizem QUAL token e", tela.includes("Token do WhatsApp válido") && tela.includes("token do Instagram vence"), true);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

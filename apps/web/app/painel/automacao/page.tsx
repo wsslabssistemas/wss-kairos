@@ -215,6 +215,14 @@ export default async function AutomacaoPage({
    * como se aprende a ignorar alarme.
    */
   const diasDoToken = diasAteVencer(vigia?.token_expira_em ? new Date(vigia.token_expira_em) : null);
+  /**
+   * ⚠ E O TOKEN DO INSTAGRAM É OUTRO — e é ELE que vence.
+   *
+   * O do WhatsApp costuma ser permanente; o do Instagram vale 60 dias. A
+   * primeira versão deste aviso vigiava só o primeiro, ou seja: olhava o que
+   * não expira e ignorava o que expira.
+   */
+  const diasDoTokenIg = diasAteVencer(vigia?.token_ig_expira_em ? new Date(vigia.token_ig_expira_em) : null);
   const saude = vigia
     ? avaliarSaude(
         vigia.ok
@@ -393,7 +401,30 @@ export default async function AutomacaoPage({
                     )}
                     {diasDoToken !== null && diasDoToken > DIAS_DE_ALERTA && (
                       <p className="text-faint" style={{ fontSize: 12, margin: "6px 0 0" }}>
-                        Token válido por mais {diasDoToken} dias.
+                        Token do WhatsApp válido por mais {diasDoToken} dias.
+                      </p>
+                    )}
+                    {vigia.token_ig_valido === false && (
+                      <p className="badge badge-danger" style={{ marginTop: 8, whiteSpace: "normal", textAlign: "left" }}>
+                        O token do <strong>Instagram</strong> não é mais válido. Os directs
+                        continuam entrando, mas o nome de quem escreve deixa de ser buscado —
+                        e o envio pelo Instagram não vai funcionar. Gere um novo na Meta.
+                      </p>
+                    )}
+                    {diasDoTokenIg !== null && diasDoTokenIg <= DIAS_DE_ALERTA && vigia.token_ig_valido !== false && (
+                      <p
+                        className={diasDoTokenIg <= 3 ? "badge badge-danger" : "badge badge-warn"}
+                        style={{ marginTop: 8, whiteSpace: "normal", textAlign: "left" }}
+                      >
+                        {diasDoTokenIg <= 0
+                          ? "O token do Instagram vence HOJE."
+                          : `O token do Instagram vence em ${diasDoTokenIg} dia${diasDoTokenIg === 1 ? "" : "s"}.`}{" "}
+                        Gere um novo na Meta e cole aqui em Canal oficial.
+                      </p>
+                    )}
+                    {diasDoTokenIg !== null && diasDoTokenIg > DIAS_DE_ALERTA && (
+                      <p className="text-faint" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                        Token do Instagram válido por mais {diasDoTokenIg} dias.
                       </p>
                     )}
                     {minutosSemVigia !== null && minutosSemVigia > 180 && (

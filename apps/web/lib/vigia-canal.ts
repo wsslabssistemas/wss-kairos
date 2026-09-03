@@ -87,6 +87,28 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
     // saúde do número, que é o motivo principal desta função existir.
     let validade: Awaited<ReturnType<typeof validadeDoToken>> | null = null;
     try { validade = await validadeDoToken(cred); } catch { validade = null; }
+
+    // ⚠ E O TOKEN DO INSTAGRAM É OUTRO, E É ELE QUE VENCE.
+    //
+    // A primeira versão disto vigiava só a credencial do canal — que é a do
+    // WhatsApp, e cujo token costuma ser PERMANENTE. O do Instagram vale 60
+    // dias. Ou seja: a peça construída para avisar sobre expiração estava
+    // olhando o token que não expira e ignorando o que expira.
+    //
+    // Achado por uma pergunta do fundador, uma hora depois de ele colar o
+    // token: "já está pronto?". Não estava.
+    let validadeIg: Awaited<ReturnType<typeof validadeDoToken>> | null = null;
+    try {
+      // paginacao-ok: uma linha, chave primária.
+      const { data: seg } = await admin
+        .from("tenant_secrets")
+        .select("instagram_token")
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+      const tokenIg = (seg as { instagram_token?: string | null } | null)?.instagram_token?.trim();
+      // Empresa sem Instagram não é falha: é o estado normal de quase todas.
+      if (tokenIg) validadeIg = await validadeDoToken({ ...cred, token: tokenIg });
+    } catch { validadeIg = null; }
     // Uma forma só para os dois casos: o inserto tem sempre as mesmas colunas,
     // e o que muda é o conteúdo. Duas formas diferentes fariam o TypeScript
     // discutir e, pior, deixariam colunas fora do registro conforme o caminho.
@@ -103,6 +125,8 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
       // valor, e `token_valido` é o que os separa.
       token_expira_em: validade?.ok ? validade.expiraEm?.toISOString() ?? null : null,
       token_valido: validade?.ok ? validade.valido : null,
+      token_ig_expira_em: validadeIg?.ok ? validadeIg.expiraEm?.toISOString() ?? null : null,
+      token_ig_valido: validadeIg?.ok ? validadeIg.valido : null,
     };
 
     const { error } = await admin.from("canal_verificacoes").insert(linha);
@@ -126,7 +150,7 @@ export async function ultimaVerificacao(tenantId: string) {
   // paginacao-ok: `.limit(1)` com ORDER BY.
   const { data } = await admin
     .from("canal_verificacoes")
-    .select("ok, quality_rating, name_status, messaging_limit_tier, verified_name, erro, occurred_at, token_expira_em, token_valido")
+    .select("ok, quality_rating, name_status, messaging_limit_tier, verified_name, erro, occurred_at, token_expira_em, token_valido, token_ig_expira_em, token_ig_valido")
     .eq("tenant_id", tenantId)
     .order("occurred_at", { ascending: false })
     .limit(1)
@@ -136,6 +160,7 @@ export async function ultimaVerificacao(tenantId: string) {
     messaging_limit_tier: string | null; verified_name: string | null;
     erro: string | null; occurred_at: string;
     token_expira_em: string | null; token_valido: boolean | null;
+    token_ig_expira_em: string | null; token_ig_valido: boolean | null;
   } | null) ?? null;
 }
 
