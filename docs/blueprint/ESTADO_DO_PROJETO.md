@@ -1,7 +1,11 @@
 # ESTADO DO PROJETO — COS (WSS Kairós)
-**Última atualização:** 27 de agosto de 2026
+**Última atualização:** 3 de setembro de 2026
 **Fabricante:** WSS Labs · **Fundador:** William
 
+> ⚠ **A SEÇÃO MAIS RECENTE É A `0.00000`, de 3 de setembro** — e ela está
+> depois da de 27 de agosto, por causa de como os números foram crescendo.
+> **Comece por ela.** As de baixo são histórico e continuam valendo.
+>
 > Este documento existe para que qualquer conversa nova possa retomar o projeto
 > sem repetir discussões encerradas. **Leia antes de propor qualquer coisa.**
 >
@@ -202,6 +206,182 @@ que trouxe a pessoa (`referral`) · reação ≠ mensagem.
 
 **Travas novas no CI:** `preco_ia_test` · `fecho_test` · `retorno_test` ·
 `manifesto_no_banco_check`. São **42 testes** hoje.
+
+---
+
+## 0.00000. ⚠ LEIA ISTO PRIMEIRO — 3 de setembro de 2026
+
+> **Esta é a seção mais recente.** As de baixo são histórico e continuam
+> valendo. Conversa nova: leia esta inteira antes de propor qualquer coisa.
+
+### 🟢 O NÚMERO QUE AUTORIZA A FASE 2 CHEGOU
+
+| | 31/ago | **hoje** |
+|---|---|---|
+| `origem_ia` | 16 casos · 75% | **69 casos · 82,6%** |
+
+São **57 aceitas sem edição** contra 12 editadas. O limiar combinado era ~50 e
+foi ultrapassado. **A fase 2 (a IA respondendo sozinha) está autorizada pelo
+número** — faltam as duas peças que sempre acompanharam essa decisão: a **pausa
+de 20–40s** antes de responder e o **aviso de "decisão esperando humano"**.
+
+⚠ Não ligue nada disso sem falar com ele. O número autoriza; a decisão é dele.
+
+### 🟢 OS TRÊS CANAIS ESTÃO DE PÉ
+
+| Canal | Recebe | Responde | Campanha |
+|---|---|---|---|
+| **WhatsApp** | ✅ | ✅ | ✅ é o que fatura |
+| **Instagram** | ✅ | ❌ falta construir o envio | ❌ a plataforma não permite |
+| **Facebook** | ✅ webhook verificado | ❌ | ❌ a plataforma não permite |
+
+⚠ **No Instagram e no Facebook só dá para RESPONDER.** Não existe modelo
+aprovado nem envio proativo: o webhook só dispara depois que a pessoa escreve,
+com janela de 24h (7 dias com a marca de atendimento humano). **Campanha de
+reativação não roda nesses canais** — prometer isso é vender o que a plataforma
+não entrega.
+
+Já entraram **4 mensagens reais pelo Instagram**.
+
+### 🔴 ONDE O FUNDADOR PAROU — e ele perguntou isso explicitamente
+
+Textualmente: *"tenho que reler as orientações pra saber o que faço, não lembro
+se agora não devo apenas aguardar o Meta validar"*.
+
+**A resposta é: aguardar, e não mexer em permissão.**
+
+1. **A análise do app está em andamento** (permissões do Instagram + Human
+   Agent). ⚠ **Não adicione permissão nova enquanto ela não voltar** — mexer no
+   conjunto durante a revisão pode zerar o envio.
+2. **O `pages_messaging` fica para uma SEGUNDA submissão**, depois que o
+   Instagram voltar. Ele já está "Pronto para teste", então dá para testar com a
+   página dele hoje, sem análise nenhuma.
+3. **Falta conectar a página** no passo 2 do Messenger, pegar o **ID da página**
+   e o **token da página**, e colar em Automação → Canal oficial. ⚠ E marcar a
+   assinatura do webhook para a página — verificar a URL e assinar os eventos
+   são coisas separadas, e foi isso que atrasou o Instagram meia hora.
+
+### 🔵 A PRÓXIMA CONSTRUÇÃO GRANDE: A EMPRESA SE CONFIGURA SOZINHA
+
+O fundador nomeou o problema: *"todas as empresas do ramo, teremos que fazer
+esse caminho, uma a uma? vou ter que pedir o acesso e fazer manual?"*.
+
+**Hoje, sim.** O que ele fez esta semana é o caminho de DESENVOLVEDOR: dono do
+app e dono da conta. Para um cliente, o caminho é o **Login do Facebook para
+Empresas** — a empresa clica um botão dentro do Kairós, autoriza, e o sistema
+recebe página, conta do Instagram e tokens sozinho, sem ver painel da Meta.
+
+**Duas coisas travam:** o Acesso Avançado (em análise) e o fluxo que ainda não
+existe — tela, retorno do login, troca do código por token, guardar por empresa.
+
+⚠ **E o WhatsApp é o mais difícil dos três.** Instagram e Facebook a empresa
+autoriza com um clique; no WhatsApp cada cliente precisa da própria WABA e do
+próprio número, e automatizar isso exige a WSS Labs ser **Provedor de
+Tecnologia**, com verificação própria. Hoje o app mora no CNPJ da Be Fitness.
+
+**É a maior alavanca do produto.** Cada canal configurado na mão é a prova de
+que a segunda empresa depende do fundador.
+
+### 🟡 A LENTIDÃO É REAL, E FOI MEDIDA
+
+Ele reclamou que as abas demoram. Não é impressão — é crescimento sem revisão:
+
+| Tela | Leituras da tabela INTEIRA |
+|---|---|
+| **Gestão** | **5** |
+| Início | 3 |
+| Conversas | 2 (mais 5 consultas) |
+
+Com **1.802 contatos e 3.184 interações**, cada `lerTudo` vira 2 a 4 idas ao
+banco (o PostgREST corta em 1.000 por página), **em sequência**. A Gestão faz
+mais de 15 idas antes de desenhar qualquer coisa.
+
+⚠ **A paginação está certa e NÃO deve ser removida** — ela existe porque o corte
+silencioso de 1.000 linhas já fez o Analista mentir para o fundador. O que falta
+é **não ler tudo**:
+
+1. **Filtrar no banco** (janela de data, etapa, dono) em vez de trazer a tabela.
+2. **Agregar em SQL** (`count`, `sum`) onde a tela só mostra número.
+3. **Paralelizar** os `lerTudo` independentes — hoje são sequenciais.
+
+### 🟢 O QUE FOI CONSTRUÍDO EM 2 E 3 DE SETEMBRO
+
+**Canais:** webhook do Instagram e do Facebook · credenciais dos dois na tela do
+Canal oficial · captura automática do WABA id · origem por marca de link
+(site, Instagram, Facebook) declarada nos 15 manifestos.
+
+**Arquivos:** `media_id` (WhatsApp) e `media_url` (Instagram) passaram a ser
+guardados · rota `/api/midia/[id]` e botão de abrir o arquivo · áudio
+transcrito por Groq · localização virou link de mapa.
+
+**Verdade nas telas:** "veja no WhatsApp" era instrução impossível — o número é
+da Cloud API e não abre em aplicativo nenhum · menção em story virou sinal, não
+conversa · o tutorial foi reescrito porque ensinava que a automação estava
+desligada.
+
+**Contas e acesso:** SMTP próprio (Resend) · os 5 e-mails do sistema em
+português apontando para a nossa página · convite por e-mail com escolha · o
+link de convite parou de morrer na prévia do WhatsApp · senha fraca deixou de
+ser tratada como login recusado.
+
+**Vigilância:** validade dos tokens perguntada à Meta (WhatsApp e Instagram),
+com alarme na tela · escada do recorte, que sobe sozinha quando acaba o público.
+
+**58 travas no CI.**
+
+### 🔵 A FILA, EM ORDEM DE VALOR
+
+1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide
+   se o Kairós é produto ou serviço.
+2. **Fase 2** — a IA responde sozinha. O número autoriza; faltam a pausa de
+   20–40s e o aviso de decisão pendente.
+3. **Desempenho** — as três medidas acima.
+4. **"Estou dando um tempo" precisa pausar a régua** — ver o Deoclécio abaixo.
+5. **Enviar documento pelo WhatsApp** (proposta em PDF). Destrava a Darvil.
+6. **Responder pelo Instagram e pelo Facebook** — depois do Acesso Avançado.
+7. **Comentário de post e anúncio vira lead.** Decidido: *"comentário vira lead
+   mais resposta curta que chama para o direct"*, **nunca IA conversando em
+   público** — errar em comentário de anúncio é errar na frente de todos.
+
+### ⚠ O CASO DO DEOCLÉCIO — a régua não entende "estou dando um tempo"
+
+Mensagem em 27/ago, outra uma semana depois, e então ele respondeu que **está
+dando um tempo**. A equipe respondeu e está aguardando.
+
+**Ninguém sabe para quando o sistema vai chamar de novo** — e o fundador pediu
+**pelo menos 30 dias** nesse caso.
+
+A cadência não tem esse conceito: ela conta toques dados e silêncio, mas não
+sabe que a PESSOA pediu tempo. É primo do motivo de saída, já resolvido — só
+que aqui a pausa nasce de uma frase na conversa, não de um campo preenchido.
+
+**Caminho provável:** um "pausar esta pessoa por N dias" na tela de conversas,
+que o motor e a fila respeitem. Simples, e evita o pior erro da reativação:
+insistir com quem pediu espaço.
+
+### 🚀 A DARVIL DEIXOU DE SER CLIENTE — VIROU SOCIEDADE
+
+**Notícia de 3/set:** o fundador e a WSS Labs entram como **sócios da Darvil**
+(energia solar). O combinado: fazer o site, o Instagram, a página do Facebook e
+os criativos — a empresa não tem nada disso — subir campanha na Meta, e então
+ligar a empresa ao Kairós para a IA dar os primeiros passos de venda.
+
+⚠ **Isso muda o status do projeto.** A Darvil deixa de ser "segundo cliente que
+não entrou" e vira **a validação da tese da Skill**: segundo segmento, mesmo
+núcleo, sem escrever código. É o "a validação é N=1" finalmente tendo caminho.
+
+**A ideia dele para o orçamento prévio:** o cliente manda **3 fotos das últimas
+faturas de luz**, o sistema lê o consumo e calcula um orçamento com os
+parâmetros que o Luís (da Darvil) passar — valor na hora, com apresentação.
+
+⚠ **Ambicioso, e com uma armadilha conhecida:** ler fatura é OCR, e OCR erra
+número. Orçamento com valor errado é pior que orçamento nenhum — é a trava
+anti-invenção aplicada a dinheiro. **A saída provável é a de sempre:** o sistema
+PROPÕE o consumo que leu, a pessoa confirma, e só então calcula. Nunca afirmar
+valor a partir de número que ninguém conferiu.
+
+**E o que a Darvil precisa antes de tudo: o DNA dela está VAZIO.** Sem isso o
+motor não redige — é a trava funcionando, não defeito.
 
 ---
 

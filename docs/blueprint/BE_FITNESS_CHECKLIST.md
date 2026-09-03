@@ -1,7 +1,7 @@
 # Be Fitness — o checklist único
 
 > **Este é o arquivo para olhar agora.** Escopo: **a Be Fitness operando o
-> canal oficial.** Atualizado: **30 de agosto de 2026, à noite.**
+> canal oficial.** Atualizado: **3 de setembro de 2026.**
 >
 > A campanha saiu do papel nesta semana. O que segue é o estado real, e o
 > `ESTADO_DO_PROJETO.md` §0 tem o detalhe de cada peça construída.
@@ -41,6 +41,19 @@ não trocar. Era a pendência mais antiga do projeto.
 ⚠ **Tudo o mais que dependia dele foi feito em 30/ago:** as três migrations
 aplicadas, o agendador reserva instalado, o segredo rotacionado e sincronizado,
 e o acesso administrativo ao Supabase e à Vercel liberado.
+
+## ✅ O QUE MUDOU EM 2 E 3 DE SETEMBRO
+
+- **`origem_ia` chegou a 69 casos, 82,6%** — o limiar de ~50 foi ultrapassado.
+  A fase 2 está autorizada pelo número; falta a decisão dele.
+- **Instagram e Facebook recebendo.** Só respondem por enquanto pelo
+  aplicativo — o envio por esses canais ainda não existe, e campanha por
+  eles a plataforma não permite.
+- **Arquivo que o cliente manda abre no painel** (foto, PDF, áudio, vídeo).
+  Áudio ainda vira texto. ⚠ A Mêta apaga a mídia em poucos dias.
+- **E-mail do sistema funcionando** (Resend), em português, e o convite pode
+  ir por e-mail ou por link.
+- **Validade dos tokens vigiada** — o sistema pergunta à Meta e avisa na tela.
 
 ## ❌ O QUE FALTA — minhas, e o que cada uma espera
 
