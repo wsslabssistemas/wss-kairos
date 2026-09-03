@@ -16,11 +16,24 @@ import { salvarRoteamento } from "./actions";
 export function Roteamento({
   roteamento,
   modelos,
+  passos,
   temCredencial,
   tetoCents,
 }: {
   roteamento: RoteamentoPorMotivo;
   modelos: ModelosPorMotivo;
+  /**
+   * A RÉGUA CURADA DE CADA MOTIVO — a intenção de cada toque, do manifesto.
+   *
+   * ⚠ ELA APARECE AQUI PORQUE É AQUI QUE A PESSOA ESCREVE O TEXTO. O manifesto
+   * da academia diz, para o 2º toque da reativação: *"o que MUDOU desde que ele
+   * saiu — novidade é motivo para voltar; saudade não é"*. Isso estava curado
+   * desde que a Skill nasceu e nunca chegou em quem redige o modelo na Meta —
+   * a mesma falta que fez a campanha repetir o texto do 1º toque quatro vezes.
+   *
+   * Vazio para o motivo cujo segmento não declara régua: aí é um campo só.
+   */
+  passos: Partial<Record<MotivoDaFila, string[]>>;
   temCredencial: boolean;
   /** Teto de gasto do mês, em centavos. `null` = sem teto. */
   tetoCents: number | null;
@@ -73,20 +86,42 @@ export function Roteamento({
 
             {/* O NOME DO MODELO USA O NOME DA META, palavra por palavra — é o
                 que a pessoa COPIA da outra tela. Rótulo inventado vira
-                problema de tradução no meio de uma tarefa difícil. */}
+                problema de tradução no meio de uma tarefa difícil.
+
+                ⚠ E É UM CAMPO POR TOQUE, não um por motivo. Um nome só
+                significava o mesmo texto no 1º toque e no 4º — foi o que fez
+                56 pessoas receberem a mesma abertura duas vezes em 7 dias. */}
             <div style={{ margin: "8px 0 0 24px" }}>
-              <label className="label" htmlFor={`modelo_${m}`} style={{ fontSize: 12 }}>
-                Nome do modelo aprovado
-              </label>
-              <input
-                id={`modelo_${m}`}
-                name={`modelo_${m}`}
-                type="text"
-                defaultValue={modelos[m] ?? ""}
-                placeholder={m === "lembrete" ? "não se aplica" : `ex.: ${sugestao(m)}`}
-                disabled={m === "lembrete"}
-                style={{ maxWidth: 320 }}
-              />
+              {toquesDe(m, passos).map((intencao, i) => (
+                <div key={i} style={{ marginBottom: 10 }}>
+                  <label className="label" htmlFor={`modelo_${m}_${i}`} style={{ fontSize: 12 }}>
+                    {m === "lembrete" || toquesDe(m, passos).length === 1
+                      ? "Nome do modelo aprovado"
+                      : `Modelo do ${i + 1}º toque`}
+                  </label>
+                  <input
+                    id={`modelo_${m}_${i}`}
+                    name={`modelo_${m}_${i}`}
+                    type="text"
+                    defaultValue={(modelos[m] ?? [])[i] ?? ""}
+                    placeholder={
+                      m === "lembrete" ? "não se aplica" : i === 0 ? `ex.: ${sugestao(m)}` : "ainda não cadastrado na Meta"
+                    }
+                    disabled={m === "lembrete"}
+                    style={{ maxWidth: 320 }}
+                  />
+                  {intencao && (
+                    <p className="text-faint" style={{ fontSize: 11, marginTop: 4, maxWidth: 560 }}>
+                      <strong>O que este toque tem que dizer:</strong> {intencao}
+                    </p>
+                  )}
+                  {!intencao && i > 0 && (
+                    <p className="text-faint" style={{ fontSize: 11, marginTop: 4 }}>
+                      Sem modelo aqui, este toque <strong>não sai</strong> — em vez de repetir o anterior.
+                    </p>
+                  )}
+                </div>
+              ))}
               <p className="text-faint" style={{ fontSize: 11, marginTop: 4 }}>
                 {m === "lembrete"
                   ? "Sem motivo anotado não há assunto — e modelo é texto fixo, então ele só poderia inventar um."
@@ -151,4 +186,19 @@ function sugestao(m: MotivoDaFila): string {
     reativacao: "reativacao_cliente",
   };
   return nomes[m] ?? "";
+}
+
+/**
+ * Quantos campos este motivo mostra — um por toque da régua curada.
+ *
+ * Sem régua declarada é UM campo, nunca zero: motivo sem cadência continua
+ * podendo ter modelo, e uma linha sem campo nenhum se lê como "aqui não dá
+ * para configurar" — que é o defeito do campo que some.
+ */
+function toquesDe(
+  m: MotivoDaFila,
+  passos: Partial<Record<MotivoDaFila, string[]>>,
+): string[] {
+  const p = passos[m] ?? [];
+  return p.length > 0 ? p : [""];
 }

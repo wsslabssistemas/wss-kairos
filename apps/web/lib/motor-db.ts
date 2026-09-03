@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { carregarFila } from "@/lib/fila-db";
 import { despacharToque } from "@/lib/despacho";
 import { readAutomation } from "@/lib/automation";
-import { lerRoteamento } from "@/lib/roteamento";
+import { lerRoteamento, lerModelos, modeloDoToque } from "@/lib/roteamento";
 import { planejar, type Candidato, type PlanoDoMotor } from "@/lib/motor";
 import { lerFuso, horaLocal, diaLocalISO } from "@/lib/fuso";
 import { nivelDeQualidade } from "@/lib/saude-canal";
@@ -48,6 +48,14 @@ export type ResultadoDoMotor = {
    * por que não vamos falar agora.
    */
   motivoPorContato: Record<string, MotivoDaFila>;
+  /**
+   * QUAL toque cada candidato receberia (1 = o primeiro desta etapa).
+   *
+   * A tela de simulação precisa dele para mostrar o modelo CERTO: com a lista
+   * por toque, "o modelo da reativação" deixou de existir — existe o modelo do
+   * 1º toque, o do 2º, e o que falta.
+   */
+  toquePorContato: Record<string, number>;
   /** `tenants.settings` cru, para quem chama ler os nomes dos modelos. */
   settings: Record<string, unknown> | null;
 };
@@ -143,9 +151,19 @@ export async function rodarMotor(entrada: {
   // não declara motivos de saída — hoje, 14 dos 15.
   const motivosQueEncerram = carga.churnReasons.filter((m) => m.fora_da_campanha).map((m) => m.key);
 
+  // ⚠ O MODELO DE CADA TOQUE, para o motor saber se o próximo tem texto
+  // próprio ou repetiria o anterior. Ver a trava em `lib/motor.ts`.
+  const modelos = lerModelos(carga.settings);
+
   const candidatos: Candidato[] = doCanal.map((f) => ({
     contactId: f.contactId,
     motivo: f.motivo,
+    // O toque de HOJE é o seguinte ao último dado nesta etapa. `carga.toques`
+    // conta só o que SAIU, e só depois da entrada na etapa — é o mesmo número
+    // com que a cadência do manifesto escolhe o passo.
+    toque: (carga.toques[f.contactId] ?? 0) + 1,
+    textoProprio:
+      modeloDoToque(modelos, f.motivo as MotivoDaFila, (carga.toques[f.contactId] ?? 0) + 1) !== null,
     diasNaEtapa: diasDesde(entrouNaEtapa.get(f.contactId), agora),
     contratoAte: vigenciaDe.get(f.contactId) ? String(vigenciaDe.get(f.contactId)).slice(0, 10) : null,
     motivoSaida: saidaDe.get(f.contactId) ?? null,
@@ -274,10 +292,14 @@ export async function rodarMotor(entrada: {
   }
 
   const motivoPorContato: Record<string, MotivoDaFila> = {};
-  for (const f of doCanal) motivoPorContato[f.contactId] = f.motivo;
+  const toquePorContato: Record<string, number> = {};
+  for (const f of doCanal) {
+    motivoPorContato[f.contactId] = f.motivo;
+    toquePorContato[f.contactId] = (carga.toques[f.contactId] ?? 0) + 1;
+  }
 
   if (plano.simulado || !plano.ativo) {
-    return { tenantId, plano, enviadas: 0, falhas: [], motivoPorContato, settings: carga.settings, interrompido: false };
+    return { tenantId, plano, enviadas: 0, falhas: [], motivoPorContato, toquePorContato, settings: carga.settings, interrompido: false };
   }
 
   const falhas: ResultadoDoMotor["falhas"] = [];
@@ -316,13 +338,17 @@ export async function rodarMotor(entrada: {
       motivo: item.motivo,
       // Vazio: fora da janela só sai modelo, e modelo é texto fixo.
       texto: "",
+      // O motor já contou o toque para decidir se ele podia sair — passar o
+      // número evita uma consulta por envio, e garante que a decisão e o
+      // envio usem o MESMO toque.
+      toque: (carga.toques[contactId] ?? 0) + 1,
     });
 
     if (r.ok) enviadas++;
     else falhas.push({ contactId, motivo: r.motivo });
   }
 
-  return { tenantId, plano, enviadas, falhas, motivoPorContato, settings: carga.settings, interrompido };
+  return { tenantId, plano, enviadas, falhas, motivoPorContato, toquePorContato, settings: carga.settings, interrompido };
 }
 
 // ---------------------------------------------------------------------

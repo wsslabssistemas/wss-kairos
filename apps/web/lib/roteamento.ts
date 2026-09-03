@@ -71,7 +71,48 @@ const MOTIVOS: MotivoDaFila[] = [
  * junto da política, em `tenants.settings.automation` — ao lado do modo, da
  * janela de horário e do teto diário.
  */
-export type ModelosPorMotivo = Partial<Record<MotivoDaFila, string>>;
+export type ModelosPorMotivo = Partial<Record<MotivoDaFila, string[]>>;
+
+/**
+ * O MODELO DESTE TOQUE — e é uma LISTA por motivo, não um nome só.
+ *
+ * ⚠ POR QUE ISTO DEIXOU DE SER UM NOME (3/set/2026). Até aqui a escolha era
+ * `modelos[motivo]`: um texto fixo por motivo, para sempre. Só que o motivo
+ * não muda entre o primeiro toque e o quarto — quem não respondeu à
+ * reativação continua sendo `reativacao` na semana seguinte. O resultado foi
+ * medido na base real: **56 pessoas receberam a MESMA abertura duas vezes,
+ * exatamente 7 dias depois** — incluindo o *"estou falando de um número
+ * novo"*, que na segunda vez é mentira. Nada errou; o texto simplesmente
+ * repetiu.
+ *
+ * ⚠ E A RÉGUA CURADA JÁ SABIA O QUE DIZER EM CADA TOQUE. O manifesto da
+ * academia declara quatro passos para a reativação — gancho do histórico (dia
+ * 0), o que MUDOU desde que ele saiu (dia 7), retorno sem risco (dia 21),
+ * encerrar com porta aberta (dia 45) — e `computeDueTouches` já calculava qual
+ * deles estava vencido. O canal ignorava tudo isso e renderizava o passo 1
+ * quatro vezes. É a mesma classe de `churn_reasons`: ativo curado que não
+ * chega em quem escreve não existe.
+ *
+ * Índice = número do toque. `[0]` é o 1º toque, `[1]` o 2º. Faltando, devolve
+ * `null` — e quem chama BLOQUEIA. Não existe cair no toque anterior: repetir
+ * é o defeito que esta função foi escrita para impedir.
+ */
+export function modeloDoToque(
+  modelos: ModelosPorMotivo,
+  motivo: MotivoDaFila,
+  toque: number,
+): string | null {
+  const bruto = modelos[motivo];
+  // ⚠ UM NOME SOLTO VALE COMO "só o 1º toque tem texto", e este ramo não é
+  // paranoia: `settings` gravado antes de 3/set guarda string, e indexar uma
+  // string por número devolve uma LETRA. `modelos.reativacao[0]` seria "r",
+  // que é um nome de modelo que a Meta recusa — erro de credencial aparente,
+  // causa em outro lugar.
+  const lista = typeof bruto === "string" ? [bruto] : (bruto ?? []);
+  const i = Math.max(1, Math.floor(toque)) - 1;
+  const nome = lista[i];
+  return typeof nome === "string" && nome.trim() ? nome.trim() : null;
+}
 
 /**
  * A rota de um toque. Quatro respostas, e a quarta é a que mais importa.
@@ -103,8 +144,15 @@ export function rotaDoToque(entrada: {
   /** O contato escreveu nas últimas 24h — ver `janelaDeAtendimento`. */
   janelaAberta: boolean;
   modelos: ModelosPorMotivo;
+  /**
+   * QUAL toque é este: 1 = o primeiro. Padrão 1 para quem ainda não conta.
+   *
+   * ⚠ Ele decide o TEXTO, e é por isso que existe. Ver `modeloDoToque`.
+   */
+  toque?: number;
 }): Rota {
   const { motivo, roteamento, temCredencial, janelaAberta, modelos } = entrada;
+  const toque = Math.max(1, Math.floor(entrada.toque ?? 1));
 
   if (!roteamento[motivo]) {
     return {
@@ -123,7 +171,11 @@ export function rotaDoToque(entrada: {
     };
   }
 
-  return pelaJanela(janelaAberta, modelos[motivo] ?? null, semModelo(motivo));
+  return pelaJanela(
+    janelaAberta,
+    modeloDoToque(modelos, motivo, toque),
+    semModelo(motivo, toque, modeloDoToque(modelos, motivo, 1) !== null),
+  );
 }
 
 /**
@@ -152,7 +204,24 @@ function pelaJanela(janelaAberta: boolean, modelo: string | null, motivoDoBloque
   return { via: "bloqueado", porque: motivoDoBloqueio };
 }
 
-function semModelo(motivo: MotivoDaFila): string {
+/**
+ * ⚠ AS DUAS FALTAS SÃO DIFERENTES, e dizer a mesma frase para as duas manda a
+ * pessoa procurar o problema no lugar errado.
+ *
+ * Sem modelo nenhum, o motivo nunca saiu pelo canal e o que falta é cadastrar
+ * o primeiro. Com o primeiro cadastrado e o deste toque faltando, o canal está
+ * FUNCIONANDO — o que falta é o texto da vez, e a alternativa (repetir o
+ * anterior) é justamente o defeito.
+ */
+function semModelo(motivo: MotivoDaFila, toque: number, temOPrimeiro: boolean): string {
+  if (toque > 1 && temOPrimeiro) {
+    return (
+      `Este seria o ${toque}º toque de "${motivo}" com esta pessoa, e não há modelo aprovado ` +
+      `só dele. O único caminho que sobraria era repetir o texto do toque anterior — que é ` +
+      `mandar a mesma mensagem de novo, e é o que ele deixou de fazer. Cadastre na Meta o ` +
+      `modelo deste toque e informe o nome dele em Automação.`
+    );
+  }
   return (
     `O motivo "${motivo}" está configurado para sair pelo número oficial, mas faz mais de 24h que ` +
     "ele escreveu e não há modelo aprovado cadastrado para este motivo. Cadastre o modelo " +
@@ -246,7 +315,21 @@ export function lerModelos(settings: unknown): ModelosPorMotivo {
   const out: ModelosPorMotivo = {};
   for (const m of MOTIVOS) {
     const v = obj[m];
-    if (typeof v === "string" && v.trim()) out[m] = v.trim();
+    // ⚠ O FORMATO ANTIGO É UM NOME SOLTO, e ele continua valendo: é o modelo
+    // do PRIMEIRO toque. Migração de dado gravado não passa por aqui — leitor
+    // que exige o formato novo transforma "empresa com canal configurado" em
+    // "empresa sem modelo nenhum" no minuto do deploy, em silêncio.
+    if (typeof v === "string") {
+      if (v.trim()) out[m] = [v.trim()];
+      continue;
+    }
+    if (!Array.isArray(v)) continue;
+    // ⚠ A POSIÇÃO É O NÚMERO DO TOQUE, então buraco no meio é PRESERVADO.
+    // Filtrar os vazios promoveria o modelo do 3º toque para o 2º — o texto
+    // errado, no momento errado, com aparência de configuração certa.
+    const lista = v.map((x) => (typeof x === "string" ? x.trim() : ""));
+    while (lista.length > 0 && !lista[lista.length - 1]) lista.pop();
+    if (lista.some((x) => x)) out[m] = lista;
   }
   return out;
 }

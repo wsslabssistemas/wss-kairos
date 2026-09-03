@@ -50,6 +50,9 @@ const livre = (id) => ({
   contactId: id, motivo: "reativacao",
   horasDesdeUltimoContato: null, semResposta: 0,
   diasSemEngajamento: null, horasDesdeRespostaDele: null,
+  // O primeiro toque, com o modelo dele cadastrado. E o caso normal; o resto
+  // do arquivo mede outras coisas. Ver o bloco da trava da repeticao.
+  toque: 1, textoProprio: true,
   // Sem data de entrada na etapa. O recorte NAO barra quem nao tem data — ver
   // o bloco 6. Quem tem data diz isso explicitamente, com `exAluno`.
   diasNaEtapa: null,
@@ -537,6 +540,65 @@ verifica("com gente dentro da faixa, nem todos sao recorte",
 // escada nunca sobe degrau por causa de uma empresa que esta `off`.
 verifica("plano vazio tem contador zerado",
   planejar({ candidatos: [livre("a")], regras: { ...REGRAS, mode: "off" }, enviadosHoje: 0, horaLocal: 10, hojeISO: HOJE }).foraDoRecorte, 0);
+
+// ---------------------------------------------------------------------
+// A TRAVA DA REPETIÇÃO — toque sem texto próprio não sai
+//
+// ⚠ 56 pessoas receberam a MESMA abertura duas vezes, 7 dias depois (medido
+// em 3/set/2026). Fora da janela de 24h a Meta só entrega modelo aprovado, e o
+// modelo era escolhido pelo MOTIVO — que não muda entre o 1º toque e o 4º.
+// Não existe "escrever diferente na hora": ou o toque tem o texto dele, ou
+// ele não deve sair.
+// ---------------------------------------------------------------------
+
+// Esperado: barrado. É o caso do João Guilherme em 3/set — 2º toque, mesmo
+// texto, e a mãe respondendo que ele tem 8 anos.
+verifica(
+  "2º toque sem modelo próprio não sai",
+  plano({}, [{ ...livre("a"), toque: 2, textoProprio: false }]).enviar.length,
+  0,
+);
+
+// Esperado: a recusa DIZ o número do toque e fala em repetição. Recusa sem
+// diagnóstico manda quem lê procurar defeito no canal — e o canal está bom.
+verifica(
+  "a recusa nomeia o toque e a repetição",
+  plano({}, [{ ...livre("a"), toque: 3, textoProprio: false }]).vereditos[0].motivo.includes(
+    "3º toque",
+  ),
+  true,
+);
+
+// Esperado: com o modelo do 2º toque cadastrado, ele sai normalmente. A trava
+// é sobre TEXTO REPETIDO, não sobre insistir — insistir com texto novo é
+// exatamente o follow-up que o produto vende.
+verifica(
+  "2º toque COM modelo próprio sai",
+  plano({}, [{ ...livre("a"), toque: 2, textoProprio: true }]).enviar.length,
+  1,
+);
+
+// Esperado: sai. Quem escreveu há 2h está com a janela de 24h aberta, e ali o
+// texto é livre — redigido de novo a cada vez, então não há o que repetir.
+// ⚠ Com o cooldown padrão de 48h essa pessoa já seria barrada por outro
+// motivo; o cooldown zerado isola a regra que este caso mede.
+verifica(
+  "dentro da janela de 24h, toque sem modelo continua saindo",
+  plano({ cooldown_hours: 0 }, [
+    { ...livre("a"), toque: 4, textoProprio: false, horasDesdeRespostaDele: 2 },
+  ]).enviar.length,
+  1,
+);
+
+// Esperado: barrado. 25h fecharam a janela da Meta, e aí só sai modelo.
+verifica(
+  "passadas 24h, a janela fecha e a trava volta a valer",
+  plano({ cooldown_hours: 0 }, [
+    { ...livre("a"), toque: 4, textoProprio: false, horasDesdeRespostaDele: 25 },
+  ]).enviar.length,
+  0,
+);
+
 
 console.log(falhas === 0 ? "\nmotor: tudo certo." : `\nmotor: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

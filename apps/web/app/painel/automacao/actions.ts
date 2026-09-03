@@ -82,6 +82,15 @@ export async function saveAutomation(formData: FormData) {
  * liga o relógio do custo por mensagem. Juntar as duas num formulário só faria
  * um salvamento de rotina carregar a decisão cara junto.
  */
+/**
+ * Teto de campos de modelo lidos do formulário.
+ *
+ * ⚠ Ele existe só para o laço não depender do que veio no `FormData` — régua
+ * curada com mais passos que isto é lacuna de manifesto, não de tela, e nenhum
+ * segmento declara perto disso. Ver `MAX_TOQUES_SEM_CADENCIA`.
+ */
+const LIMITE_DE_TOQUES = 12;
+
 export async function salvarRoteamento(formData: FormData) {
   const membership = await getActiveTenant();
   const tenant = membership?.tenant;
@@ -98,11 +107,20 @@ export async function salvarRoteamento(formData: FormData) {
     .maybeSingle();
 
   const canal: Record<string, boolean> = {};
-  const modelos: Record<string, string> = {};
+  const modelos: Record<string, string[]> = {};
   for (const m of MOTIVOS) {
     canal[m] = formData.get(`canal_${m}`) === "on";
-    const nome = String(formData.get(`modelo_${m}`) ?? "").trim();
-    if (nome) modelos[m] = nome;
+    // ⚠ UM CAMPO POR TOQUE, e a POSIÇÃO é o número do toque. O campo vazio do
+    // meio é guardado vazio de propósito: compactar promoveria o modelo do 3º
+    // toque para o 2º — texto errado, no momento errado, com cara de acerto.
+    const lista: string[] = [];
+    for (let i = 0; i < LIMITE_DE_TOQUES; i++) {
+      const bruto = formData.get(`modelo_${m}_${i}`);
+      if (bruto === null) break;
+      lista.push(String(bruto).trim());
+    }
+    while (lista.length > 0 && !lista[lista.length - 1]) lista.pop();
+    if (lista.some((x) => x)) modelos[m] = lista;
   }
 
   // Campo em REAIS na tela, centavos no banco — a regra de `lib/money.ts`.

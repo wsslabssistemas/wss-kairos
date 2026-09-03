@@ -243,7 +243,7 @@ export function Simulacao({ modo }: { modo: "off" | "simulation" | "auto" }) {
                           sair errado, são as variáveis. */}
                       {!foraAgora && l.sai && (
                         <p className="text-faint" style={{ fontSize: 11, margin: "4px 0 0 72px" }}>
-                          modelo <code>{l.modelo}</code> · {"{{1}}"} = <strong>{l.variaveis[0]}</strong>
+                          {l.toque}º toque · modelo <code>{l.modelo}</code> · {"{{1}}"} = <strong>{l.variaveis[0]}</strong>
                           {" · "}{"{{2}}"} = <strong>{l.variaveis[1]}</strong>
                         </p>
                       )}

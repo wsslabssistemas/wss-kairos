@@ -4,7 +4,7 @@ import { getActiveTenant } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { rodarMotor } from "@/lib/motor-db";
 import { ROTULO } from "@/lib/fila";
-import { lerModelos } from "@/lib/roteamento";
+import { lerModelos, modeloDoToque } from "@/lib/roteamento";
 import { primeiroNome } from "@/lib/modelo";
 import { paraE164BR } from "@/lib/phone";
 import { revalidatePath } from "next/cache";
@@ -51,6 +51,8 @@ export type LinhaDaSimulacao = {
    * variáveis: é isso que se confere antes de disparar.
    */
   variaveis: string[];
+  /** Qual toque esta pessoa receberia: 1 = o primeiro desta etapa. */
+  toque: number;
   modelo: string;
 };
 
@@ -145,6 +147,7 @@ export async function simularMotor(): Promise<SimulacaoResult> {
       const nome = nomes.get(v.contactId) ?? "(contato sem nome)";
       const m = r.motivoPorContato[v.contactId];
       const pn = primeiroNome(nome);
+      const toque = r.toquePorContato[v.contactId] ?? 1;
       const tel = paraE164BR(telefones.get(v.contactId));
       return {
         contactId: v.contactId,
@@ -156,7 +159,14 @@ export async function simularMotor(): Promise<SimulacaoResult> {
         telefoneAjustado: tel.ok ? (tel.ajuste ?? "") : "",
         telefoneInvalido: tel.ok ? "" : tel.motivo,
         variaveis: [pn.ok ? pn.valor : "(sem nome — não sai)", tenant.name],
-        modelo: modelos[m] ?? "(nenhum modelo cadastrado para este motivo)",
+        // ⚠ O MODELO É DO TOQUE, não do motivo. Mostrar "o modelo da
+        // reativação" numa linha de 2º toque foi exatamente o que escondeu a
+        // repetição por uma semana: a tela concordava com o envio, e os dois
+        // estavam errados juntos.
+        toque,
+        modelo:
+          modeloDoToque(modelos, m, toque) ??
+          `(nenhum modelo cadastrado para o ${toque}º toque — ele não sai)`,
       };
     });
 

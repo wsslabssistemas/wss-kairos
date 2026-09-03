@@ -87,6 +87,29 @@ export type Candidato = {
    * novo, por qualquer caminho, esta linha continua segurando a mensagem.
    */
   contratoAte?: string | null;
+  /**
+   * QUAL toque este seria: 1 = o primeiro que esta pessoa recebe nesta etapa.
+   *
+   * Sai dos toques NOSSOS já dados desde que ela entrou na etapa — o mesmo
+   * número que a cadência do manifesto usa para escolher o passo. Resposta
+   * dela não conta: quem responde não executa passo de régua nenhum.
+   */
+  toque: number;
+  /**
+   * Este toque tem TEXTO PRÓPRIO — modelo aprovado só dele.
+   *
+   * ⚠ ELE EXISTE PORQUE O TEXTO REPETIU NA VIDA REAL. Em 3/set/2026 a medição
+   * mostrou **56 pessoas com a mesma abertura duas vezes**, exatamente 7 dias
+   * depois: o canal escolhia o modelo pelo MOTIVO, e o motivo não muda entre
+   * o 1º toque e o 4º. Fora da janela de 24h a Meta só entrega modelo
+   * aprovado, então não existe "escrever diferente na hora" — ou o toque tem
+   * o texto dele, ou ele não deve sair.
+   *
+   * ⚠ E A RECUSA É O LADO CERTO DE ERRAR. Faltando o texto, o que se perde é
+   * um toque; repetindo, o que se perde é a credibilidade da empresa com
+   * alguém que já recebeu a mesma frase — e ninguém reclama disso, só some.
+   */
+  textoProprio: boolean;
 };
 
 export type RegrasDoMotor = {
@@ -424,6 +447,27 @@ export function planejar(entrada: {
 
     if (regras.max_no_reply > 0 && c.semResposta >= regras.max_no_reply) {
       nao(`Já foram ${c.semResposta} mensagens nossas sem resposta (limite: ${regras.max_no_reply}).`);
+      continue;
+    }
+
+    // ⚠ TOQUE SEM TEXTO PRÓPRIO NÃO SAI — a trava da repetição.
+    //
+    // Fora da janela de 24h a Meta só entrega modelo aprovado, e o modelo era
+    // escolhido pelo MOTIVO: o mesmo texto no 1º toque e no 4º. Medido em
+    // 3/set/2026: 56 pessoas receberam a mesma abertura duas vezes, 7 dias
+    // depois, com o *"estou falando de um número novo"* dentro — verdade na
+    // primeira, mentira na segunda.
+    //
+    // ⚠ QUEM ESCREVEU NAS ÚLTIMAS 24h ESTÁ FORA DISTO, porque ali o texto sai
+    // livre e é redigido de novo a cada vez. Na prática o cooldown já segura
+    // essa gente; a condição fica escrita mesmo assim, para o dia em que a
+    // empresa zerar o cooldown e a regra continuar certa por acidente.
+    const janelaAberta = c.horasDesdeRespostaDele !== null && c.horasDesdeRespostaDele < 24;
+    if (!janelaAberta && !c.textoProprio) {
+      nao(
+        `Este seria o ${c.toque}º toque e não existe modelo aprovado só dele — sair agora ` +
+          `seria repetir o texto do toque anterior. Falta cadastrar esse modelo na Meta.`,
+      );
       continue;
     }
 

@@ -70,12 +70,19 @@ export async function despacharToque(entrada: {
   motivo: MotivoDaFila;
   /** O texto gerado. Só é usado DENTRO da janela de 24h. */
   texto: string;
+  /**
+   * Qual toque é este (1 = o primeiro desta etapa). Omitido, é contado no banco.
+   *
+   * O motor já tem o número na mão — passar evita uma consulta por envio num
+   * laço que roda em série.
+   */
+  toque?: number;
 }): Promise<EnvioResult> {
   const { supabase, tenantId, tenantNome, membershipId, contactId, motivo, texto } = entrada;
   if (!contactId) return { ok: false, motivo: "Contato não informado." };
 
   const [{ data: c }, { data: settingsRow }, credencial] = await Promise.all([
-    supabase.from("contacts").select("name, phone, next_action_at, contract_end")
+    supabase.from("contacts").select("name, phone, next_action_at, contract_end, stage_entered_at")
       .eq("id", contactId).eq("tenant_id", tenantId).maybeSingle(),
     supabase.from("tenants").select("settings, name").eq("id", tenantId).maybeSingle(),
     credencialDoCanal(tenantId),
@@ -84,6 +91,7 @@ export async function despacharToque(entrada: {
   const contact = c as {
     name: string; phone: string | null;
     next_action_at: string | null; contract_end: string | null;
+    stage_entered_at: string | null;
   } | null;
   if (!contact) return { ok: false, motivo: "Contato não encontrado." };
 
@@ -114,12 +122,22 @@ export async function despacharToque(entrada: {
   const janela = janelaDeAtendimento((ultimaEntrada as { occurred_at: string } | null)?.occurred_at);
   const settings = (settingsRow as { settings: unknown; name: string } | null)?.settings;
 
+  // ⚠ QUAL TOQUE É ESTE — e ele é CONTADO AQUI quando quem chama não sabe.
+  //
+  // O número decide o TEXTO (ver `modeloDoToque`), então errá-lo para baixo
+  // reintroduz exatamente o defeito que a lista de modelos existe para fechar:
+  // toque 3 tratado como toque 1 manda a abertura de novo. Um padrão silencioso
+  // de 1 seria o defeito com cara de valor razoável — por isso, na falta do
+  // número, ele é medido no banco, não presumido.
+  const toque = entrada.toque ?? (await toqueAtual(supabase, tenantId, contactId, contact.stage_entered_at));
+
   const rota = rotaDoToque({
     motivo,
     roteamento: lerRoteamento(settings),
     temCredencial: !!credencial,
     janelaAberta: janela.aberta,
     modelos: lerModelos(settings),
+    toque,
   });
 
   if (rota.via === "link_humano") return { ok: false, motivo: rota.porque };
@@ -273,4 +291,37 @@ function porExtenso(iso: string): string {
   const [a, m, d] = iso.slice(0, 10).split("-").map(Number);
   if (!a || !m || !d) return iso.slice(0, 10);
   return `${d} de ${MES[m - 1]}`;
+}
+
+/**
+ * Quantos toques NOSSOS já saíram nesta etapa, +1 — o toque de agora.
+ *
+ * Mesma definição de `historicoPorContato`: só o que é `outbound`, e só
+ * depois da entrada na etapa. Resposta do cliente não executa passo de régua
+ * nenhum, então não conta.
+ *
+ * Sem `stage_entered_at` conta a vida inteira do contato — errar para MAIS é
+ * o lado seguro: no máximo bloqueia um toque por falta de modelo, enquanto
+ * errar para menos repete texto.
+ */
+async function toqueAtual(
+  supabase: ClienteSupabase,
+  tenantId: string,
+  contactId: string,
+  desde: string | null,
+): Promise<number> {
+  let q = supabase
+    .from("interactions")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("contact_id", contactId)
+    .eq("direction", "outbound");
+  if (desde) q = q.gte("occurred_at", desde);
+  const { count, error } = await q;
+  // ⚠ ERRO DE LEITURA NÃO VIRA "PRIMEIRO TOQUE". Devolver 1 aqui mandaria a
+  // abertura de novo para quem já a recebeu, justamente no dia em que o banco
+  // engasgou. Devolver um número alto faz o envio ser bloqueado por falta de
+  // modelo — visível, e sem mensagem errada no nome da empresa.
+  if (error) return Number.MAX_SAFE_INTEGER;
+  return (count ?? 0) + 1;
 }

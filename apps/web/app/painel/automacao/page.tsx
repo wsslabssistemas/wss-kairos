@@ -184,7 +184,32 @@ export default async function AutomacaoPage({
    * as três pedem ações opostas. Eram 10 porque a faixa de 180 dias tinha
    * acabado, e o sistema sabia disso sem contar a ninguém.
    */
-  const { contract } = await getSkillFormConfig(tenant.skill_key);
+  const { contract, stages, cadences } = await getSkillFormConfig(tenant.skill_key);
+
+  /**
+   * A RÉGUA CURADA DA REATIVAÇÃO — a intenção de cada toque, do manifesto.
+   *
+   * ⚠ Ela desce até o formulário do modelo porque é lá que alguém escreve o
+   * texto que vai para a Meta. O manifesto sempre soube que o 2º toque fala do
+   * *"que MUDOU desde que ele saiu"*; quem cadastrava o modelo, não. O texto
+   * curado ficava num arquivo YAML e o modelo saía do nada — e o resultado foi
+   * a campanha mandando a abertura do 1º toque de novo, uma semana depois.
+   *
+   * Só a `reativacao` tem régua identificável daqui: é o único motivo cuja
+   * etapa o manifesto nomeia (`contract.ended_stage`). Os outros mostram um
+   * campo só, como antes.
+   */
+  const etapaDeSaida = contract?.ended_stage ?? null;
+  const cadenciaDaSaida = etapaDeSaida
+    ? cadences.find(
+        (c) =>
+          c.key ===
+          (stages.find((s) => s.key === etapaDeSaida) as { cadence?: string } | undefined)?.cadence,
+      )
+    : undefined;
+  const passosPorMotivo = cadenciaDaSaida?.steps?.length
+    ? { reativacao: cadenciaDaSaida.steps.map((p) => p.intent) }
+    : {};
   const alcance = await alcanceDaReativacao(
     tenant.id,
     a.reativacao_max_dias,
@@ -613,6 +638,7 @@ export default async function AutomacaoPage({
               <Roteamento
                 roteamento={lerRoteamento(data?.settings)}
                 modelos={lerModelos(data?.settings)}
+                passos={passosPorMotivo}
                 temCredencial={status.configurado}
                 tetoCents={lerTetoDeMensagens(data?.settings)}
               />
