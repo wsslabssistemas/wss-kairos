@@ -361,6 +361,7 @@ type Ix = {
   occurred_at: string;
   direction: string;
   external_id?: string | null;
+  input_kind?: string | null;
 };
 
 /** Dias inteiros desde uma data. `null` quando não há data — ver `Candidato`. */
@@ -439,6 +440,24 @@ function saidasDoCanalHoje(ix: Ix[], agora: Date, fuso: string): number {
   for (const i of ix) {
     if (i.direction !== "outbound") continue;
     if (!i.external_id) continue;
+    // ⚠ SÓ CONVERSA PROATIVA. `agent_briefing` é resposta a quem escreveu, e
+    // resposta não é o que este teto governa.
+    //
+    // Ele contava toda saída com `external_id` — e a resposta da equipe pelo
+    // canal oficial tem `external_id`. Em 3/set/2026 a campanha parou às 17h30
+    // com *"o teto do dia (30) já foi atingido: 30 saíram"*, e o número foi a
+    // 32 e 33 enquanto a equipe respondia três clientes que tinham escrito.
+    // **Dia movimentado encolhia a campanha, justamente no dia em que ela
+    // estava funcionando** — e o comentário aqui em cima já afirmava que eram
+    // "bolsos diferentes", o que era intenção, não comportamento.
+    //
+    // ⚠ E O TETO EXISTE PARA PROTEGER A REPUTAÇÃO DO NÚMERO. Quem derruba
+    // reputação é mensagem NÃO PEDIDA; responder quem acabou de escrever é o
+    // oposto disso. Somar as duas freava o lado certo pelo motivo errado.
+    //
+    // `system_initiated` é o toque proativo — do motor E do botão da fila, que
+    // são o mesmo bolso: os dois falam com quem não pediu nada.
+    if (i.input_kind !== "system_initiated") continue;
     if (i.occurred_at.slice(0, 10) !== hoje) continue;
     n++;
   }

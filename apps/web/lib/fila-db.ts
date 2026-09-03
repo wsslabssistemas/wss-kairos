@@ -72,6 +72,18 @@ export type InteracaoDaCarga = {
    * WhatsApp do vendedor", e essa distincao decide o teto do dia da automacao.
    */
   external_id: string | null;
+  /**
+   * O PAPEL da interacao: `system_initiated` (toque proativo, nosso),
+   * `agent_briefing` (resposta a quem escreveu) ou `customer_message`.
+   *
+   * ⚠ E o que separa os DOIS BOLSOS do teto diario. Ate 3/set o teto contava
+   * toda saida com `external_id` — e resposta da equipe pelo canal oficial tem
+   * `external_id`. Em 3/set a campanha parou as 17h30 dizendo "o teto do dia
+   * (30) ja foi atingido", e as tres ultimas saidas do dia eram a equipe
+   * respondendo cliente que tinha escrito. **Dia movimentado encolhia a
+   * campanha, justamente no dia em que ela funcionava.**
+   */
+  input_kind: string | null;
 };
 
 export type CargaDaFila = {
@@ -167,7 +179,7 @@ export async function carregarFila(entrada: {
     lerTudo<InteracaoDaCarga>(
       (de, ate) => supabase
         .from("interactions")
-        .select("contact_id, occurred_at, direction, created_by, external_id")
+        .select("contact_id, occurred_at, direction, created_by, external_id, input_kind")
         .eq("tenant_id", tenantId)
         .order("occurred_at", { ascending: false })
         .range(de, ate),

@@ -385,18 +385,53 @@ não é a idade do titular — é **qual aula ele fazia**, e ela não é importa
 descadastro automático do webhook; para marcar o João foi preciso ir ao banco.
 É a mesma peça que falta para o Deoclécio — ver a fila.
 
-### ⚠ O TETO DO DIA É GASTO POR QUEM RESPONDE CLIENTE
+### ✅ O TETO DO DIA VOLTOU A SER SÓ DA CAMPANHA (corrigido em 3/set)
 
 Em 3/set a campanha parou às 17h30 com *"o teto do dia (30) já foi atingido: 30
 saíram"* — e depois 32, e 33. As três últimas foram **mensagens que a equipe
 digitou** (17:38, 17:41, 17:54), respondendo gente que escreveu.
 
-`saidasDoCanalHoje` conta toda saída com `external_id`, e resposta da equipe
-pelo canal oficial tem `external_id`. O comentário do código diz que são
-*"bolsos diferentes"* — não são. **Dia movimentado encolhe a campanha**,
-justamente no dia em que ela está funcionando. Anotado, não corrigido: o teto
-existe para proteger a reputação do número, e resposta a quem escreveu não
-ameaça reputação nenhuma.
+`saidasDoCanalHoje` contava toda saída com `external_id`, e resposta da equipe
+pelo canal oficial tem `external_id`. O comentário do código dizia que eram
+*"bolsos diferentes"* — era intenção, não comportamento. **Dia movimentado
+encolhia a campanha, justamente no dia em que ela estava funcionando.**
+
+O fundador decidiu na hora: *"o limite de 30 era para mensagens enviadas, ou
+seja, conversas proativas, não pode contabilizar as respostas"*. Hoje o teto
+conta só `input_kind = system_initiated` — o toque do motor E o do botão da
+fila, que são o mesmo bolso: os dois falam com quem não pediu nada. O que
+derruba a reputação de um número é mensagem NÃO PEDIDA; responder quem acabou
+de escrever é o oposto.
+
+### 📌 PENDÊNCIA GUARDADA A PEDIDO DELE — a assinatura do webhook da página
+
+O token do Facebook **está salvo e conferido** (3/set, 22h23). Perguntado à
+Meta, ele é:
+
+| | |
+|---|---|
+| Tipo | **PAGE** — token de página, não de usuário. Era o receio dele, e está certo |
+| Válido | sim · `expires_at: 0`, não expira |
+| Página | `785865674784529` — a mesma que ele salvou |
+| Permissão | **`pages_messaging` já concedida** para essa página |
+| Acesso a dados | expira em **~2/dez/2026** (janela de 90 dias) |
+
+⚠ **Falta UM clique, e é o passo 5:** em *developers.facebook.com → app →
+Messenger → Configurações → Webhooks*, na linha da página, **Adicionar
+assinaturas** e marcar **`messages`**. Verificar a URL e assinar os eventos são
+coisas separadas — a URL já está verificada. **Sem isso a mensagem chega no
+Facebook e nunca no Kairós.**
+
+⚠ **Ele decidiu deixar para quando a Meta liberar as outras permissões**, e
+pediu para ficar anotado. O fato medido, para quando ele retomar: `pages_messaging`
+já está concedida para essa página, então essa assinatura **não depende da
+análise** — é ação de painel, em modo de teste. Não confundir com submeter
+`pages_messaging` para revisão, que é a segunda submissão e continua para
+depois do Instagram.
+
+⚠ **E não dá para conferir a assinatura pela API daqui:** ler `subscribed_apps`
+exige `pages_manage_metadata`, que o app não tem. A confirmação é visual, no
+painel — ou a primeira mensagem que chegar.
 
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
@@ -411,8 +446,16 @@ ameaça reputação nenhuma.
    automático escreve `do_not_contact` — o João de 3/set foi marcado no banco,
    à mão. E em 3/set o Deoclécio, que tinha pedido tempo, **recebeu a
    reativação de novo às 9h**.
-4b. **Modelos do 2º, 3º e 4º toque na Meta.** Sem eles a campanha fala uma vez
-   com cada pessoa — a trava da repetição está de pé, o texto é que falta.
+4b. **Ligar os modelos já aprovados aos toques 2 e 3.** Perguntado à Meta em
+   3/set, existem **cinco modelos APPROVED** — `reativacao_ex_aluno`,
+   `recompra_retorno`, `followup_retomada`, `renovacao_vencimento`,
+   `combinado_retorno` — e a campanha usa **um**. O que falta de verdade é o
+   texto do *"o que MUDOU desde que ele saiu"*, que o manifesto pede no 2º
+   toque e não existe aprovado. ⚠ E `recompra_retorno` **repete "número
+   novo"**, que já é falso na segunda mensagem — então ele não serve para o 2º
+   toque. `followup_retomada` serve, e serve bem, como o toque de ENCERRAR:
+   *"fiquei sem a sua resposta — quer que eu te ajude ou prefere que eu deixe
+   para outro momento?"*.
 5. **Enviar documento pelo WhatsApp** (proposta em PDF). Destrava a Darvil.
 6. **Responder pelo Instagram e pelo Facebook** — depois do Acesso Avançado.
 7. **Comentário de post e anúncio vira lead.** Decidido: *"comentário vira lead
