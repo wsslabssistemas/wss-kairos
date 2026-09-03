@@ -152,5 +152,41 @@ eq("a coluna do contato muda com a plataforma",
 eq("e a conta da empresa tambem",
   rotaFonte.includes('"instagram_account_id" : "facebook_page_id"'), true);
 
+// -------------- MENCAO EM STORY NAO E CONVERSA (03/set/2026)
+//
+// ⚠ O FUNDADOR PERGUNTOU ANTES DE VIRAR PROBLEMA: "imagino que seja uma
+// notificacao que esta pessoa fez um stories, nessa situacao o sistema
+// responderia alguma coisa? porque se for isso nao precisa responder nada".
+//
+// Precisava mesmo. Quando alguem marca a academia num story, a Meta manda pelo
+// MESMO caminho de uma mensagem. Tratar como pergunta faria a pessoa entrar em
+// "aguardando resposta" e, no automatico, o sistema responder a quem nao
+// perguntou nada — mensagem paga respondendo a um story.
+//
+// E a mesma regra do 👍 (`0063`): a conversa da Taiane voltou para "aguardando"
+// duas horas depois de resolvida por causa de uma reacao.
+const mencao = desmontarInstagram(pacote([{
+  sender: { id: "IGSID-7" }, recipient: { id: "17841400000000000" }, timestamp: 1756000000000,
+  message: { mid: "mid.STORY", attachments: [{ type: "story_mention", payload: { url: "https://cdn.meta/story.jpg" } }] },
+}]));
+eq("mencao em story e marcada como tal", mencao.mensagens[0]?.mencaoDeStory, true);
+eq("e o texto diz o que foi", mencao.mensagens[0]?.texto, "(mencionou a empresa num story)");
+// O story em si continua acessivel — o que muda e o tratamento, nao o registro.
+eq("o endereco do story continua guardado", mencao.mensagens[0]?.anexoUrl, "https://cdn.meta/story.jpg");
+
+// ⚠ E RESPOSTA A STORY E DIFERENTE. Quem responde ao story DA ACADEMIA com
+// texto esta falando com a gente — isso e conversa, e some da fila se for
+// tratado como aceno.
+const respostaAoStory = desmontarInstagram(pacote([{
+  sender: { id: "IGSID-8" }, recipient: { id: "17841400000000000" }, timestamp: 1756000000000,
+  message: { mid: "mid.RESP", text: "quanto custa a mensalidade?", reply_to: { story: { id: "s1" } } },
+}]));
+eq("resposta a story continua sendo conversa", respostaAoStory.mensagens[0]?.mencaoDeStory, false);
+eq("e o texto dela e preservado", respostaAoStory.mensagens[0]?.texto, "quanto custa a mensalidade?");
+
+// ⚠ E O WEBHOOK PRECISA GRAVAR COMO SINAL, nao so marcar no desmontador.
+eq("a gravacao usa customer_reaction para mencao de story",
+  rotaFonte.includes("msg.mencaoDeStory || tipoDeFecho(msg.texto)"), true);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

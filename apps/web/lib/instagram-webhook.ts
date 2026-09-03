@@ -47,8 +47,25 @@ export type DirectRecebido = {
    * CDN responde.
    */
   anexoUrl: string | null;
-  /** `image`, `video`, `audio`, `file`, `share`… como a Meta declarou. */
+  /** `image`, `video`, `audio`, `file`, `share`, `story_mention`… */
   anexoTipo: string | null;
+  /**
+   * ⚠ MENÇÃO EM STORY NÃO É CONVERSA — é aceno, como a reação com emoji.
+   *
+   * Quando alguém marca a academia num story, a Meta manda isso pelo MESMO
+   * caminho de uma mensagem (`attachments[{type:"story_mention"}]`). Tratar
+   * como pergunta faz a pessoa entrar em "aguardando resposta" e, no
+   * automático, faz o sistema responder a quem não perguntou nada — mensagem
+   * paga respondendo a um story.
+   *
+   * É a mesma regra do `customer_reaction` (`0063`): a conversa da Taiane
+   * voltou para "aguardando" duas horas depois de resolvida por causa de um 👍.
+   *
+   * ⚠ E RESPOSTA A STORY É DIFERENTE: quem responde ao story DA ACADEMIA com
+   * texto está falando com a gente, e isso é conversa de verdade. O que não é
+   * conversa é a MENÇÃO — a pessoa postou algo no story dela e nos marcou.
+   */
+  mencaoDeStory: boolean;
 };
 
 export type PacoteDoInstagram = {
@@ -139,7 +156,10 @@ export function desmontarInstagram(
       // ⚠ A DESCRIÇÃO PAROU DE MANDAR PARA O INSTAGRAM. Mesma lição do
       // "abra no WhatsApp": o anexo agora abre no painel, e um rótulo que
       // manda a pessoa para outro lugar é pior que um rótulo curto.
-      const conteudo = texto || (anexos.length
+      const mencaoDeStory = anexoTipo === "story_mention";
+      const conteudo = mencaoDeStory
+        ? "(mencionou a empresa num story)"
+        : texto || (anexos.length
         ? `(${anexoTipo === "image" ? "imagem" : anexoTipo === "video" ? "vídeo" : anexoTipo === "audio" ? "áudio" : "anexo"} recebido no direct)`
         : "");
       if (!conteudo) { out.ignorados.push("mensagem sem texto e sem anexo"); continue; }
@@ -153,6 +173,7 @@ export function desmontarInstagram(
         eco: msg.is_echo === true,
         anexoUrl,
         anexoTipo,
+        mencaoDeStory,
       });
     }
   }

@@ -590,7 +590,14 @@ async function registrarDirects(mensagens: DirectRecebido[], plataforma: Platafo
       tenant_id: dono.tenantId,
       contact_id: contactId,
       direction: "inbound",
-      input_kind: tipoDeFecho(msg.texto) === "sem_conteudo" ? "customer_reaction" : "customer_message",
+      // ⚠ MENÇÃO EM STORY ENTRA COMO SINAL, NÃO COMO PERGUNTA. Quem marca a
+      // academia num story não perguntou nada — e tratar como mensagem faria a
+      // pessoa aparecer em "aguardando resposta" e, no automático, o sistema
+      // responder a um aceno. Mesma regra do 👍 (`0063`).
+      input_kind:
+        msg.mencaoDeStory || tipoDeFecho(msg.texto) === "sem_conteudo"
+          ? "customer_reaction"
+          : "customer_message",
       channel: plataforma,
       content: msg.texto,
       // ⚠ AQUI VAI URL, NÃO ID. O WhatsApp manda `media_id` para buscar
