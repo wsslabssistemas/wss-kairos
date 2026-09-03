@@ -766,6 +766,17 @@ async function registrar(mensagens: MensagemRecebida[]) {
           : "customer_message",
       channel: "whatsapp",
       content: textoDaMensagem,
+      // ⚠ A CHAVE DO ARQUIVO FICA GUARDADA. Ela era lida e jogada fora: em
+      // 02/set uma aluna mandou o comprovante de um cancelamento que a
+      // academia continuava cobrando, e do lado de cá sobrou "(documento
+      // recebido — abra no WhatsApp)". Só que não existe "abra no WhatsApp":
+      // o número é da Cloud API e não aparece em aplicativo nenhum.
+      //
+      // ⚠ E A META APAGA A MÍDIA EM POUCOS DIAS. Ou a chave se guarda na hora,
+      // ou o arquivo do cliente sai do alcance para sempre — e numa conversa
+      // sobre cobrança indevida, ele é a prova.
+      media_id: msg.midiaId,
+      media_tipo: msg.midiaId ? msg.tipo : null,
       occurred_at: msg.quando.toISOString(),
       external_id: msg.wamid,
     });

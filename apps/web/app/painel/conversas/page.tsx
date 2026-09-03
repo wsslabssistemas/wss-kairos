@@ -200,7 +200,7 @@ export default async function ConversasPage({
   const { data: fio } = contato
     ? await supabase
         .from("interactions")
-        .select("id, occurred_at, direction, input_kind, content, delivery_status, delivery_error")
+        .select("id, occurred_at, direction, input_kind, content, delivery_status, delivery_error, media_id")
         .eq("tenant_id", tenant.id)
         .eq("contact_id", contato)
         .order("occurred_at", { ascending: false })
@@ -210,6 +210,8 @@ export default async function ConversasPage({
   type Fio = {
     id: string; occurred_at: string; direction: string; input_kind: string;
     content: string; delivery_status?: string | null; delivery_error?: string | null;
+    /** Quando existe, a mensagem trouxe arquivo e dá para baixar. */
+    media_id?: string | null;
   };
 
   type Linha = {
@@ -599,6 +601,22 @@ export default async function ConversasPage({
                                   )}
                                 </div>
                                 <p style={{ fontSize: 13, margin: "2px 0 0", whiteSpace: "pre-wrap" }}>{m.content}</p>
+                                {/* ⚠ O ARQUIVO DEIXOU DE SER UMA FRASE MORTA. Antes ficava
+                                    "(documento recebido — abra no WhatsApp)" e não existia
+                                    WhatsApp para abrir: o número é da Cloud API. Agora a
+                                    chave da mídia fica guardada e o arquivo vem por aqui —
+                                    enquanto a Meta ainda tiver, que é por poucos dias. */}
+                                {m.media_id && (
+                                  <a
+                                    href={`/api/midia/${m.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="badge badge-brand"
+                                    style={{ marginTop: 6, display: "inline-flex" }}
+                                  >
+                                    📎 abrir o arquivo
+                                  </a>
+                                )}
                                 {m.delivery_error && (
                                   <p className="badge badge-danger" style={{ marginTop: 4, whiteSpace: "normal" }}>
                                     {m.delivery_error}

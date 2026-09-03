@@ -9,6 +9,8 @@
 // assinatura confere, o que o pacote significa, e se a janela está aberta.
 // O resto da rota é só "isto é válido? então grave".
 
+import fs from "node:fs";
+import path from "node:path";
 import { createHmac } from "node:crypto";
 import {
   assinaturaConfere,
@@ -314,6 +316,59 @@ eq("mensagem de texto nao tem midia", p.mensagens[0]?.midiaId, null);
 // sem chave, sem download ou com o relogio estourado, o historico volta a ela.
 eq("sem transcricao, a descricao de antes continua",
   pAudio.mensagens[0]?.texto, "(áudio recebido — ouça no WhatsApp)");
+
+// ------------- O ARQUIVO QUE O CLIENTE MANDA (02/set/2026)
+//
+// ⚠ O CASO. A aluna Ana Clara escreveu dizendo que cancelou e continua sendo
+// cobrada no cartao, e mandou o COMPROVANTE junto. No sistema ficou:
+//
+//     (documento recebido — abra no WhatsApp)
+//
+// So que nao existe "abra no WhatsApp": o numero e da Cloud API e nao aparece
+// em aplicativo nenhum. O arquivo estava atras da API da Meta, e a unica chave
+// para busca-lo — o `media_id` — era lida pelo webhook e JOGADA FORA.
+//
+// ⚠ E A META APAGA A MIDIA EM POUCOS DIAS. Nao da para recuperar depois: ou a
+// chave se guarda na hora, ou o comprovante sai do alcance para sempre. Numa
+// conversa sobre cobranca indevida, ele e a prova — e quem fica sem ela e a
+// empresa, na frente da cliente.
+const comDocumento = {
+  object: "whatsapp_business_account",
+  entry: [{
+    id: "102290129340398",
+    changes: [{
+      field: "messages",
+      value: {
+        metadata: { phone_number_id: "111" },
+        messages: [{
+          from: "5551992047051", id: "wamid.DOC", timestamp: "1756000000",
+          type: "document",
+          document: { id: "media-doc-77", mime_type: "application/pdf", filename: "comprovante.pdf" },
+        }],
+      },
+    }],
+  }],
+};
+const pDoc = desmontarPacote(comDocumento);
+eq("documento guarda a chave da midia", pDoc.mensagens[0]?.midiaId, "media-doc-77");
+eq("e o tipo vem junto, para o download saber a extensao", pDoc.mensagens[0]?.tipo, "document");
+// A descricao continua, porque ela e o que a pessoa LE na lista antes de abrir.
+eq("a descricao continua na conversa", pDoc.mensagens[0]?.texto, "(documento recebido — abra no WhatsApp)");
+
+// ⚠ IMAGEM TAMBEM. Comprovante mandado como foto e o caso mais comum de todos.
+const comFoto = JSON.parse(JSON.stringify(comDocumento));
+comFoto.entry[0].changes[0].value.messages[0].type = "image";
+delete comFoto.entry[0].changes[0].value.messages[0].document;
+comFoto.entry[0].changes[0].value.messages[0].image = { id: "media-img-88", mime_type: "image/jpeg" };
+eq("imagem tambem guarda a chave", desmontarPacote(comFoto).mensagens[0]?.midiaId, "media-img-88");
+
+// ⚠ E O WEBHOOK PRECISA GRAVAR A CHAVE, nao so le-la. Ler e jogar fora foi
+// exatamente o defeito — a chave existia no pacote desde sempre.
+const RAIZ = new URL("../../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+const rota = fs.readFileSync(
+  path.join(RAIZ, "apps/web/app/api/[[...route]]/route.ts"), "utf8",
+).split(String.fromCharCode(13)).join("");
+verdade("o webhook grava media_id na interacao", rota.includes("media_id: msg.midiaId"));
 
 // ⚠ O TOTAL É CALCULADO AQUI, no fim. Ele morava no meio do arquivo e por isso
 // contava só as asserções escritas ACIMA dele: a saída dizia "46/41", com mais
