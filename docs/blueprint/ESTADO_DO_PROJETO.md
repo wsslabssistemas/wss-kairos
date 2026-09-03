@@ -329,6 +329,75 @@ com alarme na tela · escada do recorte, que sobe sozinha quando acaba o públic
 
 **58 travas no CI.**
 
+### 🔴 A CAMPANHA REPETIA A MESMA ABERTURA — corrigido em 3/set, à noite
+
+O fundador trouxe um caso: *"o João fazia funcional kids, mas não existe mais
+essa aula. Ele tem 8 anos"*. Era o **João Guilherme Farina Pinto**, e a
+conversa mostrou o defeito atrás do caso:
+
+| Quando | O quê |
+|---|---|
+| 27/ago 20:37 | `reativacao_ex_aluno` |
+| **3/set 12:01** | **a MESMA mensagem, palavra por palavra** |
+| 3/set 13:17 | *"João tem 8 anos, fazia a funcional Kids"* · *"Não tem mais né?"* |
+
+Medido na base: **56 pessoas receberam a abertura duas vezes, exatamente 7 dias
+depois** — coortes de 24 a 27/ago repetidas de 31/ago a 3/set, uma única
+respondeu no meio. Com `max_no_reply: 3`, a **terceira** estava a caminho.
+
+⚠ **A causa: o modelo era escolhido pelo MOTIVO, e o motivo não muda entre o 1º
+toque e o 4º.** Fora da janela de 24h a Meta só entrega modelo aprovado; existe
+um só modelo de reativação; quem não respondeu continua `reativacao` na semana
+seguinte. Nada errou — o texto repetiu.
+
+⚠ **E a régua curada já sabia o que dizer em cada toque.** O manifesto da
+academia declara quatro passos — gancho do histórico (dia 0), **o que MUDOU
+desde que ele saiu** (dia 7), retorno sem risco (dia 21), encerrar com porta
+aberta (dia 45) — e `computeDueTouches` já calculava qual estava vencido. O
+canal ignorava os quatro. Mesma classe de `churn_reasons`: **ativo curado que
+não chega em quem escreve não existe.**
+
+**O que mudou:** `modelos[motivo]` virou LISTA, e o índice é o número do toque.
+Toque sem texto próprio **não sai** — nunca cai para o anterior. A recusa
+aparece na simulação dizendo qual toque, e o formulário do modelo mostra, ao
+lado de cada campo, **a intenção curada daquele toque**.
+
+⚠ **O que isso NÃO resolve, e é o próximo passo dele:** só existe modelo para o
+1º toque. Enquanto a Meta não aprovar os outros três, a campanha fala **uma vez
+com cada pessoa**. Pedir esses modelos é o item mais adiado e mais valioso da
+lista — agora com o texto de cada um já escrito no manifesto.
+
+### ⚠ O JOÃO, E O QUE NINGUÉM CONSEGUE VER
+
+Ele está marcado como `do_not_contact`, com o motivo por extenso e reversível:
+*sem oferta para o público dele; quando a Funcional Kids voltar, é o primeiro
+da lista*.
+
+⚠ **Não dá para achar os outros.** São **998 ex-alunos e 6 com data de
+nascimento** — a exportação de ex-aluno traz nome, telefone e data de saída, e
+nada mais. Nenhum contato da base tem plano com "kids" ou "infantil".
+
+⚠ **E data de nascimento não resolveria sozinha**, como o fundador apontou: a
+criança não tem telefone, quem passa o contato é o adulto. O sinal que faltava
+não é a idade do titular — é **qual aula ele fazia**, e ela não é importada.
+
+⚠ **E não existe botão de "não contatar".** `do_not_contact` só é escrito pelo
+descadastro automático do webhook; para marcar o João foi preciso ir ao banco.
+É a mesma peça que falta para o Deoclécio — ver a fila.
+
+### ⚠ O TETO DO DIA É GASTO POR QUEM RESPONDE CLIENTE
+
+Em 3/set a campanha parou às 17h30 com *"o teto do dia (30) já foi atingido: 30
+saíram"* — e depois 32, e 33. As três últimas foram **mensagens que a equipe
+digitou** (17:38, 17:41, 17:54), respondendo gente que escreveu.
+
+`saidasDoCanalHoje` conta toda saída com `external_id`, e resposta da equipe
+pelo canal oficial tem `external_id`. O comentário do código diz que são
+*"bolsos diferentes"* — não são. **Dia movimentado encolhe a campanha**,
+justamente no dia em que ela está funcionando. Anotado, não corrigido: o teto
+existe para proteger a reputação do número, e resposta a quem escreveu não
+ameaça reputação nenhuma.
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide
@@ -337,6 +406,13 @@ com alarme na tela · escada do recorte, que sobe sozinha quando acaba o públic
    20–40s e o aviso de decisão pendente.
 3. **Desempenho** — as três medidas acima.
 4. **"Estou dando um tempo" precisa pausar a régua** — ver o Deoclécio abaixo.
+   Junto com ele: **um botão de "não contatar" e de "pausar por N dias"** na
+   ficha, com motivo e uma tela de quem está pausado. Hoje só o descadastro
+   automático escreve `do_not_contact` — o João de 3/set foi marcado no banco,
+   à mão. E em 3/set o Deoclécio, que tinha pedido tempo, **recebeu a
+   reativação de novo às 9h**.
+4b. **Modelos do 2º, 3º e 4º toque na Meta.** Sem eles a campanha fala uma vez
+   com cada pessoa — a trava da repetição está de pé, o texto é que falta.
 5. **Enviar documento pelo WhatsApp** (proposta em PDF). Destrava a Darvil.
 6. **Responder pelo Instagram e pelo Facebook** — depois do Acesso Avançado.
 7. **Comentário de post e anúncio vira lead.** Decidido: *"comentário vira lead

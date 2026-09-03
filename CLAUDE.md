@@ -316,6 +316,17 @@ vazar para produção ou biblioteca faltar em ambiente novo:
   `"Emagrecer"` casou com ZERO entradas, e quatro entradas da academia não
   tinham gatilho nenhum, **inclusive a que governa a reativação inteira**.
   Segmento novo precisa de gatilho dos DOIS lados.
+- **⚠ TEXTO ESCOLHIDO PELO MOTIVO REPETE — O TOQUE É QUE TEM NÚMERO.** O canal
+  pegava o modelo em `modelos[motivo]`, e o motivo de quem não respondeu
+  continua o mesmo na semana seguinte: **56 pessoas receberam a mesma abertura
+  duas vezes, 7 dias depois**, com o *"estou falando de um número novo"* dentro
+  — verdade na primeira, mentira na segunda. Fora da janela de 24h a Meta só
+  entrega modelo aprovado, então não existe "escrever diferente na hora": ou o
+  toque tem o texto dele, ou **não sai**. Nunca cair para o anterior — cair
+  para trás é o defeito. E a régua curada já dizia o que cada toque deve falar
+  (dia 0 gancho, dia 7 o que mudou, dia 21 retorno sem risco, dia 45 encerrar):
+  mais um caso de **ativo curado que não chegava em quem escreve**. Ver
+  `modeloDoToque`.
 - **⚠ A CONSULTA DA BIBLIOTECA É A SITUAÇÃO, NUNCA SÓ A ÚLTIMA MENSAGEM.**
   Mensagem + as falas dele na conversa + etapa e objetivo do manifesto. Com a
   palavra solta a busca não tem sinal; com a situação, a entrada certa vem em
