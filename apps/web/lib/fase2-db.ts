@@ -64,7 +64,7 @@ export async function responderSozinho(entrada: {
   const { tenantId, contactId } = entrada;
 
   const registrar = async (
-    decisao: "respondeu" | "escalou" | "desistiu" | "recusou" | "falhou",
+    decisao: "respondeu" | "escalou" | "agendar" | "desistiu" | "recusou" | "falhou",
     porque: string,
     extra: { esperouMs?: number; interactionId?: string } = {},
   ) => {
@@ -218,6 +218,11 @@ export async function responderSozinho(entrada: {
 
     const texto = (r.data.resposta_sugerida ?? "").trim();
     const faltam = r.data.faltam_fatos ?? [];
+    // ⚠ O HORÁRIO QUE ELA ACEITOU — e ele NÃO vai sozinho para a agenda.
+    // Quem confirma compromisso é gente: gravar a partir da leitura do modelo
+    // criaria compromisso que ninguém combinou. Mas ignorar também não dá — a
+    // IA acabou de escrever "quinta às 10h está certo". Ver a migration 0081.
+    const horarioAceito = (r.data.horario_escolhido ?? "").trim();
 
     // ⚠ A TRAVA ANTI-INVENÇÃO MANDA CHAMAR GENTE, e é o caso mais importante
     // desta função. Ela devolve texto VAZIO junto de `escalar: true` — testar
@@ -320,6 +325,23 @@ export async function responderSozinho(entrada: {
     // faria o teto de mensagens frear a campanha por causa de conversa que não
     // custou nada — freio certo, motivo inventado.
     if (entrada.canal === "whatsapp") await registrarEnvio(tenantId, { temModelo: false });
+
+    // ⚠ RESPONDEU E SOBROU TRABALHO DE GENTE. A pessoa foi atendida na hora —
+    // que é o ponto inteiro de responder às 2h da manhã — e a tarefa fica
+    // visível para alguém confirmar na agenda de manhã. Sem isto, a IA
+    // confirmaria um horário e ninguém saberia até a pessoa aparecer na
+    // recepção (ou não aparecer), que é exatamente o erro que este produto
+    // existe para impedir.
+    if (horarioAceito) {
+      await registrar(
+        "agendar",
+        `Respondi e ela aceitou um horário: ${horarioAceito}. Isso ainda NÃO está na agenda — ` +
+          `confirme, porque compromisso quem marca é gente.`,
+        { esperouMs: decisao.esperarMs, interactionId: (gravada as { id: string } | null)?.id },
+      );
+      return;
+    }
+
     await registrar("respondeu", "A IA respondeu sozinha, dentro da janela de 24h.", {
       esperouMs: decisao.esperarMs,
       interactionId: (gravada as { id: string } | null)?.id,
@@ -346,7 +368,11 @@ export async function decisoesPendentes(
     .from("respostas_automaticas")
     .select("id, contact_id, occurred_at, porque, contacts(name)")
     .eq("tenant_id", tenantId)
-    .eq("decisao", "escalou")
+    // ⚠ OS DOIS ESTADOS TÊM GENTE ESPERANDO, e por coisas diferentes:
+    // `escalou` é "a IA não conseguiu responder"; `agendar` é "ela respondeu
+    // bem e sobrou marcar na agenda". A tela mostra os dois, e o texto de cada
+    // um diz qual é.
+    .in("decisao", ["escalou", "agendar"])
     .is("visto_em", null)
     .order("occurred_at", { ascending: false })
     .limit(limite);

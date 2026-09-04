@@ -60,7 +60,7 @@ export async function vigiarAlertas(tenantId: string, agora = new Date()): Promi
       .from("respostas_automaticas")
       .select("id, porque, contacts(name)")
       .eq("tenant_id", tenantId)
-      .eq("decisao", "escalou")
+      .in("decisao", ["escalou", "agendar"])
       .is("visto_em", null)
       .lte("occurred_at", limite)
       .order("occurred_at", { ascending: false })
