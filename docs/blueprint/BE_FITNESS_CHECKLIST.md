@@ -45,7 +45,14 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
 ## ✅ O QUE MUDOU EM 2 E 3 DE SETEMBRO
 
 - **`origem_ia` chegou a 69 casos, 82,6%** — o limiar de ~50 foi ultrapassado.
-  A fase 2 está autorizada pelo número; falta a decisão dele.
+  ✅ **Decidido em 4/set: a fase 2 foi construída.** Nasce desligada; o
+  interruptor é próprio (`resposta_automatica`), separado do modo do motor.
+- ⚠ **A campanha repetia a mesma abertura**: 56 pessoas receberam o texto do 1º
+  toque duas vezes, 7 dias depois. Corrigido — o modelo agora é escolhido pelo
+  TOQUE, e toque sem texto próprio não sai. O 2º toque foi ligado
+  (`followup_retomada`) com o ok dele.
+- ⚠ **O teto de 30/dia estava sendo gasto por quem RESPONDIA cliente.**
+  Corrigido: conta só conversa proativa (`system_initiated`).
 - **Instagram e Facebook recebendo.** Só respondem por enquanto pelo
   aplicativo — o envio por esses canais ainda não existe, e campanha por
   eles a plataforma não permite.
@@ -59,7 +66,10 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
 
 | O quê | Espera |
 |---|---|
-| **Fase 2: a IA responde e agenda sozinha** | Amostra de `origem_ia`. Hoje **75% em 16 casos** — pouco. Esperar ~50 |
+| ~~**Fase 2: a IA responde sozinha**~~ | **CONSTRUÍDA em 4/set, e desligada.** Falta ele ligar em Automação → Regras |
+| ~~Pausa de 20–40s / aviso de decisão pendente~~ | **Feitas**, junto da fase 2 |
+| ~~Alerta ativo (e-mail)~~ | **Feito em 4/set.** ⚠ Falta `RESEND_API_KEY` na Vercel + redeploy |
+| **Responder por Instagram e Facebook** | Nada da Meta — é código que não existe. 10 conversas do Instagram estão fora do sistema |
 | ~~A técnica curada não chegava em quem redige~~ | **Feito em 31/ago** — os quatro pontos. Ver `ESTADO_DO_PROJETO.md` §0.000 |
 | ~~Corpo do modelo vem do repositório~~ | **Feito em 01/set** — o WABA id chegou sozinho pelo webhook, os 5 modelos vêm da Meta e o vigia reconfere 1×/dia |
 | ~~Importação exigia saber o tipo do arquivo~~ | **Feito em 01/set** — o sistema identifica e a pessoa corrige |

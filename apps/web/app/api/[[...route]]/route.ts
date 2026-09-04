@@ -903,6 +903,14 @@ async function registrar(mensagens: MensagemRecebida[]) {
             ? "customer_reaction"
             : "customer_message",
       };
+      // ⚠ O `after()` VAI DENTRO DE UM `try` DELE PRÓPRIO. Ele exige o contexto
+      // de requisição do Next, e aqui quem responde é o Hono por dentro do
+      // `handle()` — se um dia essa borda mudar, `after` lança. E lançar AQUI
+      // derrubaria o webhook inteiro, que é o pior desfecho possível: a Meta
+      // DESATIVA a assinatura de quem falha, e aí não chega mais mensagem
+      // nenhuma. A resposta automática é um plus; receber a mensagem é o
+      // produto.
+      try {
       after(async () => {
         try {
           await responderSozinho(paraResponder);
@@ -913,6 +921,9 @@ async function registrar(mensagens: MensagemRecebida[]) {
           console.error(`[fase2] falhou fora do registro: ${e instanceof Error ? e.message : String(e)}`);
         }
       });
+      } catch (e) {
+        console.error(`[fase2] nao consegui agendar a resposta: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
 
     // ⚠ PEDIDO DE DESCADASTRO E HONRADO AQUI, NO INSTANTE EM QUE CHEGA.

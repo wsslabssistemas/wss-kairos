@@ -433,6 +433,67 @@ depois do Instagram.
 exige `pages_manage_metadata`, que o app não tem. A confirmação é visual, no
 painel — ou a primeira mensagem que chegar.
 
+### 🟢 A FASE 2 ESTÁ CONSTRUÍDA — E NASCE DESLIGADA (4/set)
+
+O fundador autorizou. O que foi entregue, com o interruptor próprio
+(`automation.resposta_automatica`, separado do `mode` do motor) **em `false`**:
+
+| Peça | Como ficou |
+|---|---|
+| Onde roda | no **webhook**, com `after()` — a Meta recebe o 200 na hora |
+| Pausa | **20 a 40s, sorteados** (`pausaDaResposta`) |
+| Depois da pausa | **confere de novo** — desiste se a equipe respondeu ou se chegou outra mensagem |
+| Recusa | reação, texto sem letra, descadastro, fora da janela de 24h, atendimento encerrado |
+| Trava anti-invenção | **não envia** e vira DECISÃO PENDENTE, num painel fora das abas |
+| Registro | `respostas_automaticas`, append-only, com as 5 decisões |
+
+⚠ **A pausa tem duas funções, e a segunda é a que salva.** Gente manda três
+mensagens seguidas — *"oi"* · *"vi a mensagem"* · *"quanto tá o plano?"* em
+quinze segundos. Sem pausa, isso vira três respostas para uma pergunta.
+
+⚠ **`origem_ia = 'automatica'`, NUNCA `'aceita'`.** Foi `origem_ia` que
+autorizou a fase 2 (82,6%); gravar a resposta automática como "aceita" faria o
+número subir sozinho até 100%, porque ninguém edita o que ninguém lê. **O
+indicador viraria consequência da decisão que ele justificou.**
+
+### 🟢 O ALERTA ATIVO EXISTE (4/set) — falta a chave do e-mail
+
+*"eu até pensei que já tinha, pois eu já havia solicitado"*. Tinha **registro**;
+não tinha **alerta**. Quatro agora tocam por e-mail: agendador mudo há 1h,
+decisão da fase 2 esperando há 15 min, nota do número em média/baixa, e token
+vencendo em ≤ 7 dias.
+
+⚠ **Falta `RESEND_API_KEY` na Vercel.** Sem ela o alerta é produzido e **não
+entregue** — e isso vira linha em `alertas_enviados` com o motivo escrito,
+nunca um `return` silencioso.
+
+⚠ **A `chave` do alerta é o que impede o alarme de se desligar sozinho.** Um
+token vencendo em 7 dias renderia 672 e-mails numa semana, e na terceira hora a
+pessoa cria uma regra de caixa de entrada — a partir daí nenhum alerta chega em
+ninguém, para sempre. A chave cala a repetição e deixa passar a **piora**.
+
+⚠ **E o alerta de "agendador mudo" é um vigia vigiando a si mesmo:** quem o
+chama é o próprio agendador. Só funciona porque existe o **reserva** no
+`pg_cron`, deslocado do GitHub. Os dois caindo no mesmo dia continuam sendo
+silêncio total.
+
+### 🔴 INSTAGRAM E FACEBOOK: NÃO EXISTE CAMINHO DE ENVIO (medido em 4/set)
+
+Pergunta do fundador: *"não consigo responder dentro da aba canal oficial?"*.
+**Não.** A única função que fala com a Meta é `enviarPelaCloudAPI`, que posta em
+`.../{phoneId}/messages` do **WhatsApp**; a tela de Conversas grava
+`channel: "whatsapp"` fixo. Instagram e Facebook só RECEBEM.
+
+E já dói: são **10 contatos do Instagram na base, todos sem telefone**. Quem
+tentar responder um deles de dentro do Kairós recebe uma recusa **falando de
+telefone inválido** — diagnóstico errado, que é o tipo de aviso que ninguém lê
+na segunda vez. A recepção responde pelo aplicativo, fora do sistema.
+
+⚠ **E o argumento dele é o melhor que existe para priorizar isto:** *"normalmente
+recebemos mensagens através desses canais em horários que a academia já está
+fechada"*. É exatamente onde a automação ganha — e é a única parte do plano de
+fim de semana que depende de código novo, não da Meta.
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide
@@ -446,7 +507,12 @@ painel — ou a primeira mensagem que chegar.
    automático escreve `do_not_contact` — o João de 3/set foi marcado no banco,
    à mão. E em 3/set o Deoclécio, que tinha pedido tempo, **recebeu a
    reativação de novo às 9h**.
-4b. **Ligar os modelos já aprovados aos toques 2 e 3.** Perguntado à Meta em
+4b. ✅ **2º toque ligado em 4/set** (`followup_retomada`), com o ok dele. Eram
+   63 pessoas no 1º toque, que passam a receber um segundo e último texto; as
+   66 que já estavam no 2º **param aqui**, porque não há modelo para o 3º.
+   O que ainda falta aprovar na Meta é o texto do *"o que MUDOU desde que ele
+   saiu"*. ⚠ E `recompra_retorno` **repete "número novo"**, falso na segunda
+   mensagem — não serve. Contexto original: Perguntado à Meta em
    3/set, existem **cinco modelos APPROVED** — `reativacao_ex_aluno`,
    `recompra_retorno`, `followup_retomada`, `renovacao_vencimento`,
    `combinado_retorno` — e a campanha usa **um**. O que falta de verdade é o
