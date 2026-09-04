@@ -220,6 +220,53 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
           });
           continue;
         }
+
+        // ⚠ A RESERVA ATÔMICA — o preço de ter DOIS relógios.
+        //
+        // Em 4/set saíram 43 mensagens com teto de 30, e a causa está no
+        // registro: **duas rodadas às 13:17**, uma com 15 e outra com 13. As
+        // duas passaram pelo espaçamento porque as duas perguntaram "faz mais
+        // de 240 min desde o último envio?" ANTES de qualquer uma ter enviado
+        // — e as duas ouviram sim. O teto do dia também não segurou, porque
+        // ele lê o banco antes de agir: as duas leram "15 saíram hoje".
+        //
+        // ⚠ TODO FREIO QUE LÊ E DEPOIS AGE tem essa fresta quando há dois
+        // atores. E a fresta só aparece quando os dois relógios se encontram,
+        // que é raro o bastante para ninguém procurar.
+        //
+        // A trava não é um `if` a mais: é o BANCO decidindo. Quem consegue
+        // inserir a linha da janela roda; quem colide sai em silêncio — e sai
+        // como batida pulada, não como erro, porque não é erro: é o segundo
+        // relógio fazendo exatamente o que devia.
+        //
+        // ⚠ E A CULPA NÃO É DO RESERVA. Ele entrou em 30/ago porque um relógio
+        // só era ponto único de falha, e continua certo. **Redundância sem
+        // exclusão mútua não é redundância: é duplicação.**
+        const slot = Math.floor(Date.now() / 600_000);
+        const { data: reserva, error: erroReserva } = await admin
+          .from("motor_reservas")
+          .insert({ tenant_id: t.id, slot, origem: "agendador" })
+          .select("slot");
+
+        // ⚠ COLISÃO É `23505`, e só ela é motivo de sair. Qualquer outro erro
+        // (banco fora do ar, coluna faltando) NÃO pode calar a campanha: aí a
+        // trava viraria a causa do silêncio que ela existe para evitar.
+        if (erroReserva?.code === "23505" || (!erroReserva && !reserva?.length)) {
+          await registrarRodada({
+            tenantId: t.id,
+            origem: "agendador",
+            pulada: true,
+            porque: "Outra rodada desta empresa começou neste mesmo minuto — o segundo relógio saiu de cena.",
+          });
+          detalhe.push({
+            tenant: t.slug, ok: true, enviadas: 0, falhas: 0, pulada: true,
+            porque: "Rodada simultânea — reserva já tomada.",
+          });
+          continue;
+        }
+        if (erroReserva) {
+          console.warn(`[motor] nao consegui reservar a rodada de ${t.slug}: ${erroReserva.message}`);
+        }
       }
 
       const r: ResultadoDoMotor = await rodarMotor({
