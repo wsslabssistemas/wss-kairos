@@ -531,6 +531,55 @@ dias — só que agora seria o sistema cometendo o erro que existe para impedir.
 A saída: **responde na hora E deixa a tarefa visível** (`decisao = 'agendar'`),
 na mesma faixa vermelha que aparece em toda tela.
 
+### 🟢 A HORA DO "CHEGA" — construída em 4/set, a pedido dele
+
+Eu tinha proposto adiar. Ele discordou e estava certo: *"acredito que hoje é um
+bom momento, já que o sistema vai operar sozinho, ele tem que entender o momento
+do 'chega'"*. Máquina que responde sozinha sem saber parar é pior que nenhuma.
+
+**A conversa pode terminar com ele.** `fechaAConversa` decide com o CONTEXTO, e
+é ele que torna a decisão segura:
+
+| A nossa mensagem anterior | Ela responde "ok" | O que acontece |
+|---|---|---|
+| uma **afirmação** | fim natural do papo | encerra, e a IA não responde |
+| uma **pergunta** | isso é um **SIM** | não encerra — fechar aqui perderia o momento |
+
+E encerrar agora vale para a **régua**, não só para a tela: a fila fica quieta
+até haver **motivo novo** — ela falar depois, ou um combinado marcado para
+depois. Antes a pessoa se despedia e voltava a ser tocada em cinco dias.
+
+**A agenda é marcada sozinha, e o combinado é registrado sozinho.** Reabre a
+regra antiga ("quem confirma é gente") com o argumento dele: um sistema que
+conversa até o sim e não registra o sim está quebrado de um jeito pior. O que
+preserva a preocupação: só marca a partir de aceitação explícita, o compromisso
+nasce com `origem: "cliente"`, e **falha em marcar vira tarefa na faixa
+vermelha** — porque aí existe alguém com um "está confirmado" na mão e sem vaga.
+
+**Marcou, começou.** `scheduling.starts_stage` (no manifesto) faz marcar horário
+avançar a etapa — e é isso que finalmente liga a régua dos 8 primeiros dias, que
+existia e nunca começava.
+
+⚠ **E o 1º toque dessa régua estava errado:** dizia *"realização de valor — o
+que já conquistou"*, afirmação sobre um fato que ninguém verificou. Para quem
+não apareceu, chega como *"que bom que você está treinando"*. Virou: **dia 3
+confirma se ela conseguiu vir**; se veio, pergunta como foi; se não veio, sem
+cobrança, oferece remarcar. E ganhou um **dia 12 de despedida**.
+
+### 🟢 OS 953 DO CONVÊNIO IMPORTADOS — e por que eles não recebem nada ainda
+
+Gympass e Totalpass, sem cláusula de exclusividade (confirmado por ele). Com os
+137 que já existiam, são **1.090 pessoas com `custom.convenio`**.
+
+⚠ **O veto passou a valer para TODO motivo**, não só reativação. Não é "nunca
+falar com elas": é **não falar sozinho até haver assunto curado**. O desenho já
+existe, dele: *"um toque a cada um ou dois meses, cada um com assunto
+diferente"* — e isso precisa de régua no manifesto **e de modelo aprovado na
+Meta**, porque fora da janela de 24h não sai texto livre.
+
+⚠ E o que foi escondido aparece: `comConvenio` e `encerrados` voltam na carga
+da fila para a tela poder dizer quantos são.
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide
