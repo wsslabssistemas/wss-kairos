@@ -242,6 +242,13 @@ jobs:
       # atendimento encerrado, e a segunda conferencia depois da pausa.
       - name: Fase 2 — quando a IA NAO deve responder sozinha
         run: node packages/db/tests/fase2_test.mjs
+      # ⚠ ALARME FALHA DE DOIS JEITOS OPOSTOS, e os dois sao silenciosos: o que
+      # nunca toca se parece com "esta tudo bem", e o que toca sempre faz a
+      # pessoa criar uma regra de caixa de entrada — e a partir dai nenhum
+      # alerta desta casa chega em ninguem, para sempre. A `chave` e o que cala
+      # a repeticao sem calar a PIORA.
+      - name: Alertas — quando tocar, e quando ficar calado
+        run: node packages/db/tests/alertas_test.mjs
       # ⚠ O AGENDADOR PERDEU AS DUAS EXECUCOES DE 27/ago e ninguem soube. A
       # correcao foi bater de 15 em 15 minutos e deixar a cadencia com o motor;
       # esta trava guarda as bordas em que a regra nova poderia calar a

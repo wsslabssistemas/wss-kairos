@@ -4,6 +4,7 @@ import { rodarMotor, type ResultadoDoMotor } from "@/lib/motor-db";
 import { registrarRodada } from "@/lib/motor-registro";
 import { avaliarEspacamento } from "@/lib/espacamento";
 import { vigiarCanal } from "@/lib/vigia-canal";
+import { vigiarAlertas } from "@/lib/alertas-db";
 import { readAutomation } from "@/lib/automation";
 import { lerTudo } from "@/lib/paginado";
 
@@ -90,6 +91,16 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
       // ⚠ E ELE É BEST-EFFORT: `vigiarCanal` engole o próprio erro. Falhar em
       // vigiar não pode impedir uma mensagem de sair.
       if (!simular) await vigiarCanal(t.id);
+
+      // ⚠ E O ALARME VEM LOGO DEPOIS, PELO MESMO MOTIVO. O vigia COLETA (nota
+      // da Meta, validade do token); isto CHAMA alguém. Separá-los seria ter
+      // todos os dados na mão e ninguém lendo — que é a última versão do
+      // defeito desta casa, agora com o produto respondendo cliente sozinho às
+      // 2h da manhã.
+      //
+      // Best-effort como o vigia: `vigiarAlertas` engole o próprio erro.
+      // Falhar em avisar não pode impedir uma mensagem de sair.
+      if (!simular) await vigiarAlertas(t.id);
 
       // ⚠ O ESPAÇAMENTO É CONSULTADO ANTES DE QUALQUER TRABALHO. Ele lê o
       // ÚLTIMO ENVIO desta empresa — a última rodada que mandou mensagem de
