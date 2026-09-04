@@ -580,6 +580,39 @@ Meta**, porque fora da janela de 24h não sai texto livre.
 ⚠ E o que foi escondido aparece: `comConvenio` e `encerrados` voltam na carga
 da fila para a tela poder dizer quantos são.
 
+### ⚠ O CONVÊNIO: "NUNCA VEIO" NÃO EXISTE — e eu li o dado errado (4/set)
+
+Eu criei uma entrada de biblioteca e um modelo para "tem o convênio e nunca
+usou aqui", por aritmética: 1.142 cadastros, 442 com check-in na janela, logo
+890 nunca vieram. **A conta estava certa e a conclusão estava errada.**
+
+O fundador corrigiu na hora: *"nunca teremos acesso a pessoas que têm o
+convênio — todos ou já frequentam a academia, ou buscaram informação para
+frequentar"*. **O cadastro nasce NA academia.** Ninguém entra nessa lista sem
+ter estado lá.
+
+Os 890 são **quem veio antes da janela do arquivo** — 12 meses no Gympass,
+apenas **3** no Totalpass. Recontado: 746 + 158.
+
+⚠ **O estrago seria o defeito que esta casa mais teme:** *"vi que você ainda não
+veio treinar com a gente"* chegando a quem treinou ali dois anos. Fluente e
+errada — a pessoa não corrige, não reclama, conclui que ninguém ali sabe quem
+ela é, e some.
+
+⚠ **E a lição é de método:** *"a exportação do cliente não é a realidade — ela
+tem um filtro que ninguém declarou"*. Já tinha custado caro com a "relação de
+plano ativo", que era lista de cobrança em aberto. **Tratei ausência de linha
+como ausência de fato.**
+
+Fechado pela `0084`: a entrada errada foi apagada e no lugar entrou o público
+que EXISTE — quem esteve lá há mais de um ano. A conversa com ele é outra: não
+lembra do professor nem do horário, e a academia de hoje é outra. Fala-se do
+que MUDOU, nunca *"faz um tempinho"*.
+
+E as 857 fichas sem check-in na janela agora dizem isso na ficha
+(`faixa_checkin: sem_registro_na_janela`, com a janela escrita) — senão a
+próxima janela de contexto repete o erro.
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide
