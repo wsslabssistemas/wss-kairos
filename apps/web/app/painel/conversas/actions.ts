@@ -2,10 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/auth";
-import { credencialDoCanal } from "@/lib/credenciais";
+import { credencialDoCanal, credencialDoDirect } from "@/lib/credenciais";
 import { rotaDaResposta } from "@/lib/roteamento";
 import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
-import { enviarPelaCloudAPI } from "@/lib/envio";
+import { enviarPelaCloudAPI, enviarPeloDirect } from "@/lib/envio";
 import { gerarResposta } from "../responder/ai-actions";
 import { getSkillFormConfig } from "@/lib/skill";
 import { ajustarRetorno } from "@/lib/retorno";
@@ -300,10 +300,23 @@ export async function responderPeloCanal(
   const supabase = await createClient();
 
   const [{ data: c }, credencial] = await Promise.all([
-    supabase.from("contacts").select("phone").eq("id", contactId).eq("tenant_id", tenant.id).maybeSingle(),
+    // paginacao-ok: uma linha, endereçada pela chave primária do contato.
+    supabase
+      .from("contacts")
+      // ⚠ AS TRÊS CHAVES DA MESMA PESSOA. Telefone, IGSID e PSID: a mesma
+      // pessoa tem um id em cada plataforma, e a resposta sai por onde a
+      // conversa está — nunca por onde é mais fácil.
+      .select("phone, instagram_id, facebook_id")
+      .eq("id", contactId)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle(),
     credencialDoCanal(tenant.id),
   ]);
-  const contact = c as { phone: string | null } | null;
+  const contact = c as {
+    phone: string | null;
+    instagram_id: string | null;
+    facebook_id: string | null;
+  } | null;
   if (!contact) return { ok: false, motivo: "Contato não encontrado." };
 
   // ⚠ A JANELA VEM DA ÚLTIMA MENSAGEM **DELE PELO CANAL OFICIAL**, e as duas
@@ -317,7 +330,11 @@ export async function responderPeloCanal(
   // paginacao-ok: uma linha, a mais recente, endereçada por índice.
   const { data: entrada } = await supabase
     .from("interactions")
-    .select("occurred_at")
+    // ⚠ O CANAL VEM JUNTO, e é ele que decide por onde a resposta sai. A
+    // pergunta "por onde a conversa está" tem uma resposta só, e ela está na
+    // última mensagem dela — não numa configuração e não no que a ficha tem
+    // preenchido.
+    .select("occurred_at, channel")
     .eq("tenant_id", tenant.id)
     .eq("contact_id", contactId)
     .eq("direction", "inbound")
@@ -326,21 +343,52 @@ export async function responderPeloCanal(
     .limit(1)
     .maybeSingle();
 
-  const quando = (entrada as { occurred_at: string } | null)?.occurred_at ?? null;
+  const ultima = entrada as { occurred_at: string; channel: string | null } | null;
+  const quando = ultima?.occurred_at ?? null;
+  const canalDaConversa = (ultima?.channel ?? "whatsapp") as "whatsapp" | "instagram" | "facebook";
   const janela = janelaDeAtendimento(quando);
 
+  // ⚠ A CREDENCIAL QUE IMPORTA É A DO CANAL DESTA CONVERSA. Perguntar pelo
+  // token do WhatsApp para responder um direct do Instagram faria a empresa
+  // que só tem Instagram receber *"o canal oficial não está configurado"* —
+  // recusa certa pelo motivo errado, que manda a pessoa consertar o que não
+  // está quebrado.
+  const credencialDoDirectDaConversa =
+    canalDaConversa === "whatsapp" ? null : await credencialDoDirect(tenant.id, canalDaConversa);
+
   const rota = rotaDaResposta({
-    temCredencial: !!credencial,
+    temCredencial: canalDaConversa === "whatsapp" ? !!credencial : !!credencialDoDirectDaConversa,
     conversaNoCanalOficial: !!quando,
     janelaAberta: janela.aberta,
   });
 
   if (rota.via !== "cloud_api_texto") return { ok: false, motivo: rota.porque };
 
-  const num = paraE164BR(contact.phone);
-  if (!num.ok) return { ok: false, motivo: num.motivo };
-
-  const envio = await enviarPelaCloudAPI(num.digitos, limpo, credencial!);
+  // ⚠ A RESPOSTA SAI POR ONDE A CONVERSA ESTÁ. Instagram e Messenger não têm
+  // telefone: derivar E.164 de uma ficha sem telefone devolvia *"telefone
+  // inválido"* para quem tinha escrito pelo direct — diagnóstico errado, e
+  // erro de diagnóstico é o que ensina a pessoa a ignorar o aviso da próxima
+  // vez. Foram 10 contatos do Instagram nessa situação até 4/set.
+  let envio: { ok: true; id: string } | { ok: false; motivo: string };
+  if (canalDaConversa === "instagram" || canalDaConversa === "facebook") {
+    const direct = credencialDoDirectDaConversa;
+    if (!direct) {
+      return {
+        ok: false,
+        motivo:
+          canalDaConversa === "instagram"
+            ? "A conversa é do Instagram e esta empresa não tem a conta e o token do Instagram salvos em Automação → Canal oficial."
+            : "A conversa é do Facebook e esta empresa não tem a página e o token da página salvos em Automação → Canal oficial.",
+      };
+    }
+    const destinatario =
+      canalDaConversa === "instagram" ? contact.instagram_id : contact.facebook_id;
+    envio = await enviarPeloDirect(canalDaConversa, destinatario ?? "", limpo, direct);
+  } else {
+    const num = paraE164BR(contact.phone);
+    if (!num.ok) return { ok: false, motivo: num.motivo };
+    envio = await enviarPelaCloudAPI(num.digitos, limpo, credencial!);
+  }
   if (!envio.ok) return { ok: false, motivo: envio.motivo };
 
   // A mensagem JÁ SAIU. Falhar em registrar não a desfaz, então o erro sobe
@@ -354,7 +402,10 @@ export async function responderPeloCanal(
     // que separa tempo de resposta de toque proativo na Gestão — trocar um
     // pelo outro estragaria a métrica que o produto vende.
     input_kind: "agent_briefing",
-    channel: "whatsapp",
+    // ⚠ O CANAL REAL, nunca "whatsapp" fixo. Gravar tudo como WhatsApp fazia a
+    // conversa do Instagram parecer conversa de WhatsApp no histórico — e a
+    // janela de 24h da próxima resposta seria calculada contra o canal errado.
+    channel: canalDaConversa,
     external_id: envio.id,
     content: limpo,
     occurred_at: new Date().toISOString(),
@@ -380,7 +431,14 @@ export async function responderPeloCanal(
 
   // Resposta em texto livre é `servico`: grátis até 1º/out/2026, cobrada
   // depois. Medir desde já é o que faz a virada não ser surpresa.
-  await registrarEnvio(tenant.id, { temModelo: false });
+  //
+  // ⚠ INSTAGRAM E MESSENGER NÃO ENTRAM NA CONTA. A Meta cobra conversa no
+  // WhatsApp Business; direct não é cobrado. Somar os três infla o gasto
+  // previsto e, pior, faz o TETO de mensagens frear a campanha do WhatsApp por
+  // causa de conversa que não custou nada — freio certo, motivo inventado.
+  if (canalDaConversa === "whatsapp") {
+    await registrarEnvio(tenant.id, { temModelo: false });
+  }
 
   // ⚠ A CORREÇÃO É GUARDADA AQUI, no instante em que ela existe.
   //

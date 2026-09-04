@@ -315,3 +315,126 @@ export async function enviarModeloPelaCloudAPI(
     return { ok: false, motivo: `Falha de rede ao falar com a Meta: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
+
+// ---------------------------------------------------------------------
+// O ENVIO PELO DIRECT — Instagram e Messenger.
+//
+// ⚠ POR QUE ISTO NÃO EXISTIA, e o que a falta custava. Os dois canais foram
+// ligados em 2 e 3/set e só RECEBIAM: a única função que falava com a Meta
+// postava em `/{phoneId}/messages` do WhatsApp, e a tela de Conversas gravava
+// `channel: "whatsapp"` fixo. Resultado medido em 4/set: **10 contatos do
+// Instagram na base, todos sem telefone** — e quem tentasse responder um deles
+// de dentro do Kairós recebia uma recusa falando de TELEFONE INVÁLIDO.
+// Diagnóstico errado, que é o tipo de aviso que ninguém lê na segunda vez.
+//
+// O fundador nomeou o valor: *"normalmente recebemos mensagens através desses
+// canais em horários que a academia já está fechada"*. É exatamente a hora em
+// que a automação ganha — e era a única parte do plano que dependia de código,
+// não da Meta.
+//
+// ⚠ AQUI SÓ EXISTE RESPOSTA. Não há modelo aprovado nem envio proativo no
+// Instagram e no Messenger: a plataforma só entrega dentro da janela de 24h
+// depois que a PESSOA escreve (7 dias com a marca de atendimento humano).
+// Campanha de reativação não roda nesses canais, e prometer isso seria vender
+// o que a plataforma não entrega.
+// ---------------------------------------------------------------------
+
+export type CredencialDoDirect = {
+  /** `instagram_account_id` ou `facebook_page_id` — de quem a mensagem sai. */
+  contaId: string;
+  /** `instagram_token` (IGAA…) ou o token da PÁGINA (EAA…). */
+  token: string;
+  versao?: string;
+};
+
+/**
+ * Responde um direct do Instagram ou do Messenger.
+ *
+ * `destinatarioId` é o id da pessoa NAQUELA plataforma — IGSID no Instagram,
+ * PSID no Facebook. Não é telefone, e o mesmo ser humano tem um id diferente
+ * em cada uma: usar o do outro canal manda a mensagem para outra pessoa.
+ */
+export async function enviarPeloDirect(
+  plataforma: "instagram" | "facebook",
+  destinatarioId: string,
+  texto: string,
+  credencial: CredencialDoDirect,
+): Promise<EnvioProvedor> {
+  const { contaId, token } = credencial;
+  const versao = credencial.versao ?? "v21.0";
+
+  if (!token || !contaId) {
+    return {
+      ok: false,
+      motivo: `O canal do ${plataforma === "instagram" ? "Instagram" : "Facebook"} não está configurado nesta empresa.`,
+    };
+  }
+  if (!destinatarioId) {
+    return { ok: false, motivo: "Esta conversa não tem o id da pessoa na plataforma." };
+  }
+
+  // ⚠ SÃO DOIS HOSTS POSSÍVEIS, E EU JÁ CHUTEI O ERRADO UMA VEZ. A "API do
+  // Instagram com login do Instagram" — que é a configuração desta conta —
+  // responde em `graph.instagram.com`; `graph.facebook.com` é o caminho de
+  // quem entra pelo login do Facebook. Com o host errado a busca do nome
+  // falhava em silêncio e as duas primeiras pessoas reais viraram
+  // "Instagram 869579".
+  //
+  // Tentar os dois, na ordem provável, custa uma chamada extra só quando o
+  // primeiro recusa — e evita repetir o mesmo dia de investigação. O Messenger
+  // só existe no `graph.facebook.com`.
+  const hosts =
+    plataforma === "instagram"
+      ? [`https://graph.instagram.com/${versao}`, `https://graph.facebook.com/${versao}`]
+      : [`https://graph.facebook.com/${versao}`];
+
+  const corpoDaMensagem = JSON.stringify({
+    recipient: { id: destinatarioId },
+    // ⚠ `RESPONSE` declara à Meta que isto responde alguém que escreveu — que
+    // é literalmente o único uso permitido aqui. Marcar como `UPDATE` ou
+    // `MESSAGE_TAG` seria pedir para tratar resposta como notificação, e é o
+    // caminho curto para a conta ser restringida.
+    messaging_type: "RESPONSE",
+    message: { text: texto },
+  });
+
+  let ultimoErro = "";
+  for (const base of hosts) {
+    try {
+      const resp = await fetch(`${base}/${contaId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: corpoDaMensagem,
+      });
+
+      const corpo = (await resp.json().catch(() => null)) as
+        | { message_id?: string; error?: { message?: string; code?: number } }
+        | null;
+
+      if (!resp.ok) {
+        // O erro da Meta vai INTEIRO, como no WhatsApp: o código dela diz se é
+        // token vencido, janela fechada ou permissão faltando, e cada um tem
+        // conserto diferente. "Erro ao enviar" não conserta nada.
+        ultimoErro = corpo?.error?.message ?? `HTTP ${resp.status}`;
+        continue;
+      }
+
+      const id = corpo?.message_id;
+      // ⚠ SUCESSO SEM ID NÃO É SUCESSO. Sem `message_id` não há como casar o
+      // eco que a Meta devolve depois — e o eco não reconhecido vira mensagem
+      // duplicada no histórico do cliente.
+      if (!id) {
+        ultimoErro = "A Meta respondeu OK e não devolveu o id da mensagem.";
+        continue;
+      }
+      return { ok: true, id };
+    } catch (e) {
+      ultimoErro = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  return { ok: false, motivo: ultimoErro || "Não consegui falar com a Meta." };
+}

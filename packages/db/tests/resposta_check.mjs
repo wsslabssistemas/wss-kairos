@@ -181,5 +181,36 @@ verifica(
   true,
 );
 
+// ------------------------- NAO REPETIR A MESMA OFERTA (04/set/2026)
+//
+// O fundador leu uma conversa e nomeou: "ele propoe duas datas como
+// alternativa, o cliente responde, e quando o sistema responde de novo, ele vem
+// com as duas alternativas de data, para a mesma pessoa, no mesmo contexto.
+// Isso e chato e nao parece fluido, mostra claramente alguem te empurrando algo
+// de maneira forcada."
+//
+// O caso medido e a Debora: em 21/08 ela pediu sexta 28, o sistema ofereceu
+// terca ou quarta; ela nao escolheu. Em 25/08 ela voltou perguntando OUTRA
+// coisa e recebeu a mesma proposta de novo, com as datas empurradas.
+//
+// A causa esta numa regra BOA: o prompt manda "use fechamento por
+// alternativa", que e tecnica correta — aplicada a CADA mensagem, vira
+// insistencia. E prima de DEPOIS_DO_SIM_PARE: la o erro e empilhar venda sobre
+// um sim, aqui e repetir a pergunta para quem nao respondeu a primeira.
+//
+// A trava e de LIGACAO: a regra existir em `lib/prompt.ts` e nao ser
+// interpolada no prompt e exatamente o defeito que este arquivo guarda —
+// texto curado que nao chega em quem redige nao existe.
+verifica(
+  "a regra de nao repetir a oferta esta escrita",
+  fonte("apps/web/lib/prompt.ts").includes("NUNCA REPITA UMA PROPOSTA"),
+  true,
+);
+verifica(
+  "e ela CHEGA no prompt de quem redige",
+  codigo("apps/web/app/painel/responder/ai-actions.ts").includes("NAO_REPITA_A_OFERTA"),
+  true,
+);
+
 console.log(falhas ? `\n${falhas} FALHA(S)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

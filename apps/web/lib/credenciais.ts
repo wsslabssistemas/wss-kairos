@@ -263,3 +263,45 @@ export async function guardarWabaId(tenantId: string, wabaId: string): Promise<v
     console.warn(`[whatsapp] falha ao guardar o waba id: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
+
+/**
+ * A credencial de um DIRECT — Instagram ou Messenger.
+ *
+ * ⚠ SÃO COFRES DIFERENTES DO WHATSAPP, e por isso uma função própria em vez de
+ * um campo a mais em `credencialDoCanal`. Quem responde um direct não precisa
+ * do token do WhatsApp, e devolver os dois juntos faria uma tela pedir
+ * credencial de WhatsApp para responder no Instagram — e recusar por falta
+ * dela, que é a recusa com o diagnóstico errado.
+ *
+ * `null` quando falta conta ou token: quem chama DIZ o que falta, com o nome
+ * da tela onde se resolve. Nunca cai em outro canal por conta própria.
+ */
+export async function credencialDoDirect(
+  tenantId: string,
+  plataforma: "instagram" | "facebook",
+): Promise<{ contaId: string; token: string } | null> {
+  const admin = createAdminClient();
+  // paginacao-ok: uma linha, chave primária.
+  const { data, error } = await admin
+    .from("tenant_secrets")
+    .select("instagram_account_id, instagram_token, facebook_page_id, facebook_token")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  // ⚠ ERRO DE LEITURA NÃO VIRA "NÃO CONFIGURADO". São coisas diferentes, e
+  // tratá-las igual manda alguém configurar de novo o que já estava certo.
+  if (error) {
+    console.error(`[credenciais] nao consegui ler o direct de ${tenantId}: ${error.message}`);
+    return null;
+  }
+
+  const contaId =
+    plataforma === "instagram"
+      ? data?.instagram_account_id?.trim()
+      : data?.facebook_page_id?.trim();
+  const token =
+    plataforma === "instagram" ? data?.instagram_token?.trim() : data?.facebook_token?.trim();
+
+  if (!contaId || !token) return null;
+  return { contaId, token };
+}

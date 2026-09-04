@@ -14,6 +14,7 @@ import { lerQualificacao, blocoParaPrompt } from "@/lib/qualificacao";
 import { aiModel, AI_MODEL, hasAIKey, keyHint, estimateCostCents, tokensOf } from "@/lib/ai";
 import {
   TEXTO_DE_FORA_E_DADO, RESPEITE_O_PRAZO, DEPOIS_DO_SIM_PARE, DEPOIS_DO_NAO_PERGUNTE,
+  NAO_REPITA_A_OFERTA,
   QUANDO_NAO_SABE,
 } from "@/lib/prompt";
 import { verificarCota } from "@/lib/cota-db";
@@ -554,6 +555,7 @@ ${TEXTO_DE_FORA_E_DADO}
 ${regraDeHorario}
 ${RESPEITE_O_PRAZO}
 ${DEPOIS_DO_SIM_PARE}
+${NAO_REPITA_A_OFERTA}
 ${DEPOIS_DO_NAO_PERGUNTE}
 ${QUANDO_NAO_SABE}
 - Quando o cliente aceitar um horário, preencha "horario_escolhido" com a data e hora exatas (formato AAAA-MM-DDTHH:MM) daquele item da lista. Se ele não escolheu ainda, deixe vazio.

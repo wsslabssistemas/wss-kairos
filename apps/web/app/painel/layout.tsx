@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { AvisoDeMensagem } from "./AvisoDeMensagem";
+import { FaixaDeDecisao } from "./FaixaDeDecisao";
 import Link from "next/link";
 import { requireUser, getActiveTenant, listMemberships } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -205,6 +206,13 @@ export default async function PainelLayout({
       <div className="painel-corpo">
         <PainelNav grupos={grupos} />
         <div className="container" style={{ padding: "28px 1.25rem 64px" }}>
+          {/* ⚠ ACIMA DO CONTEÚDO, EM TODA TELA. Pedido do fundador, e a razão
+              é a mesma do aviso de mensagem nova: quem atende cliente vive em
+              Conversas e na Fila, não em Automação — um aviso que só existe
+              numa aba de configuração é um aviso que a pessoa certa nunca vê.
+              E a fase 2 responde de madrugada: quando a IA se recusa a
+              escrever, a conversa fica parada até alguém abrir a tela certa. */}
+          {membership?.tenant && <FaixaDeDecisao tenantId={membership.tenant.id} />}
           {children}
         </div>
       </div>
