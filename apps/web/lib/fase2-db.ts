@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { credencialDoCanal } from "@/lib/credenciais";
-import { enviarPelaCloudAPI } from "@/lib/envio";
+import { credencialDoCanal, credencialDoDirect } from "@/lib/credenciais";
+import { enviarPelaCloudAPI, enviarPeloDirect } from "@/lib/envio";
 import { janelaDeAtendimento } from "@/lib/whatsapp-webhook";
 import { paraE164BR } from "@/lib/phone";
 import { registrarEnvio, gastoDeMensagensNoMes } from "@/lib/custo_mensagem-db";
@@ -48,6 +48,15 @@ export async function responderSozinho(entrada: {
   texto: string;
   /** `customer_message` ou `customer_reaction`. */
   tipoDaMensagem: string;
+  /**
+   * POR ONDE a conversa chegou — e por onde a resposta tem que sair.
+   *
+   * ⚠ Instagram e Messenger valem MAIS aqui que o WhatsApp, e o fundador
+   * nomeou por quê: *"normalmente recebemos mensagens através desses canais em
+   * horários que a academia já está fechada"*. São os canais da madrugada e do
+   * domingo — as horas em que não há ninguém para responder.
+   */
+  canal: "whatsapp" | "instagram" | "facebook";
   /** Injetável no teste. Em produção fica o sorteio de verdade. */
   sorteio?: number;
 }): Promise<void> {
@@ -77,9 +86,13 @@ export async function responderSozinho(entrada: {
   try {
     const [{ data: t }, { data: c }] = await Promise.all([
       admin.from("tenants").select("settings, skill_key").eq("id", tenantId).maybeSingle(),
+      // paginacao-ok: uma linha, endereçada pela chave primária do contato.
       admin
         .from("contacts")
-        .select("phone, do_not_contact, atendimento_encerrado_em")
+        // As três chaves da mesma pessoa: telefone, IGSID e PSID. Ela tem um id
+        // diferente em cada plataforma, e responder pelo id do outro canal
+        // manda a mensagem para outra pessoa.
+        .select("phone, instagram_id, facebook_id, do_not_contact, atendimento_encerrado_em")
         .eq("id", contactId)
         .eq("tenant_id", tenantId)
         .maybeSingle(),
@@ -88,6 +101,8 @@ export async function responderSozinho(entrada: {
     const tenant = t as { settings: unknown; skill_key: string } | null;
     const contato = c as {
       phone: string | null;
+      instagram_id: string | null;
+      facebook_id: string | null;
       do_not_contact: boolean;
       atendimento_encerrado_em: string | null;
     } | null;
@@ -166,7 +181,11 @@ export async function responderSozinho(entrada: {
     // Antes da chamada, nunca depois: verificar depois é medir o prejuízo. E
     // este teto governa o dinheiro que sai pela Meta, que é bolso diferente do
     // teto de IA (lá o freio é parar de gerar, e o manual custa zero).
-    const teto = lerTetoDeMensagens(tenant.settings);
+    //
+    // ⚠ SÓ VALE PARA O WHATSAPP. A Meta não cobra direct — freá-lo por um teto
+    // de dinheiro que ele não gasta seria calar o canal da madrugada por causa
+    // da conta de outro canal.
+    const teto = entrada.canal === "whatsapp" ? lerTetoDeMensagens(tenant.settings) : null;
     if (teto !== null) {
       const gasto = await gastoDeMensagensNoMes(tenantId);
       const veredito = avaliarTetoDeMensagens(gasto.gastoCents, teto);
@@ -220,23 +239,43 @@ export async function responderSozinho(entrada: {
     }
 
     // ---------------------------------------------- O ENVIO
-    const num = paraE164BR(contato.phone);
-    if (!num.ok) {
-      await registrar("escalou", `Não consegui usar o telefone da ficha: ${num.motivo}`, {
-        esperouMs: decisao.esperarMs,
-      });
-      return;
+    //
+    // ⚠ A RESPOSTA SAI POR ONDE A CONVERSA ESTÁ, como na tela. Derivar E.164
+    // de uma ficha do Instagram — que não tem telefone — devolvia "telefone
+    // inválido" para quem escreveu pelo direct: recusa certa pelo motivo
+    // errado, e erro de diagnóstico é o que ensina a ignorar o aviso.
+    let envio: { ok: true; id: string } | { ok: false; motivo: string };
+    if (entrada.canal === "instagram" || entrada.canal === "facebook") {
+      const direct = await credencialDoDirect(tenantId, entrada.canal);
+      if (!direct) {
+        await registrar(
+          "falhou",
+          `O canal do ${entrada.canal === "instagram" ? "Instagram" : "Facebook"} não está configurado nesta empresa.`,
+          { esperouMs: decisao.esperarMs },
+        );
+        return;
+      }
+      const destinatario =
+        entrada.canal === "instagram" ? contato.instagram_id : contato.facebook_id;
+      envio = await enviarPeloDirect(entrada.canal, destinatario ?? "", texto, direct);
+    } else {
+      const num = paraE164BR(contato.phone);
+      if (!num.ok) {
+        await registrar("escalou", `Não consegui usar o telefone da ficha: ${num.motivo}`, {
+          esperouMs: decisao.esperarMs,
+        });
+        return;
+      }
+      const credencial = await credencialDoCanal(tenantId);
+      if (!credencial) {
+        await registrar("falhou", "O canal oficial desta empresa não está configurado.", {
+          esperouMs: decisao.esperarMs,
+        });
+        return;
+      }
+      envio = await enviarPelaCloudAPI(num.digitos, texto, credencial);
     }
 
-    const credencial = await credencialDoCanal(tenantId);
-    if (!credencial) {
-      await registrar("falhou", "O canal oficial desta empresa não está configurado.", {
-        esperouMs: decisao.esperarMs,
-      });
-      return;
-    }
-
-    const envio = await enviarPelaCloudAPI(num.digitos, texto, credencial);
     if (!envio.ok) {
       await registrar("falhou", `A Meta recusou o envio: ${envio.motivo}`, {
         esperouMs: decisao.esperarMs,
@@ -255,7 +294,9 @@ export async function responderSozinho(entrada: {
         // tempo de resposta de toque proativo na Gestão, e é o que mantém o
         // teto diário da campanha fora disto.
         input_kind: "agent_briefing",
-        channel: "whatsapp",
+        // O canal REAL, nunca "whatsapp" fixo: a janela de 24h da resposta
+        // seguinte é calculada em cima dele.
+        channel: entrada.canal,
         external_id: envio.id,
         content: texto,
         occurred_at: new Date().toISOString(),
@@ -275,7 +316,10 @@ export async function responderSozinho(entrada: {
       console.error(`[fase2] mensagem ${envio.id} SAIU mas nao registrou: ${erroGravar.message}`);
     }
 
-    await registrarEnvio(tenantId, { temModelo: false });
+    // ⚠ SÓ O WHATSAPP ENTRA NA CONTA. A Meta não cobra direct, e somar os três
+    // faria o teto de mensagens frear a campanha por causa de conversa que não
+    // custou nada — freio certo, motivo inventado.
+    if (entrada.canal === "whatsapp") await registrarEnvio(tenantId, { temModelo: false });
     await registrar("respondeu", "A IA respondeu sozinha, dentro da janela de 24h.", {
       esperouMs: decisao.esperarMs,
       interactionId: (gravada as { id: string } | null)?.id,

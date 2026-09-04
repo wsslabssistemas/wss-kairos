@@ -15,6 +15,7 @@ import { Abas } from "../Abas";
 import { PerfilDoNumero } from "./PerfilDoNumero";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
 import { lerRespostaAutomatica } from "@/lib/fase2";
+import { enviadasNoDia, hojeLocal } from "@/lib/enviadas";
 import { decisoesPendentes } from "@/lib/fase2-db";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 import { dataHoraLocal } from "@/lib/fuso";
@@ -71,9 +72,9 @@ const FIELDS: { key: keyof ReturnType<typeof readAutomation>; label: string; hin
 export default async function AutomacaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ salvo?: string; erro?: string; canal?: string }>;
+  searchParams: Promise<{ salvo?: string; erro?: string; canal?: string; dia?: string }>;
 }) {
-  const { salvo, erro, canal } = await searchParams;
+  const { salvo, erro, canal, dia } = await searchParams;
   const membership = await getActiveTenant();
   const tenant = membership?.tenant;
   if (!tenant) {
@@ -226,6 +227,13 @@ export default async function AutomacaoPage({
   // de "ninguém escreveu" — o mesmo silêncio que `motor_execucoes` fechou do
   // lado de quem dispara.
   const pendentes = respostaAutomatica ? await decisoesPendentes(tenant.id) : [];
+
+  // ⚠ O QUE SAIU NUM DIA — pedido dele: *"tem um painel que mostra, mas mostra
+  // no geral, queria saber por dia"*. Número acumulado responde "o produto
+  // funciona?"; o dia responde "o que a máquina fez no meu nome hoje?", que é
+  // a pergunta de quem vai dormir com a resposta automática ligada.
+  const diaEscolhido = /^\d{4}-\d{2}-\d{2}$/.test(dia ?? "") ? dia! : hojeLocal();
+  const doDia = await enviadasNoDia(tenant.id, diaEscolhido);
 
   const status = await statusDoCanal(tenant.id);
 
@@ -584,6 +592,73 @@ export default async function AutomacaoPage({
                 </ul>
               )}
             </div>
+              </>
+            ),
+          },
+          {
+            id: "enviadas",
+            titulo: "Enviadas no dia",
+            conteudo: (
+              <>
+                <div className="card mt-16">
+                  <p className="eyebrow" style={{ marginBottom: 8 }}>O que saiu em {diaEscolhido.split("-").reverse().join("/")}</p>
+
+                  {/* Um formulário GET: a data vira `?dia=`, então o link é
+                      compartilhável e o botão voltar do navegador funciona. */}
+                  <form method="get" className="row" style={{ gap: 8, alignItems: "center", marginBottom: 12 }}>
+                    <input type="hidden" name="aba" value="enviadas" />
+                    <input type="date" name="dia" defaultValue={diaEscolhido} style={{ maxWidth: 190 }} />
+                    <button type="submit" className="btn btn-sm">Ver</button>
+                  </form>
+
+                  {/* ⚠ PROATIVA E RESPOSTA SEPARADAS, sempre. São bolsos com
+                      riscos opostos, e foi somá-los que fez as respostas da
+                      equipe comerem a cota da campanha em 3/set. */}
+                  <div className="row" style={{ gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+                    <span><strong>{doDia.proativas}</strong> <span className="text-faint">proativas</span></span>
+                    <span><strong>{doDia.respostas}</strong> <span className="text-faint">respostas</span></span>
+                    <span><strong>{doDia.automaticas}</strong> <span className="text-faint">escritas pela IA sozinha</span></span>
+                    {doDia.falhas > 0 && (
+                      <span className="badge badge-danger">{doDia.falhas} não chegaram</span>
+                    )}
+                  </div>
+
+                  {doDia.mensagens.length === 0 ? (
+                    /* ⚠ VAZIO PRECISA DIZER QUAL VAZIO É. "Nada aqui" se lê
+                       como "quebrou" — e nesta tela a diferença entre "não
+                       saiu nada" e "não havia o que sair" é a que importa. */
+                    <p className="text-dim" style={{ fontSize: 13 }}>
+                      Nenhuma mensagem saiu pelo canal oficial neste dia. Se você esperava
+                      campanha, confira o agendador em <strong>Operação</strong> — batida
+                      pulada aparece lá com o motivo.
+                    </p>
+                  ) : (
+                    <ul className="stack" style={{ gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
+                      {doDia.mensagens.map((m) => (
+                        <li key={m.id} style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                          <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
+                            <span className="text-faint" style={{ fontSize: 12 }}>
+                              {new Date(m.quando).toLocaleTimeString("pt-BR", {
+                                timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit",
+                              })}
+                            </span>
+                            <a href={`/painel/conversas?contato=${m.contactId}`}><strong>{m.nome}</strong></a>
+                            <span className="badge">{m.proativa ? "proativa" : "resposta"}</span>
+                            {m.canal !== "whatsapp" && <span className="badge">{m.canal}</span>}
+                            {m.origemIa === "automatica" && <span className="badge badge-warn">IA sozinha</span>}
+                            {m.status === "failed" && <span className="badge badge-danger">não chegou</span>}
+                            {m.status && m.status !== "failed" && (
+                              <span className="text-faint" style={{ fontSize: 11 }}>{m.status}</span>
+                            )}
+                          </div>
+                          <p className="text-dim" style={{ fontSize: 13, margin: "4px 0 0", whiteSpace: "pre-wrap" }}>
+                            {m.texto}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </>
             ),
           },

@@ -147,6 +147,11 @@ export async function rodarMotor(entrada: {
   const vigenciaDe = new Map(carga.todos.map((c) => [c.id, c.contract_end ?? null]));
   // ⚠ O MOTIVO DE SAÍDA, para o veto de quem não volta. Ver `lib/motor.ts`.
   const saidaDe = new Map(carga.todos.map((c) => [c.id, c.motivo_saida ?? null]));
+  // ⚠ O CONVÊNIO, para o veto de quem já treina por outra porta. Ver a nota da
+  // Marcela em `lib/motor.ts`.
+  const convenioDe = new Map(
+    carga.todos.map((c) => [c.id, ((c.custom ?? {}) as Record<string, unknown>).convenio ?? null]),
+  );
   // Os motivos que o RAMO classifica como sem volta. Vazio quando o segmento
   // não declara motivos de saída — hoje, 14 dos 15.
   const motivosQueEncerram = carga.churnReasons.filter((m) => m.fora_da_campanha).map((m) => m.key);
@@ -167,6 +172,7 @@ export async function rodarMotor(entrada: {
     diasNaEtapa: diasDesde(entrouNaEtapa.get(f.contactId), agora),
     contratoAte: vigenciaDe.get(f.contactId) ? String(vigenciaDe.get(f.contactId)).slice(0, 10) : null,
     motivoSaida: saidaDe.get(f.contactId) ?? null,
+    convenio: (convenioDe.get(f.contactId) as string | null) ?? null,
     horasDesdeUltimoContato: horasDesde(carga.ultimo[f.contactId], agora),
     semResposta: semRespostaDele(carga.interacoes, f.contactId),
     diasSemEngajamento: diasDesdeEntradaDele(carga.interacoes, f.contactId, agora),

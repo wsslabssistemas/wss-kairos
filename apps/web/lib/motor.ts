@@ -94,6 +94,25 @@ export type Candidato = {
    * número que a cadência do manifesto usa para escolher o passo. Resposta
    * dela não conta: quem responde não executa passo de régua nenhum.
    */
+  /**
+   * O convênio pelo qual ela treina HOJE (`gympass`, `totalpass`), ou `null`.
+   *
+   * ⚠ ELE EXISTE POR CAUSA DA MARCELA. Em 4/set ela recebeu o 2º toque da
+   * reativação — *"fiquei sem a sua resposta"* — e respondeu: *"oi, tudo bem?
+   * eu já faço com o gympass"*. Ela **treina na Be Fitness**, tinha vindo
+   * naquele mesmo dia, e o sistema a chamava de ex-aluna.
+   *
+   * É a Lilian outra vez, com outra roupa: **fato do mundo vence rótulo do
+   * sistema.** Lá o fato era o contrato correndo; aqui é o check-in por
+   * convênio, que a academia enxerga e o Kairós não — porque a matrícula do
+   * convênio não passa pelo sistema de mensalidade de onde os ex-alunos vêm.
+   *
+   * ⚠ E A MEDIÇÃO DIZ QUE NÃO ERA UM CASO: cruzando os cadastros do Gympass e
+   * do Totalpass com a base, **76 pessoas marcadas como ex-aluno têm convênio
+   * ativo**. Setenta e seis conversas em que a empresa ia dizer "você parou"
+   * para quem está lá dentro.
+   */
+  convenio?: string | null;
   toque: number;
   /**
    * Este toque tem TEXTO PRÓPRIO — modelo aprovado só dele.
@@ -393,6 +412,28 @@ export function planejar(entrada: {
           `Ele registrou saída por um motivo que não tem volta ("${c.motivoSaida}"). ` +
           `A biblioteca deste ramo classifica esse motivo como fora de alcance — ` +
           `insistir aqui é o caminho mais rápido para um bloqueio.`,
+      });
+      continue;
+    }
+
+    // ⚠ QUEM TREINA POR CONVÊNIO NÃO É EX-ALUNO — é cliente por outra porta.
+    //
+    // Vale SÓ para a reativação, como o veto de contrato: numa renovação ou
+    // numa recompra o convênio não diz nada contra falar. E vem junto dos
+    // outros dois pelo mesmo motivo de projeto: **o fato verificável se
+    // confere no momento de AGIR**, não só na hora de gravar. Consertar a
+    // origem do dado é necessário e nunca é suficiente — dado errado chega
+    // por caminhos que ninguém previu.
+    if (c.motivo === "reativacao" && c.convenio) {
+      const nome =
+        c.convenio === "gympass" ? "Gympass" : c.convenio === "totalpass" ? "Totalpass" : c.convenio;
+      vereditos.push({
+        contactId: c.contactId,
+        enviar: false,
+        motivo:
+          `Ela treina pelo ${nome}. Não é ex-aluna: é cliente por outra porta, e chamá-la ` +
+          `de volta é dizer que ela não está aqui. Conversa com ela é sobre o treino, ` +
+          `nunca sobre voltar.`,
       });
       continue;
     }

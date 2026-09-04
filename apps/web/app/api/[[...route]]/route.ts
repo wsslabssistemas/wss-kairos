@@ -616,6 +616,46 @@ async function registrarDirects(mensagens: DirectRecebido[], plataforma: Platafo
     if (error && error.code !== "23505") {
       console.error(`[${plataforma}] MENSAGEM PERDIDA de ${msg.de} (${msg.mid}): ${error.message}`);
     }
+
+    // ⚠ A FASE 2 TAMBEM NO DIRECT — e aqui ela vale MAIS que no WhatsApp.
+    //
+    // O fundador nomeou o motivo: *"normalmente recebemos mensagens atraves
+    // desses canais em horarios que a academia ja esta fechada"*. Instagram e
+    // Messenger sao os canais da madrugada e do domingo — exatamente as horas
+    // em que nao ha ninguem para responder, e em que responder rapido decide.
+    //
+    // ⚠ E AQUI SO EXISTE RESPOSTA, por decisao dele e por limite da
+    // plataforma: *"a resposta tem que ser passiva, o cliente manda mensagem e
+    // ai sim, respondemos"*. Nao ha modelo aprovado nem envio proativo no
+    // direct; a janela e de 24h depois que a PESSOA escreve. O motor proativo
+    // nunca alcanca estes canais — `canal_por_motivo` so governa o WhatsApp.
+    //
+    // Mesma guarda do WhatsApp: duplicata nao responde de novo, e o `after()`
+    // vai dentro de um `try` proprio para nao derrubar o webhook.
+    if (!error && contactId) {
+      const paraResponder = {
+        tenantId: dono.tenantId,
+        contactId,
+        mensagemISO: msg.quando.toISOString(),
+        texto: msg.texto,
+        tipoDaMensagem:
+          msg.mencaoDeStory || tipoDeFecho(msg.texto) === "sem_conteudo"
+            ? "customer_reaction"
+            : "customer_message",
+        canal: plataforma,
+      };
+      try {
+        after(async () => {
+          try {
+            await responderSozinho(paraResponder);
+          } catch (e) {
+            console.error(`[fase2] ${plataforma} falhou fora do registro: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        });
+      } catch (e) {
+        console.error(`[fase2] ${plataforma} nao consegui agendar: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
   }
 }
 
@@ -902,6 +942,7 @@ async function registrar(mensagens: MensagemRecebida[]) {
           msg.tipo === "reaction" || tipoDeFecho(msg.texto) === "sem_conteudo"
             ? "customer_reaction"
             : "customer_message",
+        canal: "whatsapp" as const,
       };
       // ⚠ O `after()` VAI DENTRO DE UM `try` DELE PRÓPRIO. Ele exige o contexto
       // de requisição do Next, e aqui quem responde é o Hono por dentro do

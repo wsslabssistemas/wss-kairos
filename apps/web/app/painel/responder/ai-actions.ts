@@ -272,7 +272,25 @@ export async function gerarResposta(input: {
     const etapaDoManifesto = stages.find((st) => st.key === contact?.journey_stage);
     etapaParaBusca = [etapaDoManifesto?.label ?? "", etapaDoManifesto?.goal ?? ""].filter(Boolean).join(" ");
 
-    contactBlock = `Cliente: ${contact?.name ?? "?"}\nEtapa atual: ${stageLabel}\nHISTÓRICO (não repita abordagens já usadas; evolua a conversa):\n${histText}`;
+    // ⚠ O CONVÊNIO É FATO DO MUNDO, E VENCE A ETAPA. A Marcela estava como
+    // "ex-aluna" e respondeu "eu já faço com o gympass" — treinando na Be
+    // Fitness, tendo vindo naquele mesmo dia. São 76 pessoas nessa situação na
+    // base. Sem esta linha, a IA lê "ex-aluna", conclui que ela saiu, e oferece
+    // semana experimental para quem entra na academia toda semana.
+    const convenio = (contact?.custom as Record<string, unknown> | null)?.convenio;
+    const blocoDoConvenio =
+      typeof convenio === "string" && convenio.trim()
+        ? [
+            "",
+            "⚠ ATENÇÃO — ELA TREINA AQUI PELO " + convenio.toUpperCase() + ".",
+            "Ela NÃO é ex-aluna: é cliente por outra porta, e a etapa acima está desatualizada.",
+            "NUNCA fale como se ela tivesse parado, NUNCA ofereça semana experimental e NUNCA",
+            "ofereça plano como se ela não treinasse. Converse sobre o TREINO dela — como está",
+            "indo, o que ela quer alcançar, o que ajudaria.",
+          ].join(" ")
+        : "";
+
+    contactBlock = `Cliente: ${contact?.name ?? "?"}\nEtapa atual: ${stageLabel}${blocoDoConvenio}\nHISTÓRICO (não repita abordagens já usadas; evolua a conversa):\n${histText}`;
     qualificacaoBlock = blocoParaPrompt(lerQualificacao(fields, contact?.custom));
   }
 
