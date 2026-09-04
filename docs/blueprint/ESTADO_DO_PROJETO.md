@@ -494,6 +494,43 @@ recebemos mensagens através desses canais em horários que a academia já está
 fechada"*. É exatamente onde a automação ganha — e é a única parte do plano de
 fim de semana que depende de código novo, não da Meta.
 
+### 🟢 4 DE SETEMBRO — A FASE 2 FOI LIGADA, e o que veio junto
+
+**A resposta automática está LIGADA** na Be Fitness (`resposta_automatica:
+true`), nos três canais: WhatsApp, Instagram e Messenger. Decisão dele, para
+testar no fim de semana: *"se eu notar algo fora do normal, desmarco a opção"*.
+
+⚠ **No direct só existe resposta, por decisão dele e da plataforma:** *"a
+resposta tem que ser passiva, o cliente manda mensagem e aí sim, respondemos"*.
+Não há modelo aprovado nem envio proativo — o motor nunca alcança esses canais.
+
+### 🔴 O CONVÊNIO — 76 EX-ALUNOS QUE TREINAM LÁ DENTRO
+
+A Marcela recebeu o 2º toque às 9h e respondeu: *"eu já faço com o gympass"*.
+Ela treina na Be Fitness, tinha vindo naquele mesmo dia, e o sistema a chamava
+de ex-aluna. **É a Lilian com outra roupa: fato do mundo vence rótulo do
+sistema** — lá o contrato correndo, aqui o check-in por convênio, que a
+academia enxerga e o Kairós não (a matrícula do convênio não passa pelo sistema
+de mensalidade de onde os ex-alunos vêm).
+
+Cruzando os cadastros com a base: **137 já existiam aqui, 76 marcados como
+ex-aluno**. Todos ganharam `custom.convenio`, e agora o motor veta reativação
+para eles — no momento de agir, como o veto de contrato.
+
+⚠ **Falta importar os que NÃO existem: 869 do Gympass e 132 do Totalpass.**
+Ele confirmou que não há cláusula de exclusividade nesses convênios hoje.
+
+### ⚠ A FASE 2 CONFIRMAVA HORÁRIO E A AGENDA NÃO SABIA — fechado no mesmo dia
+
+Quem confirma compromisso é gente, e marcar sempre foi um clique de quem estava
+lendo a conversa. Com a IA respondendo às 2h da manhã, ela confirmaria *"quinta
+às 10h está certo"* e **nada iria para a agenda**. Já aconteceu aqui com gente:
+duas fizeram a experimental, ninguém cadastrou, e o sistema não lembrou por dez
+dias — só que agora seria o sistema cometendo o erro que existe para impedir.
+
+A saída: **responde na hora E deixa a tarefa visível** (`decisao = 'agendar'`),
+na mesma faixa vermelha que aparece em toda tela.
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide
