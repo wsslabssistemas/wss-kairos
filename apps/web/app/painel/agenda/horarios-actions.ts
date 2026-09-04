@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/auth";
 import { getSkillFormConfig } from "@/lib/skill";
 import {
@@ -74,18 +75,31 @@ export async function marcarCompromisso(input: {
   membershipId?: string | null;
   servico?: string;
   origem?: "manual" | "motor" | "cliente";
+  /**
+   * A empresa, quando quem marca é a MÁQUINA e não há sessão.
+   *
+   * ⚠ MESMO CAMINHO, CLIENTE DIFERENTE — a regra de `lib/despacho.ts`. Copiar
+   * a checagem de conflito para um arquivo novo criaria duas agendas
+   * divergindo em silêncio, e a que erra seria a que ninguém está olhando.
+   */
+  semSessao?: { tenantId: string; skillKey: string };
 }): Promise<{ ok: boolean; error?: string }> {
-  const membership = await getActiveTenant();
-  const tenant = membership?.tenant;
+  const membership = input.semSessao ? null : await getActiveTenant();
+  const tenant = input.semSessao
+    ? { id: input.semSessao.tenantId, skill_key: input.semSessao.skillKey }
+    : membership?.tenant;
   if (!tenant) return { ok: false, error: "Sem empresa vinculada." };
 
-  const { scheduling } = await getSkillFormConfig(tenant.skill_key);
+  const { scheduling } = await getSkillFormConfig(
+    tenant.skill_key,
+    input.semSessao ? createAdminClient() : undefined,
+  );
   const duracao = input.duracaoMin ?? scheduling?.default_duration_min ?? 30;
   const inicio = new Date(input.quandoISO);
   if (Number.isNaN(inicio.getTime())) return { ok: false, error: "Horário inválido." };
   const fim = new Date(inicio.getTime() + duracao * 60000);
 
-  const supabase = await createClient();
+  const supabase = input.semSessao ? createAdminClient() : await createClient();
   // Sem profissional informado, o compromisso vai para o responsável pelo
   // contato — é a agenda dele que foi consultada para oferecer o horário.
   let executor = input.membershipId ?? null;
@@ -122,12 +136,63 @@ export async function marcarCompromisso(input: {
     starts_at: inicio.toISOString(),
     duration_min: duracao,
     origem: input.origem ?? "manual",
-    created_by: membership!.membershipId,
+    // Sem autor quando quem marcou foi a máquina: creditar a um vendedor um
+    // compromisso que ele não marcou estragaria o placar que a equipe lê.
+    created_by: membership?.membershipId ?? null,
   });
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/painel/agenda");
-  revalidatePath(`/painel/contatos/${input.contactId}`);
+  // ⚠ MARCOU, COMEÇOU — a etapa que o manifesto declara em `starts_stage`.
+  //
+  // Sem isto, a régua dos oito primeiros dias nunca começava: ela conta a
+  // partir da entrada na etapa, e nada colocava ninguém lá. O sistema
+  // conversava até o "pode ser quinta", marcava, e a pessoa seguia como lead.
+  //
+  // ⚠ SÓ AVANÇA QUEM AINDA NÃO CHEGOU. Quem já é cliente, já está na etapa ou
+  // já saiu não volta para trás por ter marcado um horário — regredir a etapa
+  // de um matriculado faria a régua dele recomeçar do zero, e o funil contaria
+  // a mesma pessoa duas vezes.
+  //
+  // Best-effort: falhar aqui não desfaz o compromisso, e compromisso marcado
+  // vale mais que rótulo certo.
+  const etapaDoAgendamento = scheduling?.starts_stage;
+  if (etapaDoAgendamento && input.contactId) {
+    const { stages } = await getSkillFormConfig(
+      tenant.skill_key,
+      input.semSessao ? createAdminClient() : undefined,
+    );
+    const ordem = stages.map((e) => e.key);
+    const destino = ordem.indexOf(etapaDoAgendamento);
+    // paginacao-ok: uma linha, endereçada pela chave primária do contato.
+    const { data: atual } = await supabase
+      .from("contacts")
+      .select("journey_stage")
+      .eq("id", input.contactId)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    const agora = (atual as { journey_stage: string } | null)?.journey_stage ?? "";
+    const posicao = ordem.indexOf(agora);
+    if (destino >= 0 && posicao >= 0 && posicao < destino) {
+      // paginacao-ok: UPDATE de UMA linha, endereçada por chave primária.
+      const { error: erroEtapa } = await supabase
+        .from("contacts")
+        .update({ journey_stage: etapaDoAgendamento, stage_entered_at: new Date().toISOString() })
+        .eq("id", input.contactId)
+        .eq("tenant_id", tenant.id)
+        .select("id");
+      if (erroEtapa) {
+        console.warn(`[agenda] marquei mas nao avancei a etapa de ${input.contactId}: ${erroEtapa.message}`);
+      }
+    }
+  }
+
+  // ⚠ `revalidatePath` É API DE REQUISIÇÃO. A resposta automática roda em
+  // `after()`, fora de qualquer render — chamá-lo lá quebraria o trabalho já
+  // feito. É a mesma nota de `lib/despacho.ts`: quem tem tela invalida a tela.
+  if (!input.semSessao) {
+    revalidatePath("/painel/agenda");
+    revalidatePath(`/painel/contatos/${input.contactId}`);
+  }
   return { ok: true };
 }
 

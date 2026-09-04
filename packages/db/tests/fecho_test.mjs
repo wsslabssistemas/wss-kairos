@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const { tipoDeFecho } = await import(
+const { tipoDeFecho, fechaAConversa } = await import(
   pathToFileURL(path.join(ROOT, "apps/web/lib/fecho.ts")).href
 );
 
@@ -67,6 +67,89 @@ verifica("um número é conteúdo", tipoDeFecho("2"), null);
 verifica("nome de dia é conteúdo", tipoDeFecho("terça"), null);
 verifica("vazio não é fecho", tipoDeFecho(""), null);
 verifica("nulo não é fecho", tipoDeFecho(null), null);
+
+
+// ---------------------------------------------------------------------
+// A HORA DO "CHEGA" — quando a conversa terminou COM ELA (4/set/2026)
+//
+// ⚠ `tipoDeFecho` classifica a mensagem sozinha, e por isso é conservador:
+// "obrigada" solto vira sugestão para uma pessoa, nunca decisão. Enquanto
+// havia gente lendo, isso bastava.
+//
+// Com a IA respondendo sozinha, não basta — e o fundador nomeou o risco antes
+// de ele acontecer: *"tenho receio dele entender a hora de parar de enviar
+// mensagem, e evitar entrar em looping infinito com o cliente; nem sempre a
+// gente vai ter que ser os últimos a mandar mensagem, o cliente também pode
+// ser o último a nos enviar mensagem"*.
+//
+// Uma máquina que responde a "obrigada" recebe "de nada" e responde de novo.
+// O looping não é hipótese: é o comportamento padrão de quem sempre tem o que
+// dizer.
+//
+// O QUE TORNA A DECISÃO SEGURA É O CONTEXTO, e é a metade que faltava: a
+// pergunta deixou de ser "esta palavra fecha?" e passou a ser "esta palavra
+// fecha DEPOIS DO QUE NÓS DISSEMOS?".
+// ---------------------------------------------------------------------
+
+// Esperado: fecha. Nós afirmamos algo, ela agradeceu — fim natural do papo.
+verifica(
+  "agradecimento depois de uma AFIRMAÇÃO nossa encerra",
+  fechaAConversa({
+    texto: "obrigada!",
+    nossaUltimaMensagem: "Funcionamos de segunda a sexta das 6h30 às 22h.",
+  }).fecha,
+  true,
+);
+
+// ⚠ ESTE É O CASO QUE PROTEGE O DINHEIRO. "Posso te encaixar quinta?" seguido
+// de "ok" é um SIM, não uma despedida — fechar aqui jogaria fora exatamente o
+// momento que a conversa inteira buscava, e ela ficaria esperando um combinado
+// que nunca vem. É o erro caro: ninguém reclama, some.
+verifica(
+  "'ok' depois de uma PERGUNTA nossa não encerra — pode ser um sim",
+  fechaAConversa({
+    texto: "ok",
+    nossaUltimaMensagem: "Posso te encaixar quinta de manhã?",
+  }).fecha,
+  false,
+);
+
+// Esperado: não fecha. Sem nada nosso antes, "oi, obrigada" não é despedida —
+// é alguém começando uma conversa.
+verifica(
+  "cortesia sem mensagem nossa antes não encerra",
+  fechaAConversa({ texto: "obrigada", nossaUltimaMensagem: null }).fecha,
+  false,
+);
+
+// Esperado: não fecha. Tem conteúdo, e conteúdo pede resposta.
+verifica(
+  "mensagem com conteúdo nunca encerra",
+  fechaAConversa({
+    texto: "obrigada, mas qual o valor do mensal?",
+    nossaUltimaMensagem: "Somos uma academia de bairro.",
+  }).fecha,
+  false,
+);
+
+// Esperado: fecha. Emoji depois da nossa mensagem é aceno de fim de papo — a
+// mesma regra do 👍, agora com o contexto que faltava.
+verifica(
+  "emoji depois da nossa mensagem encerra",
+  fechaAConversa({ texto: "👍", nossaUltimaMensagem: "Te espero quinta então!" }).fecha,
+  true,
+);
+
+// Esperado: o motivo é legível por gente. Registro que só diz "true" não conta
+// nada para quem abre a tela depois querendo entender o silêncio.
+verifica(
+  "o motivo explica que a conversa terminou com ela",
+  fechaAConversa({
+    texto: "valeu",
+    nossaUltimaMensagem: "Fico à disposição.",
+  }).porque.includes("terminou com ela"),
+  true,
+);
 
 console.log(falhas === 0 ? "\nfecho: tudo certo." : `\nfecho: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

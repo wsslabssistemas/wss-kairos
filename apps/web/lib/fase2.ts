@@ -69,6 +69,16 @@ export function decidirResposta(entrada: {
   janelaAberta: boolean;
   /** Alguém declarou que esta conversa está encerrada, e ele não escreveu depois. */
   encerrada: boolean;
+  /**
+   * ESTA MENSAGEM É A DESPEDIDA DELE — ver `fechaAConversa`.
+   *
+   * ⚠ É A TRAVA CONTRA O LOOPING, e o fundador pediu antes de existir: *"nem
+   * sempre a gente vai ter que ser os últimos a mandar mensagem, o cliente
+   * também pode ser o último"*. Uma máquina que responde a "obrigada" recebe
+   * "de nada" e responde de novo — isso não é hipótese, é o comportamento
+   * padrão de quem sempre tem o que dizer.
+   */
+  despedida: boolean;
   /** Sorteio da pausa. Injetável para o teste não depender de `Math.random`. */
   sorteio?: number;
 }): DecisaoDaResposta {
@@ -94,6 +104,16 @@ export function decidirResposta(entrada: {
   // ausência de letra, nunca uma lista de emojis, que nunca fica pronta.
   if (!/\p{L}/u.test(entrada.texto ?? "")) {
     return nao("recusou", "A mensagem não tem uma única letra — não há o que responder.");
+  }
+
+  // ⚠ A DESPEDIDA DELA ENCERRA — e responder aqui é o looping começando.
+  //
+  // Vem antes da janela e do encerramento porque é a mais barata de decidir e
+  // a mais cara de errar no automático: cada resposta a um "obrigada" é uma
+  // mensagem paga que convida outra. Quem chama trata isto como fim de
+  // atendimento, não como recusa — a conversa não falhou, ela acabou.
+  if (entrada.despedida) {
+    return nao("recusou", "Ela se despediu depois da nossa resposta — a conversa terminou com ela.");
   }
 
   // ⚠ O DESCADASTRO VENCE TUDO, e vem antes da janela: honrar o pedido é

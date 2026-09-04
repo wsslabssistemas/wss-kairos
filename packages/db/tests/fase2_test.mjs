@@ -50,6 +50,7 @@ const BOM = {
   descadastrado: false,
   janelaAberta: true,
   encerrada: false,
+  despedida: false,
   sorteio: 0.5,
 };
 
@@ -137,6 +138,26 @@ verifica(
 verifica(
   "o caso normal responde",
   decidirResposta(BOM).responder,
+  true,
+);
+
+
+// ⚠ A TRAVA CONTRA O LOOPING. Uma máquina que responde a "obrigada" recebe
+// "de nada" e responde de novo — e o fundador pediu isso antes de acontecer:
+// *"nem sempre a gente vai ter que ser os últimos a mandar mensagem, o cliente
+// também pode ser o último a nos enviar mensagem"*. Quem decide se aquilo é
+// despedida é `fechaAConversa`, com o contexto da nossa mensagem anterior.
+verifica(
+  "despedida dela não recebe resposta automática",
+  decidirResposta({ ...BOM, despedida: true }).responder,
+  false,
+);
+
+// Esperado: o motivo diz que a conversa ACABOU, não que algo falhou. Quem lê a
+// tela precisa saber que o silêncio foi decisão, e não defeito.
+verifica(
+  "a recusa da despedida explica que a conversa terminou com ela",
+  decidirResposta({ ...BOM, despedida: true }).porque.includes("terminou com ela"),
   true,
 );
 

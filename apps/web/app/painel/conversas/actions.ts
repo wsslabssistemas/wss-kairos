@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getActiveTenant } from "@/lib/auth";
 import { credencialDoCanal, credencialDoDirect } from "@/lib/credenciais";
 import { rotaDaResposta } from "@/lib/roteamento";
@@ -234,10 +235,18 @@ export async function registrarCombinado(entrada: {
   contactId: string;
   data: string;
   nota: string;
+  /**
+   * A empresa, quando quem registra é a MÁQUINA e não há sessão.
+   *
+   * ⚠ MESMO CAMINHO, CLIENTE DIFERENTE — a regra de `lib/despacho.ts`. Um
+   * segundo lugar gravando `next_action_at` divergiria em silêncio, e a data
+   * combinada é a coisa mais cara de furar aqui.
+   */
+  semSessao?: { tenantId: string };
 }): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  const membership = await getActiveTenant();
-  const tenant = membership?.tenant;
-  if (!tenant) return { ok: false, motivo: "Sem empresa vinculada." };
+  const membership = entrada.semSessao ? null : await getActiveTenant();
+  const tenantId = entrada.semSessao?.tenantId ?? membership?.tenant?.id;
+  if (!tenantId) return { ok: false, motivo: "Sem empresa vinculada." };
 
   const data = (entrada.data ?? "").trim();
   const nota = (entrada.nota ?? "").trim();
@@ -249,7 +258,7 @@ export async function registrarCombinado(entrada: {
     };
   }
 
-  const supabase = await createClient();
+  const supabase = entrada.semSessao ? createAdminClient() : await createClient();
   // `.select()` porque escrita sem erro conferido é escrita que você ACHA que
   // fez — e esta decide se a pessoa volta a aparecer na fila.
   const { data: linhas, error } = await supabase
@@ -264,11 +273,15 @@ export async function registrarCombinado(entrada: {
       atendimento_encerrado_em: new Date().toISOString(),
     })
     .eq("id", entrada.contactId)
-    .eq("tenant_id", tenant.id)
+    .eq("tenant_id", tenantId)
     .select("id");
 
   if (error) return { ok: false, motivo: error.message };
   if (!linhas?.length) return { ok: false, motivo: "Contato não encontrado nesta empresa." };
+
+  // `revalidatePath` é API de requisição: a resposta automática roda fora de
+  // qualquer render, e chamá-lo lá quebraria o trabalho já feito.
+  if (entrada.semSessao) return { ok: true };
 
   revalidatePath("/painel/conversas");
   revalidatePath("/painel/fila");

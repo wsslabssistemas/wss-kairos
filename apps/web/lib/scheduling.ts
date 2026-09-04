@@ -43,6 +43,20 @@ export type SchedulingConfig = {
   /** Antecedência mínima para marcar (evita oferecer daqui a 5 minutos). */
   min_advance_min?: number;
   /**
+   * MARCOU, COMEÇOU — a etapa em que a pessoa entra quando um horário é
+   * marcado para ela. Ausente, marcar não mexe na etapa.
+   *
+   * ⚠ ELA EXISTE PORQUE O ACOMPANHAMENTO NÃO COMEÇAVA. A régua da semana
+   * experimental conta a partir da entrada na etapa, e nada colocava ninguém
+   * lá sozinho: o sistema conversava até o "pode ser quinta", marcava, e a
+   * pessoa seguia como lead — sem o toque do dia 3 para conferir se ela veio,
+   * sem o do dia 8 para vender. Com a IA marcando sozinha, o buraco piora.
+   *
+   * ⚠ A CHAVE VEM DO MANIFESTO (Lei 1): "semana experimental" é vocabulário de
+   * academia. Quem marca horário para uma visita técnica declara a etapa dele.
+   */
+  starts_stage?: string;
+  /**
    * OFERECER TURNO EM VEZ DE HORA.
    *
    * Existe porque nem todo negócio que agenda disputa horário. Onde o acesso

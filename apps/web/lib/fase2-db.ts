@@ -8,6 +8,10 @@ import { registrarEnvio, gastoDeMensagensNoMes } from "@/lib/custo_mensagem-db";
 import { avaliarTetoDeMensagens, lerTetoDeMensagens } from "@/lib/custo_mensagem";
 import { gerarResposta } from "@/app/painel/responder/ai-actions";
 import { decidirResposta, aindaEhAVez, lerRespostaAutomatica } from "@/lib/fase2";
+import { fechaAConversa } from "@/lib/fecho";
+import { marcarCompromisso } from "@/app/painel/agenda/horarios-actions";
+import { registrarCombinado } from "@/app/painel/conversas/actions";
+import { ajustarRetorno } from "@/lib/retorno";
 
 // A FASE 2 EXECUTADA — a IA responde sozinha quem escreveu.
 //
@@ -117,6 +121,28 @@ export async function responderSozinho(entrada: {
     // resposta de uma corrida entre o insert do webhook e esta leitura.
     const janela = janelaDeAtendimento(entrada.mensagemISO);
 
+    // ⚠ A NOSSA ÚLTIMA MENSAGEM ANTES DESTA — é ela que decide se um "ok" é
+    // despedida ou é um SIM. Ver `fechaAConversa`: se nós perguntamos algo, a
+    // resposta curta é aceitação, e fechar ali perderia o momento inteiro.
+    //
+    // paginacao-ok: uma linha, a mais recente, endereçada por índice.
+    // paginacao-ok: uma linha, a mais recente, endereçada por índice.
+    const { data: nossaUltima } = await admin
+      .from("interactions")
+      .select("content")
+      .eq("tenant_id", tenantId)
+      .eq("contact_id", contactId)
+      .eq("direction", "outbound")
+      .lt("occurred_at", entrada.mensagemISO)
+      .order("occurred_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const fim = fechaAConversa({
+      texto: entrada.texto,
+      nossaUltimaMensagem: (nossaUltima as { content: string | null } | null)?.content ?? null,
+    });
+
     const decisao = decidirResposta({
       ligado: lerRespostaAutomatica(tenant.settings),
       tipoDaMensagem: entrada.tipoDaMensagem,
@@ -128,6 +154,7 @@ export async function responderSozinho(entrada: {
       encerrada:
         !!contato.atendimento_encerrado_em &&
         Date.parse(contato.atendimento_encerrado_em) > Date.parse(entrada.mensagemISO),
+      despedida: fim.fecha,
       sorteio: entrada.sorteio,
     });
 
@@ -137,6 +164,29 @@ export async function responderSozinho(entrada: {
       // pendentes viraria um log de nada, e a fila que importa (`escalou`)
       // ficaria enterrada. Silêncio aqui é o estado normal do produto.
       if (decisao.porque.startsWith("A resposta automática está desligada")) return;
+
+      // ⚠ DESPEDIDA NÃO É SÓ "NÃO RESPONDER": É ENCERRAR O ATENDIMENTO.
+      //
+      // Sem isto, a conversa fica para sempre em "aguardando resposta" — a
+      // pessoa se despediu e a lista de quem espera nunca encolhe, que é o
+      // defeito do `combinado` de novo, agora na tela que mede o atendimento.
+      //
+      // ⚠ E É REVERSÍVEL SOZINHO: a comparação em toda a casa é com a DATA, não
+      // com um interruptor. Se ela escrever de novo amanhã, a conversa reabre
+      // na hora, porque a mensagem nova é posterior ao encerramento.
+      if (fim.fecha) {
+        // paginacao-ok: UPDATE de UMA linha, endereçada por chave primária.
+        const { error: erroFecho } = await admin
+          .from("contacts")
+          .update({ atendimento_encerrado_em: new Date().toISOString() })
+          .eq("id", contactId)
+          .eq("tenant_id", tenantId)
+          .select("id");
+        if (erroFecho) {
+          console.error(`[fase2] nao consegui encerrar o atendimento de ${contactId}: ${erroFecho.message}`);
+        }
+      }
+
       await registrar(decisao.decisao, decisao.porque);
       return;
     }
@@ -223,6 +273,13 @@ export async function responderSozinho(entrada: {
     // criaria compromisso que ninguém combinou. Mas ignorar também não dá — a
     // IA acabou de escrever "quinta às 10h está certo". Ver a migration 0081.
     const horarioAceito = (r.data.horario_escolhido ?? "").trim();
+    // ⚠ A DATA EM QUE ELA DISSE QUE VOLTA — e ela vale tanto quanto o horário.
+    // *"Retorno em outubro"* sem registro faz a pessoa sumir da fila e voltar
+    // pela régua genérica, sem o pretexto que ela mesma deu. Foi a Nanci, em
+    // ago/2026: avisou que voltava em setembro e nada ficou gravado.
+    const retornoEm = /^\d{4}-\d{2}-\d{2}$/.test(r.data.retorno_em ?? "")
+      ? ajustarRetorno(r.data.retorno_em, !!r.data.retorno_vago)
+      : "";
 
     // ⚠ A TRAVA ANTI-INVENÇÃO MANDA CHAMAR GENTE, e é o caso mais importante
     // desta função. Ela devolve texto VAZIO junto de `escalar: true` — testar
@@ -333,10 +390,67 @@ export async function responderSozinho(entrada: {
     // recepção (ou não aparecer), que é exatamente o erro que este produto
     // existe para impedir.
     if (horarioAceito) {
+      // ⚠ A AGENDA PASSOU A SER MARCADA SOZINHA — decisão do fundador em
+      // 4/set, e ela reabre uma regra antiga desta casa ("quem confirma é
+      // gente"). O argumento dele fecha: *"o sistema precisa marcar na agenda
+      // sozinho"*, porque um sistema que conversa até o sim e não registra o
+      // sim está quebrado de um jeito pior — foi assim que duas pessoas
+      // fizeram a experimental e ninguém soube por dez dias.
+      //
+      // ⚠ O QUE PRESERVA A PREOCUPAÇÃO ORIGINAL: a marcação só acontece a
+      // partir de uma aceitação EXPLÍCITA dela (o modelo devolve
+      // `horario_escolhido` apenas quando ela escolhe um horário concreto), o
+      // compromisso nasce com `origem: "cliente"` — então dá para separar
+      // depois o que a máquina marcou do que uma pessoa marcou —, e a falha em
+      // marcar NÃO some: vira tarefa na faixa vermelha.
+      const marcado = await marcarCompromisso({
+        contactId,
+        quandoISO: horarioAceito,
+        origem: "cliente",
+        semSessao: { tenantId, skillKey: tenant.skill_key },
+      });
+
+      if (marcado.ok) {
+        await registrar(
+          "respondeu",
+          `Respondi, ela aceitou ${horarioAceito} e eu marquei na agenda.`,
+          { esperouMs: decisao.esperarMs, interactionId: (gravada as { id: string } | null)?.id },
+        );
+      } else {
+        // ⚠ FALHA EM MARCAR É TAREFA DE GENTE, NUNCA SILÊNCIO. O horário mais
+        // comum de falhar é o que acabou de ser ocupado por outra pessoa — e
+        // aí existe alguém com um "está confirmado" na mão e sem vaga.
+        await registrar(
+          "agendar",
+          `Respondi e ela aceitou ${horarioAceito}, mas eu NÃO consegui marcar na agenda: ` +
+            `${marcado.error ?? "erro desconhecido"}. Marque à mão, ou combine outro horário com ela.`,
+          { esperouMs: decisao.esperarMs, interactionId: (gravada as { id: string } | null)?.id },
+        );
+      }
+      return;
+    }
+
+    // ⚠ O COMBINADO TAMBÉM É REGISTRADO SOZINHO. Ele decide QUANDO a pessoa
+    // volta para a fila, com o assunto que ela mesma deu — e furar uma data
+    // que a PESSOA marcou é o erro mais caro que existe aqui.
+    //
+    // ⚠ E `registrarCombinado` ENCERRA o atendimento junto, de propósito: quem
+    // marcou a data fez o que a conversa pedia, e deixá-la em "aguardando"
+    // faria alguém procurar todo dia o que já está resolvido. É a mesma peça
+    // que a régua agora respeita — ela volta na data, não em cinco dias.
+    if (retornoEm) {
+      const combinado = await registrarCombinado({
+        contactId,
+        data: retornoEm,
+        nota: entrada.texto.slice(0, 300),
+        semSessao: { tenantId },
+      });
       await registrar(
-        "agendar",
-        `Respondi e ela aceitou um horário: ${horarioAceito}. Isso ainda NÃO está na agenda — ` +
-          `confirme, porque compromisso quem marca é gente.`,
+        combinado.ok ? "respondeu" : "agendar",
+        combinado.ok
+          ? `Respondi e registrei o combinado: ela volta a ser chamada em ${retornoEm}.`
+          : `Respondi, ela falou em voltar em ${retornoEm} e eu NÃO consegui registrar: ` +
+            `${combinado.motivo}. Anote à mão, senão ela não volta para a fila nessa data.`,
         { esperouMs: decisao.esperarMs, interactionId: (gravada as { id: string } | null)?.id },
       );
       return;

@@ -56,6 +56,17 @@ export type ContatoDaCarga = {
   do_not_contact_reason: string | null;
   /** O motivo de saída registrado no encerramento. Ver o veto em `lib/motor.ts`. */
   motivo_saida: string | null;
+  /**
+   * Quando alguém — pessoa ou a própria IA — declarou o atendimento encerrado.
+   *
+   * ⚠ ELE EXISTIA E A RÉGUA NÃO OLHAVA. Encerrar tirava a conversa da tela de
+   * Conversas e não dizia nada para a fila: cinco dias depois a pessoa voltava
+   * a aparecer para ser tocada, porque a cadência só conhecia toques e
+   * silêncio. Com a resposta automática ligada, isso vira o looping que o
+   * fundador temia — *"nem sempre a gente vai ter que ser os últimos a mandar
+   * mensagem"*.
+   */
+  atendimento_encerrado_em: string | null;
 };
 
 export type InteracaoDaCarga = {
@@ -105,6 +116,20 @@ export type CargaDaFila = {
   naoContatar: number;
   /** Cadastros velhos escondidos por ja existir a mesma pessoa como cliente. */
   gemeosAtivos: number;
+  /**
+   * Quantos ficaram de fora por treinarem pelo convênio (Gympass/Totalpass).
+   *
+   * ⚠ Existe para a tela DIZER. Esconder mil pessoas em silêncio é a mesma
+   * classe do `idsComGemeoAtivo`, que deixou cadastro dobrado invisível por um
+   * mês: a decisão de esconder estava certa e a falta do número é que doeu.
+   */
+  comConvenio: number;
+  /**
+   * Quantos estão quietos porque o atendimento foi encerrado e nada novo
+   * aconteceu depois. Aparece na tela pelo mesmo motivo dos outros dois: o que
+   * o sistema esconde, alguém precisa poder ver.
+   */
+  encerrados: number;
   /**
    * Os motivos de saída do RAMO, com o que fazer em cada um.
    *
@@ -169,7 +194,7 @@ export async function carregarFila(entrada: {
     lerTudo<ContatoDaCarga>(
       (de, ate) => supabase
         .from("contacts")
-        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, contract_start, custom, do_not_contact, do_not_contact_reason, motivo_saida")
+        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, contract_start, custom, do_not_contact, do_not_contact_reason, motivo_saida, atendimento_encerrado_em")
         .eq("tenant_id", tenantId)
         .is("deleted_at", null)
         .order("id")
@@ -235,7 +260,64 @@ export async function carregarFila(entrada: {
     hojeISO,
   );
 
-  const elegiveis = cData.filter((c) => !c.do_not_contact && !comGemeo.has(c.id));
+  // ⚠ E QUEM TREINA POR CONVÊNIO TAMBÉM SAI DA LISTA — por enquanto.
+  //
+  // São 1.090 pessoas do Gympass e do Totalpass importadas em 4/set. Elas não
+  // são leads: já treinam na academia, por outra porta. Deixá-las na fila
+  // encheria a lista de quem executa com mil linhas de trabalho que não existe
+  // — e a lista de trabalho morre exatamente assim, por dívida de três dígitos
+  // toda manhã (é a razão de a ração existir).
+  //
+  // ⚠ ISTO É ESCONDER, E ESCONDER PRECISA APARECER. `comConvenio` volta na
+  // carga para a tela poder dizer quantas são. A regra da casa é literal:
+  // *"toda vez que o sistema esconder algo para se proteger, alguém precisa
+  // ver o que foi escondido"* — foi o que custou um mês de ficha dobrada
+  // invisível.
+  //
+  // Sai quando existir régua própria de convênio: um toque a cada um ou dois
+  // meses, com assunto diferente em cada um.
+  const temConvenio = (c: ContatoDaCarga) =>
+    typeof (c.custom as Record<string, unknown> | null)?.convenio === "string";
+  const comConvenio = cData.filter(temConvenio).length;
+
+  // ⚠ E A CONVERSA PODE TERMINAR COM ELE — a régua fica quieta até motivo NOVO.
+  //
+  // Pedido do fundador, e ele nomeou a razão: *"nem sempre a gente vai ter que
+  // ser os últimos a mandar mensagem, temos que aprender que o cliente também
+  // pode ser o último a nos enviar mensagem"*.
+  //
+  // Encerrar já existia e não dizia nada para a fila: a conversa saía da tela
+  // de Conversas e cinco dias depois a pessoa voltava para ser tocada, porque
+  // a cadência só conhece toques dados e silêncio. Com a IA respondendo
+  // sozinha, isso é o looping.
+  //
+  // ⚠ "MOTIVO NOVO" É DEFINIDO, e são dois — nenhum deles é o relógio:
+  //
+  //   • ela falou DEPOIS do encerramento (a mensagem nova reabre tudo, e a
+  //     comparação é com a DATA, nunca com um interruptor);
+  //   • existe um `next_action_at` marcado para depois do encerramento — o
+  //     combinado que ELA pediu. Encerrar o papo de hoje não pode apagar
+  //     "me chama em outubro": furar uma data que a pessoa marcou é o erro
+  //     mais caro que existe aqui.
+  const quietoPorEncerramento = (c: ContatoDaCarga) => {
+    if (!c.atendimento_encerrado_em) return false;
+    const fechou = Date.parse(c.atendimento_encerrado_em);
+    if (!Number.isFinite(fechou)) return false;
+    const ultimaConversa = ultimo[c.id] ? Date.parse(ultimo[c.id]) : 0;
+    if (ultimaConversa > fechou) return false;
+    const combinado = c.next_action_at ? Date.parse(c.next_action_at) : 0;
+    if (combinado > fechou) return false;
+    return true;
+  };
+  const encerrados = cData.filter(quietoPorEncerramento).length;
+
+  const elegiveis = cData.filter(
+    (c) =>
+      !c.do_not_contact &&
+      !comGemeo.has(c.id) &&
+      !temConvenio(c) &&
+      !quietoPorEncerramento(c),
+  );
   const contatos = ownerId ? elegiveis.filter((c) => c.owner_id === ownerId) : elegiveis;
 
   // AS ORIGENS MORAM EM `lib/fila.ts`, não aqui. Este arquivo lê; ele decide.
@@ -264,5 +346,7 @@ export async function carregarFila(entrada: {
     naoContatar: cData.length - elegiveis.length,
     /** Cadastros velhos escondidos porque a pessoa ja e cliente em outra linha. */
     gemeosAtivos: comGemeo.size,
+    comConvenio,
+    encerrados,
   };
 }

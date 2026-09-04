@@ -418,13 +418,20 @@ export function planejar(entrada: {
 
     // ⚠ QUEM TREINA POR CONVÊNIO NÃO É EX-ALUNO — é cliente por outra porta.
     //
-    // Vale SÓ para a reativação, como o veto de contrato: numa renovação ou
-    // numa recompra o convênio não diz nada contra falar. E vem junto dos
-    // outros dois pelo mesmo motivo de projeto: **o fato verificável se
-    // confere no momento de AGIR**, não só na hora de gravar. Consertar a
-    // origem do dado é necessário e nunca é suficiente — dado errado chega
-    // por caminhos que ninguém previu.
-    if (c.motivo === "reativacao" && c.convenio) {
+    // ⚠ E O VETO VALE PARA TODO MOTIVO, não só a reativação, enquanto não
+    // existir régua própria de convênio. São 1.090 pessoas na base depois da
+    // importação de 4/set: falar com elas pela régua errada é barato de
+    // acontecer e caro de descobrir — a mensagem sai correta em português e
+    // errada em conteúdo, que é o pior defeito possível.
+    //
+    // Não é "nunca falar com elas": é não falar SOZINHO até haver assunto
+    // curado. O fundador já desenhou esse assunto — *"um toque a cada um ou
+    // dois meses, cada um com assunto diferente"* — e ele vem do manifesto,
+    // como todas as réguas.
+    //
+    // Vem junto do veto de contrato pelo mesmo motivo de projeto: **o fato
+    // verificável se confere no momento de AGIR**, não só na hora de gravar.
+    if (c.convenio) {
       const nome =
         c.convenio === "gympass" ? "Gympass" : c.convenio === "totalpass" ? "Totalpass" : c.convenio;
       vereditos.push({
@@ -432,8 +439,8 @@ export function planejar(entrada: {
         enviar: false,
         motivo:
           `Ela treina pelo ${nome}. Não é ex-aluna: é cliente por outra porta, e chamá-la ` +
-          `de volta é dizer que ela não está aqui. Conversa com ela é sobre o treino, ` +
-          `nunca sobre voltar.`,
+          `de volta é dizer que ela não está aqui. Enquanto não existir régua própria de ` +
+          `convênio, o sistema não fala sozinho com ela — conversa com ela é sobre o TREINO.`,
       });
       continue;
     }

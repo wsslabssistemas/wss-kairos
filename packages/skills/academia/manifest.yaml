@@ -288,6 +288,21 @@ contract:
 # "quinta de manhã ou quinta à noite?".
 scheduling:
   enabled: true
+  # ⚠ MARCOU, COMECOU — a etapa em que a pessoa entra quando um horario e
+  # marcado para ela.
+  #
+  # Ela existe porque o acompanhamento dos oito primeiros dias so acontece se
+  # alguem estiver NA etapa: a regua `trial_followup` conta a partir da entrada
+  # na etapa da semana experimental, e ate 4/set nada colocava a pessoa la
+  # sozinho. O sistema conversava ate o "pode ser quinta", marcava, e a pessoa
+  # seguia como lead — sem toque no dia 3 para conferir se ela veio, sem o do
+  # dia 8 para vender.
+  #
+  # ⚠ E A CHAVE VEM DO MANIFESTO, nunca do nucleo (Lei 1): a etapa da semana
+  # experimental e vocabulario de academia. Segmento que marca horario para
+  # outra coisa — uma visita tecnica, uma consulta — declara a etapa DELE aqui,
+  # ou omite e nada muda.
+  starts_stage: experimentacao
   default_duration_min: 60
   slot_step_min: 60
   min_advance_min: 120
@@ -562,9 +577,28 @@ cadences:
   - key: trial_followup
     applies_to: trial_followup
     steps:
-      - { offset_days: 2, intent: "Realização de valor — o que já conquistou" }
+      # ⚠ O PRIMEIRO TOQUE CONFERE SE ELA VEIO — NAO ASSUME QUE VEIO.
+      #
+      # Ele dizia que a pessoa ja tinha conquistado algo, e isso e uma
+      # afirmacao sobre um fato que ninguem verificou. Para quem nao apareceu,
+      # a mensagem chega dizendo que ela esta treinando — fluente e
+      # errada, que e o pior defeito possivel numa mensagem no nome da
+      # academia. E o fundador pediu exatamente a bifurcacao: *"no dia 3, ate
+      # para confirmar se ela realmente foi fazer a semana experimental; se nao
+      # foi, tentamos agendar para outro dia; se foi, perguntamos como esta
+      # sendo tratada"*.
+      #
+      # E a trava anti-invencao aplicada ao FATO DA VISITA: pergunte, nao
+      # afirme. Uma pergunta serve aos dois casos; uma afirmacao serve a um e
+      # ofende o outro.
+      - { offset_days: 3, intent: "Confirmar se ela CONSEGUIU vir — sem afirmar que veio. Se veio, perguntar como foi o primeiro treino e se foi bem atendida. Se não veio, sem cobrança nenhuma, oferecer remarcar: a vaga e o brinde continuam de pé." }
       - { offset_days: 6, intent: "Projeção de futuro e pré-fechamento" }
       - { offset_days: 8, intent: "Conversão com aversão à perda" }
+      # ⚠ O ULTIMO TOQUE E A DESPEDIDA, e ela fecha a regua. Sem um passo de
+      # encerrar, a ultima coisa que a pessoa ouve e uma tentativa de venda —
+      # e quem nao fechou some sem que ninguem tenha dito "tudo bem". Encerrar
+      # bem e o que permite reativar depois.
+      - { offset_days: 12, intent: "Encerrar com porta aberta e sem culpa — a experimental acabou, agradecer a visita e deixar claro que ela pode voltar quando fizer sentido. Sem oferta nova nesta mensagem." }
     stop_on: [converted, opted_out, lost]
 
   # OS 90 DIAS QUE DECIDEM SE O ALUNO FICA.
