@@ -5,6 +5,7 @@ import { registrarRodada } from "@/lib/motor-registro";
 import { avaliarEspacamento } from "@/lib/espacamento";
 import { vigiarCanal } from "@/lib/vigia-canal";
 import { vigiarAlertas } from "@/lib/alertas-db";
+import { retentarPendentes } from "@/lib/fase2-db";
 import { readAutomation } from "@/lib/automation";
 import { lerTudo } from "@/lib/paginado";
 
@@ -101,6 +102,21 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
       // Best-effort como o vigia: `vigiarAlertas` engole o próprio erro.
       // Falhar em avisar não pode impedir uma mensagem de sair.
       if (!simular) await vigiarAlertas(t.id);
+
+      // ⚠ E A SEGUNDA CHANCE DO QUE FALHOU POR ACIDENTE — fora do espaçamento,
+      // como o vigia. O espaçamento governa quanta mensagem PROATIVA sai;
+      // responder quem escreveu não é campanha, e uma conversa parada por uma
+      // falha de um minuto não pode esperar a próxima rodada de campanha.
+      //
+      // Best-effort: `retentarPendentes` engole o próprio erro.
+      if (!simular) {
+        try {
+          const refeitas = await retentarPendentes(t.id);
+          if (refeitas > 0) console.info(`[fase2] ${refeitas} resposta(s) refeitas em ${t.slug}`);
+        } catch (e) {
+          console.warn(`[fase2] retry falhou em ${t.slug}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
 
       // ⚠ O ESPAÇAMENTO É CONSULTADO ANTES DE QUALQUER TRABALHO. Ele lê o
       // ÚLTIMO ENVIO desta empresa — a última rodada que mandou mensagem de

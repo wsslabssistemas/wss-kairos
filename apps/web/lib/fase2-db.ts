@@ -71,7 +71,7 @@ export async function responderSozinho(entrada: {
   const registrar = async (
     decisao: "respondeu" | "escalou" | "agendar" | "desistiu" | "recusou" | "falhou",
     porque: string,
-    extra: { esperouMs?: number; interactionId?: string } = {},
+    extra: { esperouMs?: number; interactionId?: string; transitorio?: boolean } = {},
   ) => {
     const { error } = await admin.from("respostas_automaticas").insert({
       tenant_id: tenantId,
@@ -80,6 +80,10 @@ export async function responderSozinho(entrada: {
       porque,
       esperou_ms: extra.esperouMs ?? null,
       interaction_id: extra.interactionId ?? null,
+      // ⚠ ACIDENTE × DECISÃO, gravado e não adivinhado. Só o acidente merece
+      // nova tentativa: repetir a recusa da trava anti-invenção chega na mesma
+      // recusa e queima dinheiro de IA no caminho. Ver a migration `0086`.
+      transitorio: extra.transitorio === true,
     });
     // ⚠ O REGISTRO QUE FALHA VAI PARA O LOG, e não sobe. A mensagem pode já
     // ter saído; derrubar aqui não a desfaz, só apagaria o rastro dela.
@@ -288,8 +292,18 @@ export async function responderSozinho(entrada: {
 
     if (!r.ok) {
       const motivo = "limite" in r ? r.mensagem : r.error;
+      // ⚠ FALHA DE GERAÇÃO É ACIDENTE, NÃO DECISÃO. Em 4/set foi o crédito da
+      // API acabando às 17h35: a IA fez o certo (não inventou, chamou gente), o
+      // crédito voltou às 20h50 — e nada aconteceu, porque a fase 2 só acorda
+      // quando chega mensagem, e a do Thyago já tinha chegado.
+      //
+      // ⚠ O TETO DE COTA TAMBÉM ENTRA AQUI, e é de propósito: ele vira o mês.
+      // Só que a janela de 24h da Meta fecha antes disso — então a segunda
+      // chance não vai salvar esse caso, e é por isso que ele continua
+      // aparecendo na faixa vermelha, esperando gente.
       await registrar("escalou", `Não consegui gerar a resposta: ${motivo}`, {
         esperouMs: decisao.esperarMs,
+        transitorio: true,
       });
       return;
     }
@@ -399,8 +413,13 @@ export async function responderSozinho(entrada: {
     }
 
     if (!envio.ok) {
+      // A Meta recusando o envio é acidente na maior parte das vezes (rede,
+      // instabilidade). Quando não for, a segunda chance falha igual e a linha
+      // continua na tela — errar para o lado de tentar de novo custa uma
+      // chamada; errar para o outro custa a conversa.
       await registrar("falhou", `A Meta recusou o envio: ${envio.motivo}`, {
         esperouMs: decisao.esperarMs,
+        transitorio: true,
       });
       return;
     }
@@ -568,4 +587,123 @@ export async function decisoesPendentes(
       porque: l.porque,
     };
   });
+}
+
+/**
+ * A SEGUNDA CHANCE — o que falhou por acidente tenta de novo.
+ *
+ * ⚠ POR QUE ELA PRECISOU EXISTIR (4/set/2026). O Thyago escreveu "Boa tarde"
+ * às 17h35 pelo Instagram. A fase 2 esperou 24s, tentou gerar e ouviu da API
+ * *"your credit balance is too low"*. Ela fez o certo: não inventou, não mandou
+ * nada, chamou uma pessoa.
+ *
+ * O crédito voltou às 20h50 — e **nada aconteceu**. A fase 2 só acorda quando
+ * chega mensagem, e a dele já tinha chegado. A condição que causou a falha
+ * tinha desaparecido, e não havia ninguém para perceber isso.
+ *
+ * ⚠ E O RELÓGIO CORRE CONTRA: a janela de 24h da Meta fecha 24h depois da
+ * mensagem DELE. Uma falha de um minuto às 17h35 vira conversa perdida se
+ * ninguém abrir a tela até as 17h35 do dia seguinte.
+ *
+ * ⚠ SÓ O ACIDENTE VOLTA. Recusa da trava anti-invenção é DECISÃO — repetir mil
+ * vezes chega na mesma recusa, e queima dinheiro de IA no caminho. A diferença
+ * está gravada em `transitorio`, nunca adivinhada pelo texto do erro: no dia em
+ * que a mensagem da API mudasse, um retry baseado em palavra-chave pararia em
+ * silêncio.
+ *
+ * ⚠ E É UMA SÓ. `retentado_em` é marcado ANTES de tentar: retry sem teto vira
+ * laço infinito no dia em que a causa não passar — e um laço infinito que manda
+ * mensagem é a pior coisa que este produto pode fazer.
+ */
+export async function retentarPendentes(tenantId: string, agora = new Date()): Promise<number> {
+  const admin = createAdminClient();
+
+  // Só o que ainda cabe na janela de 24h da Meta. Mais velho que isso não tem
+  // segunda chance possível — vira retomada, que é trabalho da fila.
+  const limite = new Date(agora.getTime() - 23 * 3_600_000).toISOString();
+
+  // paginacao-ok: recorte curto de retry, com ORDER BY e limite explícito.
+  const { data, error } = await admin
+    .from("respostas_automaticas")
+    .select("id, contact_id, occurred_at")
+    .eq("tenant_id", tenantId)
+    .eq("transitorio", true)
+    .is("retentado_em", null)
+    .is("visto_em", null)
+    .gte("occurred_at", limite)
+    .order("occurred_at", { ascending: true })
+    .limit(10);
+
+  if (error) {
+    console.warn(`[fase2] nao consegui listar o retry de ${tenantId}: ${error.message}`);
+    return 0;
+  }
+
+  const pendentes = (data as { id: string; contact_id: string; occurred_at: string }[] | null) ?? [];
+  let refeitas = 0;
+
+  for (const p of pendentes) {
+    // ⚠ MARCA ANTES DE TENTAR. Marcar depois faria uma falha no meio do
+    // caminho deixar a linha elegível para sempre — e o retry rodaria a cada
+    // 15 minutos, para sempre, na mesma conversa.
+    const { error: erroMarca } = await admin
+      .from("respostas_automaticas")
+      .update({ retentado_em: new Date().toISOString() })
+      .eq("id", p.id)
+      .select("id");
+    if (erroMarca) {
+      console.warn(`[fase2] nao marquei o retry ${p.id}: ${erroMarca.message}`);
+      continue;
+    }
+
+    // A ÚLTIMA MENSAGEM DELE, que é o que precisa ser respondido. Pode não ser
+    // mais a que falhou — se ele escreveu de novo, responde-se a mais recente.
+    //
+    // paginacao-ok: uma linha, a mais recente, endereçada por índice.
+    const { data: ult } = await admin
+      .from("interactions")
+      .select("occurred_at, content, input_kind, channel")
+      .eq("tenant_id", tenantId)
+      .eq("contact_id", p.contact_id)
+      .eq("direction", "inbound")
+      .not("external_id", "is", null)
+      .order("occurred_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const entrada = ult as
+      | { occurred_at: string; content: string | null; input_kind: string | null; channel: string | null }
+      | null;
+    if (!entrada) continue;
+
+    // ⚠ SE JÁ RESPONDERAM, NÃO INSISTE. Entre a falha e o retry pode ter
+    // passado uma pessoa — e duas respostas para a mesma pergunta é o defeito
+    // que a pausa existe para evitar. `responderSozinho` refaz esta conferência
+    // depois da pausa dele; esta aqui evita até a chamada de IA.
+    //
+    // paginacao-ok: uma linha, a mais recente, endereçada por índice.
+    const { data: saida } = await admin
+      .from("interactions")
+      .select("occurred_at")
+      .eq("tenant_id", tenantId)
+      .eq("contact_id", p.contact_id)
+      .eq("direction", "outbound")
+      .gt("occurred_at", entrada.occurred_at)
+      .order("occurred_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (saida) continue;
+
+    await responderSozinho({
+      tenantId,
+      contactId: p.contact_id,
+      mensagemISO: entrada.occurred_at,
+      texto: entrada.content ?? "",
+      tipoDaMensagem: entrada.input_kind ?? "customer_message",
+      canal: (entrada.channel ?? "whatsapp") as "whatsapp" | "instagram" | "facebook",
+    });
+    refeitas++;
+  }
+
+  return refeitas;
 }
