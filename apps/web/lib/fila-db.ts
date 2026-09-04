@@ -67,6 +67,15 @@ export type ContatoDaCarga = {
    * mensagem"*.
    */
   atendimento_encerrado_em: string | null;
+  /**
+   * Até quando o sistema não fala sozinho com esta pessoa (`AAAA-MM-DD`).
+   *
+   * ⚠ SILÊNCIO COM PRAZO — o estado que faltava entre `do_not_contact` (para
+   * sempre) e nada (volta em cinco dias). Nasceu do Deoclécio, que pediu um
+   * tempo, e da Valéria, que teve de escrever *"agora basta de pergunta"*.
+   */
+  pausado_ate: string | null;
+  pausa_motivo: string | null;
 };
 
 export type InteracaoDaCarga = {
@@ -130,6 +139,8 @@ export type CargaDaFila = {
    * o sistema esconde, alguém precisa poder ver.
    */
   encerrados: number;
+  /** Quantos estão em pausa com prazo — pediram um tempo, e o prazo não venceu. */
+  pausados: number;
   /**
    * Os motivos de saída do RAMO, com o que fazer em cada um.
    *
@@ -194,7 +205,7 @@ export async function carregarFila(entrada: {
     lerTudo<ContatoDaCarga>(
       (de, ate) => supabase
         .from("contacts")
-        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, contract_start, custom, do_not_contact, do_not_contact_reason, motivo_saida, atendimento_encerrado_em")
+        .select("id, name, phone, owner_id, journey_stage, stage_entered_at, next_action_at, next_action, next_action_note, contract_end, contract_start, custom, do_not_contact, do_not_contact_reason, motivo_saida, atendimento_encerrado_em, pausado_ate, pausa_motivo")
         .eq("tenant_id", tenantId)
         .is("deleted_at", null)
         .order("id")
@@ -311,12 +322,20 @@ export async function carregarFila(entrada: {
   };
   const encerrados = cData.filter(quietoPorEncerramento).length;
 
+  // ⚠ E QUEM PEDIU UM TEMPO FICA EM PAZ ATÉ A DATA. A comparação é com o dia
+  // da empresa, e ela expira sozinha: passada a data, a pessoa volta a ser
+  // candidata sem ninguém precisar lembrar de desmarcar nada. Pausa que só
+  // sai no braço é pausa que vira `do_not_contact` na prática.
+  const pausado = (c: ContatoDaCarga) => !!c.pausado_ate && c.pausado_ate > hojeISO;
+  const pausados = cData.filter(pausado).length;
+
   const elegiveis = cData.filter(
     (c) =>
       !c.do_not_contact &&
       !comGemeo.has(c.id) &&
       !temConvenio(c) &&
-      !quietoPorEncerramento(c),
+      !quietoPorEncerramento(c) &&
+      !pausado(c),
   );
   const contatos = ownerId ? elegiveis.filter((c) => c.owner_id === ownerId) : elegiveis;
 
@@ -348,5 +367,6 @@ export async function carregarFila(entrada: {
     gemeosAtivos: comGemeo.size,
     comConvenio,
     encerrados,
+    pausados,
   };
 }

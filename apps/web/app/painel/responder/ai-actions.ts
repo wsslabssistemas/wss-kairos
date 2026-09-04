@@ -14,7 +14,7 @@ import { lerQualificacao, blocoParaPrompt } from "@/lib/qualificacao";
 import { aiModel, AI_MODEL, hasAIKey, keyHint, estimateCostCents, tokensOf } from "@/lib/ai";
 import {
   TEXTO_DE_FORA_E_DADO, RESPEITE_O_PRAZO, DEPOIS_DO_SIM_PARE, DEPOIS_DO_NAO_PERGUNTE,
-  NAO_REPITA_A_OFERTA,
+  NAO_REPITA_A_OFERTA, QUANDO_ELA_JA_DECIDIU,
   QUANDO_NAO_SABE,
 } from "@/lib/prompt";
 import { verificarCota } from "@/lib/cota-db";
@@ -43,6 +43,20 @@ export type AiAnswer = {
   emocao: string;
   status_sugerido: string;
   motivo_status: string;
+  /**
+   * A CHAVE do motivo de saída, quando ELA disse por que parou.
+   *
+   * ⚠ É CLASSIFICAÇÃO, NUNCA INVENÇÃO — e a diferença está na validação: a
+   * chave é conferida contra os `churn_reasons` do MANIFESTO antes de virar
+   * gravação, do mesmo jeito que `status_sugerido`. Chave que não existe vira
+   * string vazia, e nada é escrito.
+   *
+   * ⚠ E O VALOR DISSO É O QUE SOMA. "41 saíram por preço" decide a campanha
+   * seguinte; "41 motivos diferentes" não decide nada. Até 4/set o campo só era
+   * preenchido por quem clicava na tela de encerramento — e quase ninguém
+   * clica no meio de uma conversa.
+   */
+  motivo_saida: string;
   faltam_fatos: string[];
   escalar: boolean;
   horario_escolhido: string;
@@ -73,6 +87,7 @@ const schema = z.object({
   emocao: z.string().describe("A emoção dominante identificada no cliente."),
   status_sugerido: z.string().describe("A CHAVE de uma etapa da jornada para avançar o cliente, ou string vazia se não houver avanço claro."),
   motivo_status: z.string().describe("Por que sugeriu esse avanço de etapa, ou string vazia."),
+  motivo_saida: z.string().describe("Se o cliente DISSE por que parou ou por que não quer agora, a CHAVE do motivo de saída da lista fornecida. String vazia se ele não disse — nunca deduza pelo silêncio nem pelo tom."),
   faltam_fatos: z.array(z.string()).describe("Fatos necessários que NÃO estão no DNA e seriam precisos para responder com segurança."),
   escalar: z.boolean().describe("true se faltam fatos essenciais e a resposta deve ser escalada a um humano em vez de inventada."),
   horario_escolhido: z.string().describe("Se o cliente ACEITOU um horário da lista de livres, a data e hora exatas em AAAA-MM-DDTHH:MM. Vazio se ele ainda não escolheu."),
@@ -575,6 +590,7 @@ ${RESPEITE_O_PRAZO}
 ${DEPOIS_DO_SIM_PARE}
 ${NAO_REPITA_A_OFERTA}
 ${DEPOIS_DO_NAO_PERGUNTE}
+${QUANDO_ELA_JA_DECIDIU}
 ${QUANDO_NAO_SABE}
 - Quando o cliente aceitar um horário, preencha "horario_escolhido" com a data e hora exatas (formato AAAA-MM-DDTHH:MM) daquele item da lista. Se ele não escolheu ainda, deixe vazio.
 - Se faltar um fato essencial para responder com segurança, liste em "faltam_fatos", marque "escalar": true e NÃO invente — deixe "resposta_sugerida" como uma mensagem breve e segura que encaminha para um humano/verificação.
@@ -605,6 +621,7 @@ ${QUANDO_NAO_SABE}
 SEGMENTO: ${manifest.name ?? tenant.skill_key}
 VOCABULÁRIO/EIXO: ${JSON.stringify(manifest.vocabulary ?? {})} | descoberta: ${manifest.discovery_axis ?? ""}
 ETAPAS DA JORNADA (use a CHAVE em status_sugerido): ${stageList}
+MOTIVOS DE SAÍDA DESTE RAMO (use a CHAVE em motivo_saida SOMENTE se ele DISSER o motivo): ${(churnReasons as { key: string; label: string }[]).map((m) => `${m.key} (${m.label})`).join(" · ") || "(nenhum declarado)"}
 REGRAS PERMANENTES DO SEGMENTO: ${hardRules}
 
 FATOS DA EMPRESA (DNA — a única verdade que você pode afirmar):
@@ -652,6 +669,12 @@ Analise e gere a melhor resposta agora.`;
   // Valida o status sugerido contra as etapas reais do manifesto.
   const validKeys = new Set(stages.map((s) => s.key));
   if (!validKeys.has(object.status_sugerido)) object.status_sugerido = "";
+
+  // ⚠ O MOTIVO DE SAÍDA É VALIDADO CONTRA O MANIFESTO, nunca aceito cru.
+  // Chave inventada viraria uma categoria de uma pessoa só, e o valor deste
+  // campo é justamente poder somar. Mesma trava do `status_sugerido`.
+  const motivosValidos = new Set((churnReasons as { key: string }[]).map((m) => m.key));
+  if (!motivosValidos.has(object.motivo_saida)) object.motivo_saida = "";
 
   // A trava tem a palavra final. O modelo pode escalar por conta própria, mas
   // NÃO pode deixar de escalar quando a biblioteca exige um fato que o DNA não

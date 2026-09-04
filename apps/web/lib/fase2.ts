@@ -79,6 +79,18 @@ export function decidirResposta(entrada: {
    * padrão de quem sempre tem o que dizer.
    */
   despedida: boolean;
+  /**
+   * ELA JÁ DECIDIU — ver `lib/adiamento.ts`.
+   *
+   * `adiou` = disse não agora e assumiu o prazo do retorno. `chega` = pediu
+   * para parar de perguntar.
+   *
+   * ⚠ NOS DOIS CASOS NÃO SOBROU PERGUNTA, e responder é insistir. A Valéria,
+   * em 4/set: *"no momento não irei retornar, assim que puder eu retorno,
+   * obrigada"* — e recebeu uma pergunta sobre o motivo, respondeu, recebeu um
+   * agradecimento, e então escreveu *"agora basta de pergunta OK?"*.
+   */
+  sinal: "adiou" | "chega" | null;
   /** Sorteio da pausa. Injetável para o teste não depender de `Math.random`. */
   sorteio?: number;
 }): DecisaoDaResposta {
@@ -104,6 +116,20 @@ export function decidirResposta(entrada: {
   // ausência de letra, nunca uma lista de emojis, que nunca fica pronta.
   if (!/\p{L}/u.test(entrada.texto ?? "")) {
     return nao("recusou", "A mensagem não tem uma única letra — não há o que responder.");
+  }
+
+  // ⚠ ELA JÁ DECIDIU — e aqui a última palavra é dela, não nossa.
+  //
+  // Vem antes da despedida porque é mais forte: quem adia com prazo próprio ou
+  // pede para parar não está encerrando um papo, está dizendo o que quer que
+  // aconteça daqui para frente. Quem chama trata isto como PAUSA com prazo —
+  // nunca como descadastro, que apagaria para sempre alguém que pode voltar em
+  // março, e nunca como nada, que a traria de volta em cinco dias.
+  if (entrada.sinal === "chega") {
+    return nao("recusou", "Ela pediu para parar de perguntar — mais uma mensagem agora é o que faz bloquear.");
+  }
+  if (entrada.sinal === "adiou") {
+    return nao("recusou", "Ela disse que volta quando puder: o prazo é dela, e não há o que perguntar.");
   }
 
   // ⚠ A DESPEDIDA DELA ENCERRA — e responder aqui é o looping começando.

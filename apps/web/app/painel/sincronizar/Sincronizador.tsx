@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ler, lerRecebimentos, identificarPlanilha, type TipoDePlanilha } from "@/lib/planilha";
-import { prever, aplicar, type Previsao, type DadosLidos } from "./actions";
+import { prever, aplicar, lerDoGoogle, type Previsao, type DadosLidos } from "./actions";
 
 /**
  * A TELA DE SINCRONIZAÇÃO — ver antes de aplicar.
@@ -42,8 +42,10 @@ const ROTULO_TIPO: Record<TipoDePlanilha, string> = {
   desconhecido: "não reconhecido",
 };
 
-export function Sincronizador() {
+export function Sincronizador({ linkSalvo = "" }: { linkSalvo?: string }) {
   const [dados, setDados] = useState<DadosLidos>({ matriculas: null, recebimentos: null });
+  /** O link publicado desta empresa, para não colar de novo toda vez. */
+  const [link, setLink] = useState(linkSalvo);
   /**
    * ⚠ OS ARQUIVOS COMO ELES SÃO, com o que o sistema entendeu de cada um.
    *
@@ -144,6 +146,40 @@ export function Sincronizador() {
     }
   };
 
+  /**
+   * A MESMA LEITURA, VINDA DO GOOGLE.
+   *
+   * ⚠ Reaproveita `identificarPlanilha` e `aplicarTipo` de propósito: se a aba
+   * do Google passasse por outro caminho, as duas leituras divergiriam em
+   * silêncio — e a que erra seria a que ninguém está conferindo. Uma planilha
+   * é uma planilha, tenha vindo do disco ou da nuvem.
+   */
+  const lerDoLink = async () => {
+    setCarregando("lendo"); setP(null); setFeito(null);
+    try {
+      const r = await lerDoGoogle(link.trim() || undefined);
+      if (!r.ok) { setP({ ok: false, erro: r.erro }); return; }
+      setLink(r.salvo);
+      const novos: typeof arquivos = [];
+      const erros: string[] = [];
+      for (const aba of r.abas) {
+        const id = identificarPlanilha(aba.csv);
+        const erro = aplicarTipo(aba.csv, id.tipo);
+        if (erro && id.tipo !== "desconhecido") erros.push(`${aba.nome}: ${erro}`);
+        novos.push({
+          nome: aba.nome, kb: Math.round(aba.csv.length / 1024), texto: aba.csv,
+          tipo: id.tipo, porque: erro ?? id.porque, cabecalhos: id.cabecalhos, ambiguo: id.ambiguo,
+        });
+      }
+      setArquivos((a) => [...a.filter((x) => !novos.some((n) => n.nome === x.nome)), ...novos]);
+      if (erros.length) setP({ ok: false, erro: erros.join(" · ") });
+    } catch (e) {
+      setP({ ok: false, erro: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setCarregando(null);
+    }
+  };
+
   /** A correção humana: a pessoa diz que o arquivo é outra coisa. */
   const corrigirTipo = (nome: string, tipo: TipoDePlanilha) => {
     const alvo = arquivos.find((a) => a.nome === nome);
@@ -209,6 +245,38 @@ export function Sincronizador() {
             onChange={(e) => receber(e.target.files)}
           />
         </label>
+
+        {/* ⚠ A PLANILHA QUE MORA NO GOOGLE — pedido do fundador: *"a empresa
+            coloca um link público e compartilhado, a pessoa atualiza a planilha
+            e o sistema já reconhece"*. O caminho depois do link é o MESMO do
+            arquivo: identifica, mostra o que entendeu, e a pessoa confirma.
+            Ler não importa nada — importar continua sendo decisão de gente. */}
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+          <label className="label" htmlFor="link_planilha">Ou leia direto de uma planilha do Google</label>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <input
+              id="link_planilha"
+              type="url"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/e/.../pubhtml"
+              style={{ flex: "1 1 380px", minWidth: 260 }}
+            />
+            <button type="button" className="btn btn-sm" disabled={carregando !== null} onClick={lerDoLink}>
+              {carregando === "lendo" ? "lendo…" : "Ler a planilha"}
+            </button>
+          </div>
+          <p className="text-faint" style={{ fontSize: 12, marginTop: 6, maxWidth: 620 }}>
+            Tem que ser o link de <strong>publicação na web</strong> (no Google Sheets: Arquivo →
+            Compartilhar → Publicar na web), não o de compartilhamento. O sistema lê{" "}
+            <strong>todas as abas</strong> e identifica cada uma — você confere antes de aplicar.
+            O link fica guardado: da próxima vez é só clicar em ler.
+          </p>
+          <p className="text-faint" style={{ fontSize: 12, marginTop: 4, maxWidth: 620 }}>
+            ⚠ Planilha publicada é <strong>pública</strong>: quem tiver o endereço consegue abrir.
+            Publique só as abas que o sistema precisa ler.
+          </p>
+        </div>
 
         {arquivos.length > 0 && (
           <ul className="stack" style={{ gap: 8, listStyle: "none", padding: 0, margin: "14px 0 0" }}>

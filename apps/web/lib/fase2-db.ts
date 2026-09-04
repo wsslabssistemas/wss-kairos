@@ -9,6 +9,7 @@ import { avaliarTetoDeMensagens, lerTetoDeMensagens } from "@/lib/custo_mensagem
 import { gerarResposta } from "@/app/painel/responder/ai-actions";
 import { decidirResposta, aindaEhAVez, lerRespostaAutomatica } from "@/lib/fase2";
 import { fechaAConversa } from "@/lib/fecho";
+import { lerSinal, diasDeSilencio } from "@/lib/adiamento";
 import { marcarCompromisso } from "@/app/painel/agenda/horarios-actions";
 import { registrarCombinado } from "@/app/painel/conversas/actions";
 import { ajustarRetorno } from "@/lib/retorno";
@@ -138,6 +139,8 @@ export async function responderSozinho(entrada: {
       .limit(1)
       .maybeSingle();
 
+    const sinal = lerSinal(entrada.texto);
+
     const fim = fechaAConversa({
       texto: entrada.texto,
       nossaUltimaMensagem: (nossaUltima as { content: string | null } | null)?.content ?? null,
@@ -155,6 +158,8 @@ export async function responderSozinho(entrada: {
         !!contato.atendimento_encerrado_em &&
         Date.parse(contato.atendimento_encerrado_em) > Date.parse(entrada.mensagemISO),
       despedida: fim.fecha,
+      // ⚠ ELA JÁ DECIDIU — adiou com prazo próprio, ou pediu para parar.
+      sinal,
       sorteio: entrada.sorteio,
     });
 
@@ -174,16 +179,39 @@ export async function responderSozinho(entrada: {
       // ⚠ E É REVERSÍVEL SOZINHO: a comparação em toda a casa é com a DATA, não
       // com um interruptor. Se ela escrever de novo amanhã, a conversa reabre
       // na hora, porque a mensagem nova é posterior ao encerramento.
-      if (fim.fecha) {
+      if (fim.fecha || sinal) {
+        // ⚠ ENCERRAR É METADE; A OUTRA É A PAUSA COM PRAZO.
+        //
+        // Encerrar tira da lista de "aguardando". Só que a régua voltaria a
+        // chamar assim que o próximo passo vencesse — e para quem acabou de
+        // dizer *"eu volto quando puder"* isso é a importunação que faz
+        // bloquear. Silêncio com prazo é o único estado honesto entre
+        // `do_not_contact` (para sempre) e nada (volta em cinco dias).
+        const dias = diasDeSilencio(sinal);
+        const patch: Record<string, unknown> = {
+          atendimento_encerrado_em: new Date().toISOString(),
+        };
+        if (dias > 0) {
+          const ate = new Date(Date.now() + dias * 86_400_000);
+          patch.pausado_ate = ate.toISOString().slice(0, 10);
+          patch.pausa_definida_em = new Date().toISOString();
+          // ⚠ A FRASE DELA VAI JUNTO. "Pausado por 60 dias" não conta nada
+          // para quem abre a ficha; a frase conta tudo — e é o pretexto da
+          // conversa seguinte, quando ela existir.
+          patch.pausa_motivo =
+            (sinal === "chega"
+              ? "Ela pediu para parar de perguntar: "
+              : "Ela disse que volta quando puder: ") + `"${entrada.texto.slice(0, 160)}"`;
+        }
         // paginacao-ok: UPDATE de UMA linha, endereçada por chave primária.
         const { error: erroFecho } = await admin
           .from("contacts")
-          .update({ atendimento_encerrado_em: new Date().toISOString() })
+          .update(patch)
           .eq("id", contactId)
           .eq("tenant_id", tenantId)
           .select("id");
         if (erroFecho) {
-          console.error(`[fase2] nao consegui encerrar o atendimento de ${contactId}: ${erroFecho.message}`);
+          console.error(`[fase2] nao consegui encerrar/pausar ${contactId}: ${erroFecho.message}`);
         }
       }
 
@@ -298,6 +326,38 @@ export async function responderSozinho(entrada: {
         { esperouMs: decisao.esperarMs },
       );
       return;
+    }
+
+    // ⚠ O MOTIVO DE SAÍDA, QUANDO ELA DIZ — gravado sozinho, e é decisão do
+    // fundador em 4/set: *"se a pessoa falar o motivo de ter saído, o sistema
+    // pode registrar, não precisa de humano"*.
+    //
+    // Ele está certo, e o que torna isso seguro é a validação: a chave já vem
+    // conferida contra os `churn_reasons` do MANIFESTO (chave inventada vira
+    // string vazia), então aqui não há como nascer categoria de uma pessoa só.
+    // Gravar isto é o que permite somar — *"41 saíram por preço"* decide a
+    // campanha seguinte, e até hoje o campo dependia de alguém clicar.
+    //
+    // ⚠ NÃO SOBRESCREVE o que já existe: motivo registrado por uma PESSOA vale
+    // mais que classificação de modelo, e regravar por cima apagaria a leitura
+    // de quem estava na conversa.
+    const motivoDito = (r.data.motivo_saida ?? "").trim();
+    if (motivoDito) {
+      // paginacao-ok: UPDATE de UMA linha, endereçada por chave primária.
+      const { error: erroMotivo } = await admin
+        .from("contacts")
+        .update({
+          motivo_saida: motivoDito,
+          motivo_saida_texto: entrada.texto.slice(0, 300),
+          motivo_saida_em: new Date().toISOString(),
+        })
+        .eq("id", contactId)
+        .eq("tenant_id", tenantId)
+        .is("motivo_saida", null)
+        .select("id");
+      if (erroMotivo) {
+        console.warn(`[fase2] nao gravei o motivo de saida de ${contactId}: ${erroMotivo.message}`);
+      }
     }
 
     // ---------------------------------------------- O ENVIO

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getActiveTenant } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { Sincronizador } from "./Sincronizador";
 
 export const metadata = { title: "Sincronizar com o sistema da academia" };
@@ -31,6 +32,19 @@ export default async function SincronizarPage() {
       </main>
     );
   }
+
+  // O link publicado desta empresa, para o campo já vir preenchido — a graça é
+  // não colar de novo toda vez que a planilha mudar.
+  const supabase = await createClient();
+  // paginacao-ok: uma linha, chave primária.
+  const { data: t } = await supabase
+    .from("tenants")
+    .select("settings")
+    .eq("id", m!.tenant!.id)
+    .maybeSingle();
+  const linkSalvo = String(
+    ((t as { settings: Record<string, unknown> | null } | null)?.settings ?? {}).planilha_url ?? "",
+  );
 
   return (
     <main>
@@ -68,7 +82,7 @@ export default async function SincronizarPage() {
       </div>
 
       <div className="mt-24">
-        <Sincronizador />
+        <Sincronizador linkSalvo={linkSalvo} />
       </div>
 
       <p className="text-faint" style={{ marginTop: 24, fontSize: 12 }}>

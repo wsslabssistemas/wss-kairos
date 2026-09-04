@@ -84,7 +84,23 @@ export const DEPOIS_DO_SIM_PARE = `- ⚠ QUANDO A PESSOA JÁ SE COMPROMETEU, CON
  * transforma a pergunta em venda, e aí ela fecha — porque entendeu, com razão,
  * que a pergunta era isca. Uma coisa por mensagem.
  */
-export const DEPOIS_DO_NAO_PERGUNTE = `- ⚠ QUANDO A PESSOA DISSER QUE NÃO VAI VOLTAR AGORA, faça UMA pergunta sobre o MOTIVO — e só isso. Aceite o não primeiro, com naturalidade e sem lamentar, e pergunte oferecendo alternativas concretas em vez de perguntar em aberto: "só pra eu entender e não te incomodar à toa: é mais questão de horário, de estar treinando em outro lugar, ou é outra coisa?". NUNCA pergunte "por que você saiu?" seco — soa como cobrança e a resposta vira "falta de tempo", que é o que se diz para encerrar o assunto. E NUNCA emende oferta, condição ou promoção na mesma mensagem: aí a pergunta vira isca e ela para de responder. Se ela não quiser dizer, agradeça e encerre — insistir duas vezes no motivo é pior que não saber.`;
+/**
+ * ⚠ A EXCEÇÃO QUE FALTAVA, e ela custou a conversa da Valéria (4/set/2026).
+ *
+ * Ela escreveu: *"No momento não irei retornar. Assim que puder, eu retorno.
+ * Obrigada."* — não agora, prazo dela, despedida. O sistema aplicou a regra de
+ * manual e perguntou o motivo. Ela respondeu. O sistema agradeceu. Ela então
+ * escreveu **"Agora basta de pergunta OK?"**.
+ *
+ * A regra de perguntar o motivo é boa e continua: motivo declarado vale ouro, e
+ * perguntar com alternativas concretas coleta verdade em vez da desculpa
+ * educada. Só que ela foi escrita para o "não" SECO. Aplicada a quem já
+ * explicou e já se despediu, ela vira interrogatório — e quem se sente
+ * importunado não reclama, **bloqueia**.
+ */
+export const QUANDO_ELA_JA_DECIDIU = `- ⚠ SE ELA JÁ DISSE QUANDO VOLTA, NÃO PERGUNTE MAIS NADA. Frases como "no momento não", "assim que puder eu retorno", "quando der eu volto", "estou dando um tempo" já contêm a resposta: ela decidiu, e o prazo é dela. Aí a sua mensagem é UMA linha — aceite, agradeça e encerre. NÃO pergunte o motivo, NÃO ofereça alternativa, NÃO diga que fica esperando com uma condição junto. E se ela pedir para parar ("basta de pergunta", "chega", "já disse que não"), responda uma frase curta confirmando que parou, e mais nada: insistir depois disso é o que faz a pessoa bloquear o número — e bloqueio derruba a entrega de TODA mensagem da empresa, inclusive a de quem paga em dia.`;
+
+export const DEPOIS_DO_NAO_PERGUNTE = `- ⚠ QUANDO A PESSOA DISSER QUE NÃO VAI VOLTAR AGORA **e não disser quando volta**, faça UMA pergunta sobre o MOTIVO — e só isso. Aceite o não primeiro, com naturalidade e sem lamentar, e pergunte oferecendo alternativas concretas em vez de perguntar em aberto: "só pra eu entender e não te incomodar à toa: é mais questão de horário, de estar treinando em outro lugar, ou é outra coisa?". NUNCA pergunte "por que você saiu?" seco — soa como cobrança e a resposta vira "falta de tempo", que é o que se diz para encerrar o assunto. E NUNCA emende oferta, condição ou promoção na mesma mensagem: aí a pergunta vira isca e ela para de responder. Se ela não quiser dizer, agradeça e encerre — insistir duas vezes no motivo é pior que não saber.`;
 
 /**
  * ⚠ O QUE ELA DIZ QUANDO NÃO SABE — e por que o texto importa mais agora.

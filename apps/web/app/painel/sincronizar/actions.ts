@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { tipoDaLinha, type RegrasDePlano } from "@/lib/planos";
 import { getActiveTenant } from "@/lib/auth";
 import { getSkillFormConfig } from "@/lib/skill";
+import { raizDoLinkPublicado, abasPublicadas, csvDaAba } from "@/lib/sheets";
 import { lerTudo } from "@/lib/paginado";
 import { mapLimit } from "@/lib/concorrencia";
 import type { Leitura, LeituraRecebimentos, Pagante } from "@/lib/planilha";
@@ -533,4 +534,72 @@ export async function aplicar(
   // com 48 recusados era relatado como 1.500 gravados, e ninguém procura o que
   // o sistema não disse que perdeu.
   return { ok: true, gravados, falhas: falhas.length };
+}
+
+/**
+ * LÊ A PLANILHA PUBLICADA NO GOOGLE — todas as abas, em CSV.
+ *
+ * ⚠ POR QUE NO SERVIDOR e não no navegador, que é onde a leitura mora. O
+ * endereço publicado do Google responde com um redirecionamento e sem cabeçalho
+ * de CORS: o navegador da pessoa não consegue baixar. Aqui a busca é do
+ * servidor e o texto volta para o mesmo caminho de sempre — quem identifica,
+ * confere e confirma continua sendo a tela.
+ *
+ * ⚠ E O LINK FICA GUARDADO, porque a graça é justamente não colar de novo: a
+ * pessoa atualiza a planilha no Google e clica em ler. Guardado em
+ * `tenants.settings`, ao lado das outras políticas da empresa — não é segredo:
+ * é um endereço público, e quem publicou sabe disso.
+ */
+export async function lerDoGoogle(
+  url?: string,
+): Promise<
+  | { ok: true; abas: { nome: string; csv: string }[]; salvo: string }
+  | { ok: false; erro: string }
+> {
+  const m = await contexto();
+  if (!m) return { ok: false, erro: "Só dono ou administrador pode sincronizar." };
+
+  const supabase = await createClient();
+  // paginacao-ok: uma linha, chave primária.
+  const { data: t } = await supabase
+    .from("tenants")
+    .select("settings")
+    .eq("id", m.tenant!.id)
+    .maybeSingle();
+  const settings = ((t as { settings: Record<string, unknown> | null } | null)?.settings ?? {}) as Record<string, unknown>;
+
+  // Sem link novo, vale o guardado — é o caso de todo dia.
+  const bruto = (url ?? "").trim() || String(settings.planilha_url ?? "");
+  const raiz = raizDoLinkPublicado(bruto);
+  if (!raiz.ok) return { ok: false, erro: raiz.motivo };
+
+  const lista = await abasPublicadas(raiz.base);
+  if (!lista.ok) return { ok: false, erro: lista.motivo };
+
+  const abas: { nome: string; csv: string }[] = [];
+  const falhas: string[] = [];
+  for (const aba of lista.abas) {
+    const r = await csvDaAba(raiz.base, aba.gid);
+    if (r.ok) abas.push({ nome: aba.nome, csv: r.csv });
+    else falhas.push(`${aba.nome}: ${r.motivo}`);
+  }
+
+  // ⚠ UMA ABA QUE FALHA NÃO DERRUBA AS OUTRAS, e a falha é DITA. Devolver só
+  // as que deram certo, em silêncio, faria a pessoa importar metade da
+  // planilha achando que importou tudo.
+  if (abas.length === 0) {
+    return { ok: false, erro: `Não consegui ler nenhuma aba. ${falhas.join(" · ")}` };
+  }
+
+  // Só grava o link depois de ele funcionar: guardar um endereço quebrado faz
+  // o botão "ler" falhar amanhã sem ninguém lembrar por quê.
+  if (bruto !== settings.planilha_url) {
+    const { error } = await supabase
+      .from("tenants")
+      .update({ settings: { ...settings, planilha_url: bruto } })
+      .eq("id", m.tenant!.id);
+    if (error) console.warn(`[sincronizar] nao guardei o link da planilha: ${error.message}`);
+  }
+
+  return { ok: true, abas, salvo: bruto };
 }

@@ -249,6 +249,14 @@ jobs:
       # a repeticao sem calar a PIORA.
       - name: Alertas — quando tocar, e quando ficar calado
         run: node packages/db/tests/alertas_test.mjs
+      # ⚠ A CONVERSA DA VALERIA (4/set): ela disse "no momento nao irei
+      # retornar, assim que puder eu retorno, obrigada" — nao agora, prazo dela
+      # e despedida — e recebeu uma pergunta sobre o motivo. Respondeu. Recebeu
+      # um agradecimento. Ai escreveu "agora basta de pergunta OK?".
+      # Quem se sente importunado nao reclama, BLOQUEIA — e bloqueio derruba a
+      # entrega de toda mensagem da empresa.
+      - name: Adiamento — quando ela ja decidiu, nao se pergunta mais
+        run: node packages/db/tests/adiamento_test.mjs
       # ⚠ O AGENDADOR PERDEU AS DUAS EXECUCOES DE 27/ago e ninguem soube. A
       # correcao foi bater de 15 em 15 minutos e deixar a cadencia com o motor;
       # esta trava guarda as bordas em que a regra nova poderia calar a
