@@ -111,22 +111,44 @@ export async function gerarResposta(input: {
    * produz um número com aparência de rigor.
    */
   ateISO?: string;
+  /**
+   * A EMPRESA, quando quem chama é a MÁQUINA e não há sessão para a RLS ler.
+   *
+   * ⚠ ELE EXISTE PARA NÃO REPETIR O DEFEITO DE 30/AGO. `getSkillFormConfig`
+   * criava o próprio cliente de sessão; no cron não há sessão, a policy
+   * `skills_read_installed` negava, o `maybeSingle()` devolvia `null` **sem
+   * erro** e o motor agendado nunca montou fila — por dias, parecendo saúde.
+   *
+   * A regra da casa é a de `lib/despacho.ts`: **um caminho só, e quem chama
+   * traz o cliente que tem.** A tela passa o do usuário (com RLS ligada); a
+   * resposta automática passa isto, e o leitor usa o admin.
+   */
+  semSessao?: { tenantId: string; skillKey: string };
 }): Promise<GerarResult> {
   if (!hasAIKey()) return { ok: false, error: "Chave de IA não configurada (AI_API_KEY)." };
   const message = (input.message ?? "").trim();
   if (!message) return { ok: false, error: "Cole a mensagem do cliente." };
 
-  const membership = await getActiveTenant();
-  const tenant = membership?.tenant;
+  const tenant = input.semSessao
+    ? { id: input.semSessao.tenantId, skill_key: input.semSessao.skillKey }
+    : (await getActiveTenant())?.tenant;
   if (!tenant) return { ok: false, error: "Sem empresa vinculada." };
 
   // O PORTÃO, ANTES DE QUALQUER TOKEN. Verificar depois seria medir o prejuízo.
+  //
+  // ⚠ E ELE VALE IGUAL PARA A MÁQUINA. A resposta automática gera sem ninguém
+  // olhando: se a cota não valesse aqui, o único freio de custo do produto
+  // teria um buraco exatamente no caminho que roda sozinho de madrugada.
   const cota = await verificarCota(tenant.id, "resposta");
   if (!cota.permitido) return { ok: false, limite: true, mensagem: cota.mensagem! };
 
   try {
-  const supabase = await createClient();
-  const { stages, fields, churnReasons, contract } = await getSkillFormConfig(tenant.skill_key);
+  const supabase = input.semSessao ? createAdminClient() : await createClient();
+  const { stages, fields, churnReasons, contract } = await getSkillFormConfig(
+    tenant.skill_key,
+    // Sem sessão, o manifesto tem que vir pelo admin — ver `semSessao`.
+    input.semSessao ? supabase : undefined,
+  );
 
   // A biblioteca CURADA do segmento (tenant_id null) é lida com service_role.
   // Ela nunca pode chegar ao browser — a policy de `knowledge_entries` só a

@@ -14,6 +14,8 @@ import { RodarAgora } from "./RodarAgora";
 import { Abas } from "../Abas";
 import { PerfilDoNumero } from "./PerfilDoNumero";
 import { lerRoteamento, lerModelos } from "@/lib/roteamento";
+import { lerRespostaAutomatica } from "@/lib/fase2";
+import { decisoesPendentes } from "@/lib/fase2-db";
 import { lerTetoDeMensagens } from "@/lib/custo_mensagem";
 import { dataHoraLocal } from "@/lib/fuso";
 import { ultimaVerificacao } from "@/lib/vigia-canal";
@@ -217,6 +219,14 @@ export default async function AutomacaoPage({
     a.max_per_day,
   );
 
+  const respostaAutomatica = lerRespostaAutomatica(data?.settings);
+  // ⚠ A FILA DE DECISÃO PENDENTE. Ela é o outro lado da fase 2: quando a trava
+  // anti-invenção recusa escrever, existe uma pessoa esperando resposta que
+  // não vem sozinha. Sem esta lista, "a IA não respondeu" seria indistinguível
+  // de "ninguém escreveu" — o mesmo silêncio que `motor_execucoes` fechou do
+  // lado de quem dispara.
+  const pendentes = respostaAutomatica ? await decisoesPendentes(tenant.id) : [];
+
   const status = await statusDoCanal(tenant.id);
 
   /**
@@ -288,6 +298,39 @@ export default async function AutomacaoPage({
       {canal === "salvo" && <p className="badge badge-success mt-16">Credencial do canal salva. Teste antes de usar com cliente.</p>}
       {canal === "desligado" && <p className="badge mt-16">Canal desligado — o envio voltou para o link humano.</p>}
       {erro && <p className="badge badge-danger mt-16">{erro}</p>}
+
+      {/* ⚠ DECISÃO ESPERANDO GENTE — FORA DAS ABAS, DE PROPÓSITO.
+          Isto é uma pessoa real esperando resposta que não vai chegar sozinha.
+          Dentro de uma aba, quem não abrir aquela aba nunca vê — e a fase 2
+          faz o produto responder de madrugada, quando ninguém está olhando.
+          É o mesmo motivo do alarme de silêncio do agendador: recusar é o
+          produto funcionando, mas o silêncio é indistinguível de defeito. */}
+      {pendentes.length > 0 && (
+        <div className="card mt-16" style={{ borderColor: "var(--danger)" }}>
+          <p className="eyebrow" style={{ marginBottom: 6 }}>
+            {pendentes.length === 1
+              ? "1 conversa esperando alguém"
+              : `${pendentes.length} conversas esperando alguém`}
+          </p>
+          <p className="text-dim" style={{ fontSize: 13, marginTop: 0 }}>
+            A IA gerou, <strong>não enviou</strong> e chamou uma pessoa. Quase sempre é a
+            trava anti-invenção agindo — falta um fato para responder sem inventar.
+          </p>
+          <ul className="stack" style={{ gap: 8, listStyle: "none", padding: 0, margin: 0 }}>
+            {pendentes.map((p) => (
+              <li key={p.id} style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                <a href={`/painel/conversas?contato=${p.contactId}`}>
+                  <strong>{p.nome}</strong>
+                </a>
+                <span className="text-faint" style={{ fontSize: 12 }}>
+                  {" · "}{new Date(p.quando).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+                </span>
+                <p className="text-dim" style={{ fontSize: 13, margin: "4px 0 0" }}>{p.porque}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* ⚠ AGRUPADAS POR FREQUENCIA DE USO, nao por assunto — e essa foi a
           decisao que mais mudou o desenho. "Canal" e "Roteamento" sao assunto
@@ -560,6 +603,38 @@ export default async function AutomacaoPage({
                 ))}
               </div>
               <p className="text-faint mt-8" style={{ fontSize: 13 }}>{MODE_HINT[a.mode]}</p>
+
+              {/* ⚠ CHAVE PRÓPRIA, E NÃO O MODO ACIMA. São duas decisões com
+                  consequências opostas: o modo faz a empresa FALAR com quem
+                  não pediu nada; isto faz a empresa RESPONDER quem perguntou.
+                  Amarradas na mesma chave, desligar a campanha calaria a
+                  resposta — ou ligar a resposta soltaria a campanha. */}
+              <hr className="divider" />
+              <p className="eyebrow" style={{ marginBottom: 6 }}>Resposta automática (fase 2)</p>
+              <label className="row" style={{ gap: 8, alignItems: "flex-start", fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  name="resposta_automatica"
+                  defaultChecked={respostaAutomatica}
+                  disabled={!canEdit}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  <strong>A IA responde sozinha quem escrever</strong>
+                  <span className="text-faint" style={{ display: "block", fontSize: 12, marginTop: 4, maxWidth: 620 }}>
+                    Vale só para quem escreveu nas últimas 24h — ela nunca começa conversa.
+                    Espera de 20 a 40 segundos antes de responder, e desiste sozinha se
+                    alguém da equipe responder antes ou se a pessoa mandar outra mensagem.
+                    <strong> Não tem janela de horário</strong>: quem escreve às 2h da manhã
+                    está no momento de intenção.
+                  </span>
+                  <span className="text-faint" style={{ display: "block", fontSize: 12, marginTop: 6, maxWidth: 620 }}>
+                    ⚠ Quando a trava anti-invenção recusar escrever, ela <strong>não</strong> manda
+                    nada e a conversa aparece em <em>Decisões esperando alguém</em>, aqui em cima.
+                    Recusar é o produto funcionando — mas do outro lado tem uma pessoa esperando.
+                  </span>
+                </span>
+              </label>
 
               <hr className="divider" />
               <p className="eyebrow" style={{ marginBottom: 14 }}>Regras anti-bloqueio</p>

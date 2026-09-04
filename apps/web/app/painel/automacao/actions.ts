@@ -43,6 +43,12 @@ export async function saveAutomation(formData: FormData) {
     },
   });
 
+  // ⚠ A CHAVE DA FASE 2 NÃO PASSA POR `readAutomation`, e é de propósito: ele
+  // normaliza números e modo, e um booleano que some no meio disso vira "a
+  // resposta automática desligou sozinha ao salvar outro campo" — que é
+  // exatamente o defeito que o `teto_mensagens_mes_cents` já pagou logo abaixo.
+  const respostaAutomatica = formData.get("resposta_automatica") === "on";
+
   const settingsAtuais = (cur?.settings as Record<string, unknown> | null) ?? {};
 
   // ⚠ MESCLAR, NUNCA SUBSTITUIR — e a versão anterior substituía.
@@ -60,7 +66,7 @@ export async function saveAutomation(formData: FormData) {
   const automacaoAtual = (settingsAtuais.automation as Record<string, unknown> | null) ?? {};
   const settings = {
     ...settingsAtuais,
-    automation: { ...automacaoAtual, ...incoming },
+    automation: { ...automacaoAtual, ...incoming, resposta_automatica: respostaAutomatica },
   };
 
   const { error } = await supabase

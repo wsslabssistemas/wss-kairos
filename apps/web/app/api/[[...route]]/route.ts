@@ -11,6 +11,8 @@ import { credencialDoCanal } from "@/lib/credenciais";
 import { pediuParaSair } from "@/lib/optout";
 import { tipoDeFecho } from "@/lib/fecho";
 import { rodarTodasAsEmpresas } from "@/lib/motor-rota";
+import { after } from "next/server";
+import { responderSozinho } from "@/lib/fase2-db";
 import { timingSafeEqual } from "node:crypto";
 import {
   assinaturaConfere,
@@ -878,6 +880,39 @@ async function registrar(mensagens: MensagemRecebida[]) {
 
     if (erroMsg && erroMsg.code !== "23505") {
       console.error(`[whatsapp] MENSAGEM PERDIDA de ${msg.de} (${msg.wamid}): ${erroMsg.message}`);
+    }
+
+    // ⚠ A FASE 2 — a IA responde sozinha, e SÓ se a empresa ligou.
+    //
+    // `after()` porque a Meta precisa do 200 AGORA: ela desativa a assinatura
+    // de quem demora, e a pausa de 20–40s antes de responder passaria de longe
+    // do aceitável. O trabalho continua depois da resposta, na mesma função.
+    //
+    // ⚠ E A DUPLICATA NÃO RESPONDE DE NOVO. A Meta reenvia o mesmo `wamid`
+    // quando acha que não entregou; sem esta guarda, um reenvio viraria uma
+    // segunda resposta paga para a mesma pergunta — e o `23505` é justamente o
+    // sinal de que esta mensagem já foi processada uma vez.
+    if (!erroMsg) {
+      const paraResponder = {
+        tenantId,
+        contactId,
+        mensagemISO: msg.quando.toISOString(),
+        texto: msg.texto,
+        tipoDaMensagem:
+          msg.tipo === "reaction" || tipoDeFecho(msg.texto) === "sem_conteudo"
+            ? "customer_reaction"
+            : "customer_message",
+      };
+      after(async () => {
+        try {
+          await responderSozinho(paraResponder);
+        } catch (e) {
+          // `responderSozinho` já registra a própria falha; isto é a rede de
+          // segurança para o que estourar antes dela — e nunca pode derrubar
+          // o webhook, que a esta altura já respondeu 200 à Meta.
+          console.error(`[fase2] falhou fora do registro: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      });
     }
 
     // ⚠ PEDIDO DE DESCADASTRO E HONRADO AQUI, NO INSTANTE EM QUE CHEGA.

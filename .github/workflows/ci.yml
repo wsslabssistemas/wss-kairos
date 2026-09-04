@@ -235,6 +235,13 @@ jobs:
         run: node packages/db/tests/retorno_test.mjs
       - name: Motor — as regras anti-bloqueio sendo obedecidas
         run: node packages/db/tests/motor_test.mjs
+      # ⚠ A PRIMEIRA PECA QUE ESCREVE NO NOME DA EMPRESA SEM NINGUEM LER ANTES.
+      # O numero que autorizou a fase 2 (82,6% de sugestoes aceitas) mede que o
+      # TEXTO e bom — nao mede se a IA sabe quando calar. As recusas guardadas
+      # aqui sao o que faz a diferenca: reacao, descadastro, janela fechada,
+      # atendimento encerrado, e a segunda conferencia depois da pausa.
+      - name: Fase 2 — quando a IA NAO deve responder sozinha
+        run: node packages/db/tests/fase2_test.mjs
       # ⚠ O AGENDADOR PERDEU AS DUAS EXECUCOES DE 27/ago e ninguem soube. A
       # correcao foi bater de 15 em 15 minutos e deixar a cadencia com o motor;
       # esta trava guarda as bordas em que a regra nova poderia calar a
