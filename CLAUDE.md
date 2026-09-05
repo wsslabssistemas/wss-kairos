@@ -40,6 +40,15 @@ duas semanas; a curadoria, não. Toda decisão de arquitetura deve proteger esse
    `tenant_id`. RLS no Postgres é a defesa real, não a aplicação.
 
 Violação das três deve **falhar o build**, não gerar comentário em revisão.
+A Lei 2 tem o validador de manifesto, a Lei 3 tem a RLS, e a **Lei 1 passou a
+ter `nucleo_check.mjs`** (5/set/2026): ele lê o CÓDIGO — nunca o comentário —
+dos arquivos que decidem para todo ramo e recusa vocabulário de mercado.
+Nasceu de um erro meu: `"gympass" ? "Gympass" : "totalpass" ? "Totalpass"`
+dentro do motor. Não quebrava nada, passava no typecheck, e no dia em que uma
+clínica declarasse `convenio: "unimed"` a mensagem sairia em minúsculo. Rodando
+pela primeira vez ele pegou mais dois vazamentos antigos ("rematrícula" numa
+recusa do motor, "Ex-aluno" no rótulo da fila). **A lei que só tem atenção como
+trava é a que vaza.**
 
 ---
 
