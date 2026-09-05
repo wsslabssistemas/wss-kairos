@@ -240,8 +240,21 @@ contract:
         dias_antes: 60
         titulo: "Falar do resultado"
         intencao: "NÃO mencione renovação. Pergunte o que ele já consegue fazer e não conseguia quando começou — e registre a resposta. É esse texto que sustenta a conversa daqui a um mês."
+      # ⚠ ERA 30, VIROU 10 EM 5/set — decisão do fundador, e ela tem um motivo
+      # que o número sozinho não mostra: *"tentar uma renovação antecipada com
+      # 30 dias de antecedência é muito"*.
+      #
+      # Ele está certo sobre o comportamento: renovar cedo não dá vantagem
+      # nenhuma ao aluno, então o pedido feito cedo demais colhe "depois eu
+      # vejo" — e a resposta já foi dada. Perto do vencimento a decisão é real.
+      #
+      # ⚠ E A ANTECEDÊNCIA CERTA DEPENDE DO CICLO, não do calendário. Dez dias
+      # são 33% de um mensal e 2,7% de um anual — e 181 dos 328 alunos da Be
+      # Fitness são anuais. O que segura o anual não é esta janela: é a de 60
+      # dias, que abre a conversa sem falar de renovação. Se um dia a renovação
+      # de plano longo começar a chegar em cima da hora, é aqui que se mexe.
       - key: continuidade
-        dias_antes: 30
+        dias_antes: 10
         titulo: "Abrir a continuidade"
         intencao: "Retome com as palavras dele o ganho que ele mesmo contou e projete o próximo ciclo de treino. A renovação entra como continuação do que já está funcionando."
         # ⚠ O CAMINHO PARA QUANDO NINGUÉM REGISTROU O GANHO — e ele é a regra
@@ -257,8 +270,14 @@ contract:
         # A saída não é afrouxar a trava nem inventar o ganho: é fazer agora a
         # pergunta que ficou para trás.
         intencao_sem_historico: "Ninguém registrou o que o treino já entregou para ele, então NÃO afirme ganho nenhum e não invente resultado. Faça agora a pergunta que ficou para trás: o que ele já consegue fazer hoje e não conseguia quando começou. Registre a resposta — e só então fale de continuidade, na conversa seguinte."
+      # ⚠ O ÚLTIMO AVISO, e ele encostou na janela acima quando ela veio para 10.
+      # Três dias é pouco de propósito: é a mensagem que diz a DATA e a
+      # condição, para quem não respondeu a de 10. Duas iguais em uma semana
+      # seriam a repetição que a trava do toque existe para impedir — por isso
+      # os textos são diferentes, e o desta janela é o único que pode trazer
+      # valor e forma de pagamento.
       - key: condicao
-        dias_antes: 7
+        dias_antes: 3
         titulo: "Fechar com condição concreta"
         intencao: "Data, valor e forma de pagamento, só com o que existir no DNA. Sem condição concreta o vencimento passa e vira cancelamento por inércia — que na academia é a evasão silenciosa."
 
