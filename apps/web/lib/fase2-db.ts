@@ -64,6 +64,18 @@ export async function responderSozinho(entrada: {
   canal: "whatsapp" | "instagram" | "facebook";
   /** Injetável no teste. Em produção fica o sorteio de verdade. */
   sorteio?: number;
+  /**
+   * SEM A PAUSA — só o retry usa, e usar em qualquer outro lugar é defeito.
+   *
+   * ⚠ A pausa de 20–40s tem duas razões, e a SEGUNDA CHANCE não tem nenhuma
+   * delas. Ela existe para não anunciar robô (a pessoa já espera há horas — não
+   * há velocidade a disfarçar) e para deixar as três mensagens seguidas
+   * chegarem (elas já chegaram; o retry lê a última). O que sobra é puro
+   * prejuízo: 30 segundos de sono DENTRO do laço do agendador, que roda em
+   * série por empresa e tem tempo contado. Foi o que matou o tique das 21h15 —
+   * a rodada da Be Fitness não chegou a existir.
+   */
+  semPausa?: boolean;
 }): Promise<void> {
   const admin = createAdminClient();
   const { tenantId, contactId } = entrada;
@@ -224,7 +236,8 @@ export async function responderSozinho(entrada: {
     }
 
     // ---------------------------------------------- A PAUSA
-    await esperar(decisao.esperarMs);
+    // (o retry não espera — ver `semPausa`)
+    if (!entrada.semPausa) await esperar(decisao.esperarMs);
 
     // ⚠ E DEPOIS DELA, CONFERIR DE NOVO. Trinta segundos é tempo de a recepção
     // responder e de a pessoa mandar mais duas mensagens. Ver `aindaEhAVez`.
@@ -701,6 +714,9 @@ export async function retentarPendentes(tenantId: string, agora = new Date()): P
       texto: entrada.content ?? "",
       tipoDaMensagem: entrada.input_kind ?? "customer_message",
       canal: (entrada.channel ?? "whatsapp") as "whatsapp" | "instagram" | "facebook",
+      // ⚠ SEM PAUSA. A pessoa já espera há horas, e dormir 30s aqui é dormir
+      // dentro do laço do agendador — que roda em série e tem tempo contado.
+      semPausa: true,
     });
     refeitas++;
   }
