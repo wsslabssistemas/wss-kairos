@@ -613,6 +613,97 @@ E as 857 fichas sem check-in na janela agora dizem isso na ficha
 (`faixa_checkin: sem_registro_na_janela`, com a janela escrita) — senão a
 próxima janela de contexto repete o erro.
 
+### 🌙 A NOITE DE 4/set — o que a primeira noite da fase 2 ensinou
+
+**Placar do dia:** 6 respondeu · 5 recusou · 2 desistiu · 1 escalou. As duas
+"desistiu" são a pausa funcionando (a Erika mandou três mensagens seguidas e
+recebeu **uma** resposta), e as cinco recusas eram reações com emoji.
+
+**E três defeitos apareceram em cascata, todos silenciosos.**
+
+#### 1. Duas rodadas no mesmo minuto — 43 mensagens com teto de 30
+
+Ele perguntou por que nada saiu às 17h. O registro respondeu: *"o teto do dia
+(30) já foi atingido: 43 saíram"*. A causa está duas linhas acima: **duas
+rodadas às 13:17**, uma com 15 e outra com 13.
+
+As duas perguntaram *"faz mais de 240 min desde o último envio?"* **antes de
+qualquer uma ter enviado** — e as duas ouviram sim. O teto diário também não
+segurou: ele lê o banco antes de agir, e as duas leram *"15 saíram hoje"*.
+
+⚠ **Todo freio que LÊ e depois AGE tem essa fresta quando há dois atores.** E
+ela só aparece quando os dois relógios se encontram — raro o bastante para
+ninguém procurar.
+
+⚠ **E a culpa não é do agendador reserva.** Ele entrou em 30/ago porque um
+relógio só era ponto único de falha, e continua certo. **Redundância sem
+exclusão mútua não é redundância: é duplicação.**
+
+Fechado por `motor_reservas` (`0085`): chave primária `(empresa, janela de 10
+min)`. Quem insere roda; quem colide sai como batida **pulada**, não como erro.
+
+#### 2. Falha passageira não tinha segunda chance
+
+Às 17h35 o Thyago escreveu pelo Instagram. A IA esperou 24s, tentou gerar e
+ouviu *"your credit balance is too low"*. **Ela fez o certo: não inventou, não
+mandou nada, chamou uma pessoa.**
+
+O crédito voltou às 20h50 e **nada aconteceu** — a fase 2 só acorda quando
+CHEGA mensagem, e a dele já tinha chegado. Ficaria esperando alguém abrir a
+tela, dentro de uma janela de 24h que fechava no dia seguinte.
+
+⚠ **E as duas falhas não são a mesma coisa:** recusa da trava é DECISÃO
+(repetir chega na mesma recusa e queima IA); crédito, rede e provedor são
+ACIDENTE (a condição passa sozinha). A diferença ficou **gravada**
+(`transitorio`, `0086`), nunca adivinhada pelo texto do erro — no dia em que a
+mensagem da API mudasse, um retry por palavra-chave pararia calado.
+
+Uma tentativa só (`retentado_em` marcado ANTES de tentar): laço infinito que
+manda mensagem é a pior coisa que este produto pode fazer.
+
+#### 3. ⚠ OS DOIS AGENDADORES DORMIAM À NOITE E NO FIM DE SEMANA
+
+O achado maior, e ele estava escondido atrás dos outros dois. Os dois relógios
+batiam **9h–18h, segunda a sexta**. Certo enquanto o tique só servia à campanha
+— campanha não sai fora do horário mesmo.
+
+Só que hoje o tique carrega **três coisas que não dormem**: o retry, os
+**alertas** (agendador mudo, token vencendo, decisão esperando gente) e o vigia
+do canal. **A resposta automática é do webhook e nunca dormiu; tudo que VIGIA
+ela é que dormia** — justamente no fim de semana que ele ligou a fase 2 para
+testar.
+
+Os dois passaram a bater **24/7**. Bater sempre não muda o que sai: a janela de
+horário é do motor (com o fuso da empresa), a cadência é do espaçamento, e a
+reserva atômica impede rodada dupla.
+
+#### 4. E um que eu mesmo criei no meio da correção
+
+O retry chamava a resposta **com a pausa de 30s dentro do laço do agendador**,
+que roda em série e tem tempo contado — o tique das 21h15 não chegou em todas as
+empresas. A pausa não tem razão de existir num retry: a pessoa já espera há
+horas, e as mensagens seguidas já chegaram. `semPausa` é explícito e só o retry
+usa.
+
+**O Thyago foi respondido às 21h16**, pelo retry, e sem duplicata — a segunda
+tentativa foi consumida e a guarda barrou, porque já havia resposta depois da
+mensagem dele.
+
+### ✅ O INSTAGRAM ENVIA — medido, não suposto (4/set, 21h16)
+
+A resposta ao Thyago **saiu de verdade pelo Instagram**, com `message_id` da
+Meta. E `GET /me/conversations` responde com dados, o que exige
+`instagram_business_manage_messages`.
+
+⚠ **Isso prova o canal para a conta da Be Fitness, não para as outras.** O que
+funciona hoje é o Acesso Padrão, que vale para a conta que o app administra.
+**Acesso Avançado é o que permite fazer isso pela conta de OUTRA empresa** — e é
+ele que decide se o Kairós é produto ou serviço.
+
+O token do Facebook segue válido, tipo PAGE, com `pages_messaging` concedida
+para a página — e **zero mensagens recebidas**, porque a assinatura do webhook
+da página continua pendente (é um clique, e não depende da análise).
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide

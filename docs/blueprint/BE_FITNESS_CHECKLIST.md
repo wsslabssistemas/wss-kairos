@@ -28,11 +28,15 @@ envia → ela responde de novo.
 
 ---
 
-## ❌ O QUE FALTA — dele (só duas, e nenhuma é técnica)
+## ❌ O QUE FALTA — dele
 
-| # | O quê | Onde |
+| # | O quê | Por que trava |
 |---|---|---|
-| 1 | **Exportação de títulos em aberto** (`Codigo`, valor, vencimento) | Sem ela não dá para dimensionar quem abandonou devendo |
+| 1 | **Submeter os 2 modelos do convênio na Meta** (`convenio_reconhecimento`, `convenio_retomada`) | Sem eles as 1.090 pessoas de convênio não recebem nada: fora da janela de 24h não existe texto livre |
+| 2 | **Marcar `messages` no webhook da página do Facebook** | A página está configurada e **zero mensagens chegaram**. É um clique, e NÃO depende da análise: `pages_messaging` já está concedida |
+| 3 | **Exportação de títulos em aberto** (`Codigo`, valor, vencimento) | Sem ela não dá para dimensionar quem abandonou devendo — é o "terceiro estado" |
+| 4 | **Perguntar à SCA se existe API/exportação de check-in** | Resolveria convênio E plano direto de uma vez, sem planilha |
+| 5 | **Ligar recarga automática de crédito da IA** | Em 4/set o saldo acabou às 17h35 e uma conversa ficou 3h esperando |
 
 ✅ ~~**Nome de exibição rejeitado**~~ — **fechado por decisão em 31/ago.** Na
 tela de quem recebe aparece "Be FITNESS 💪02" com a logo, e o fundador decidiu
@@ -66,10 +70,12 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
 
 | O quê | Espera |
 |---|---|
-| ~~**Fase 2: a IA responde sozinha**~~ | **CONSTRUÍDA em 4/set, e desligada.** Falta ele ligar em Automação → Regras |
-| ~~Pausa de 20–40s / aviso de decisão pendente~~ | **Feitas**, junto da fase 2 |
-| ~~Alerta ativo (e-mail)~~ | **Feito em 4/set.** ⚠ Falta `RESEND_API_KEY` na Vercel + redeploy |
-| **Responder por Instagram e Facebook** | Nada da Meta — é código que não existe. 10 conversas do Instagram estão fora do sistema |
+| ~~**Fase 2: a IA responde sozinha**~~ | **LIGADA em 4/set**, nos três canais. Primeira noite: 6 respondeu, 5 recusou, 2 desistiu, 1 escalou |
+| ~~Pausa de 20–40s / aviso de decisão pendente~~ | **Feitas.** O aviso aparece em TODA tela, não só em Automação |
+| ~~Alerta ativo (e-mail)~~ | **Feito, e a chave já está na Vercel** |
+| ~~Responder por Instagram e Facebook~~ | **Feito em 4/set** — e provado: a resposta ao Thyago saiu pelo Instagram às 21h16 |
+| ~~Marcar na agenda / registrar combinado / encerrar / motivo de saída~~ | **Feitos em 4/set** — o sistema faz sozinho |
+| ~~Planilha por link do Google Sheets~~ | **Feito em 4/set** — lê todas as abas, identifica e a pessoa confirma |
 | ~~A técnica curada não chegava em quem redige~~ | **Feito em 31/ago** — os quatro pontos. Ver `ESTADO_DO_PROJETO.md` §0.000 |
 | ~~Corpo do modelo vem do repositório~~ | **Feito em 01/set** — o WABA id chegou sozinho pelo webhook, os 5 modelos vêm da Meta e o vigia reconfere 1×/dia |
 | ~~Importação exigia saber o tipo do arquivo~~ | **Feito em 01/set** — o sistema identifica e a pessoa corrige |
@@ -80,6 +86,15 @@ e o acesso administrativo ao Supabase e à Vercel liberado.
 | **Terceiro estado** (abandonou com contrato aberto) | A exportação de títulos em aberto |
 | Fonte de captação por webhook | Nada — dá para fazer, e conecta com o site novo |
 | Clima no envio | **Parado de propósito**: com 30 mensagens/dia não há como medir |
+
+## ❌ O QUE FALTA — minhas
+
+| O quê | Espera |
+|---|---|
+| **Ligar a régua do convênio** | Os 2 modelos aprovados. A biblioteca curada e os check-ins já estão no lugar |
+| **Importar as abas de check-in pela tela** | Hoje o cruzamento foi feito por script; a leitura por link já existe, falta identificar essas duas abas |
+| **Desempenho das telas** | Gestão faz 5 leituras da tabela inteira; medido em 3/set, ainda não corrigido |
+| **A régua do "chega" para as réguas novas** | O princípio está no código (despedida, pausa com prazo, encerramento respeitado pela fila). Falta valer para toda régua nova por construção |
 
 ## ⚠ AS ARMADILHAS DESTA SEMANA — leia antes de mexer no canal
 
