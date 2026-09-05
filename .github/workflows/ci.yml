@@ -257,6 +257,14 @@ jobs:
       # entrega de toda mensagem da empresa.
       - name: Adiamento — quando ela ja decidiu, nao se pergunta mais
         run: node packages/db/tests/adiamento_test.mjs
+      # ⚠ A LEI 1 VIRANDO TRAVA. O CLAUDE.md sempre disse que violacao das tres
+      # leis deve FALHAR O BUILD — a Lei 2 tem o validador de manifesto, a Lei 3
+      # tem a RLS, e a Lei 1 era a unica protegida por atencao. Em 5/set eu
+      # mesmo escrevi `"gympass" ? "Gympass" : "totalpass" ? "Totalpass"` dentro
+      # do motor: nao quebrava nada, passava no typecheck, e no dia em que uma
+      # clinica declarasse `convenio: "unimed"` sairia em minusculo.
+      - name: Lei 1 — o nucleo nao conhece segmento
+        run: node packages/db/tests/nucleo_check.mjs
       # ⚠ O AGENDADOR PERDEU AS DUAS EXECUCOES DE 27/ago e ninguem soube. A
       # correcao foi bater de 15 em 15 minutos e deixar a cadencia com o motor;
       # esta trava guarda as bordas em que a regra nova poderia calar a

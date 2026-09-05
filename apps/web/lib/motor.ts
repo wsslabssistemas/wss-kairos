@@ -432,15 +432,20 @@ export function planejar(entrada: {
     // Vem junto do veto de contrato pelo mesmo motivo de projeto: **o fato
     // verificável se confere no momento de AGIR**, não só na hora de gravar.
     if (c.convenio) {
-      const nome =
-        c.convenio === "gympass" ? "Gympass" : c.convenio === "totalpass" ? "Totalpass" : c.convenio;
+      // ⚠ O NOME VEM DO DADO, NUNCA DE UMA LISTA AQUI. A versão anterior
+      // escrevia `"gympass" ? "Gympass" : "totalpass" ? "Totalpass"` — duas
+      // marcas de um ramo dentro do núcleo, que é a Lei 1 furada no lugar mais
+      // fácil de não perceber: funciona, passa em revisão, e no dia em que uma
+      // clínica declarar `convenio: "unimed"` a mensagem sai em minúsculo.
+      // Capitalizar é regra de texto; saber que Gympass existe é do segmento.
+      const nome = c.convenio.charAt(0).toUpperCase() + c.convenio.slice(1);
       vereditos.push({
         contactId: c.contactId,
         enviar: false,
         motivo:
           `Ela treina pelo ${nome}. Não é ex-aluna: é cliente por outra porta, e chamá-la ` +
           `de volta é dizer que ela não está aqui. Enquanto não existir régua própria de ` +
-          `convênio, o sistema não fala sozinho com ela — conversa com ela é sobre o TREINO.`,
+          `convênio, o sistema não fala sozinho com ela.`,
       });
       continue;
     }
@@ -451,8 +456,8 @@ export function planejar(entrada: {
         enviar: false,
         motivo:
           `O contrato dele vai até ${c.contratoAte}. Reativação é conversa de quem ` +
-          `saiu, e no papel ele não saiu — pode ser rematrícula que a etapa não ` +
-          `acompanhou, ou plano abandonado sem cancelar. As duas pedem outra conversa.`,
+          `saiu, e no papel ele não saiu — pode ser um retorno que a etapa não ` +
+          `acompanhou, ou contrato abandonado sem cancelar. As duas pedem outra conversa.`,
       });
       continue;
     }

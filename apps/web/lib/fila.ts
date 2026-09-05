@@ -56,7 +56,11 @@ export const ROTULO: Record<MotivoDaFila, string> = {
   followup: "Follow-up devido",
   recompra: "Hora de chamar de volta",
   lembrete: "Data marcada, sem motivo anotado",
-  reativacao: "Ex-aluno — trazer de volta",
+  // ⚠ "EX-CLIENTE", NUNCA "EX-ALUNO". O rótulo aparece na tela de QUALQUER
+  // ramo — numa distribuidora, "ex-aluno" é palavra que não existe. É a Lei 1
+  // no lugar mais fácil de vazar: um texto de interface que só quem opera lê,
+  // e que ninguém revisa procurando vocabulário.
+  reativacao: "Ex-cliente — trazer de volta",
 };
 
 /**
