@@ -57,6 +57,25 @@ export type AiAnswer = {
    * clica no meio de uma conversa.
    */
   motivo_saida: string;
+  /**
+   * ELA PEDIU PARA NÃO SER MAIS PROCURADA.
+   *
+   * ⚠ ELE EXISTE PORQUE A LISTA DE FRASES NÃO ESCUTAVA A PRÓPRIA PERGUNTA. O
+   * Artur escreveu *"não moro mais nesse bairro, preferível que não chame
+   * mais"* — a campanha pergunta *"prefere que eu não te chame mais por
+   * aqui?"*, ele respondeu com o verbo da pergunta, e `lib/optout.ts` tinha
+   * "mande", "envie", "ligue" e não tinha CHAMAR. A IA respondeu *"não vamos
+   * te chamar mais"* e **nada foi gravado**.
+   *
+   * A lista de frases continua (é determinística e barata, e roda no webhook
+   * antes de qualquer IA). Isto é a segunda camada: quem já está lendo a
+   * mensagem para responder também diz se aquilo foi um pedido de parar.
+   *
+   * ⚠ E ERRAR AQUI TEM LADO CERTO, que é a regra de `lib/optout.ts`: falso
+   * positivo custa um lead; falso negativo custa uma denúncia — e denúncia
+   * derruba a qualidade do NÚMERO, que afeta a entrega de tudo.
+   */
+  pediu_para_parar: boolean;
   faltam_fatos: string[];
   escalar: boolean;
   horario_escolhido: string;
@@ -87,6 +106,7 @@ const schema = z.object({
   emocao: z.string().describe("A emoção dominante identificada no cliente."),
   status_sugerido: z.string().describe("A CHAVE de uma etapa da jornada para avançar o cliente, ou string vazia se não houver avanço claro."),
   motivo_status: z.string().describe("Por que sugeriu esse avanço de etapa, ou string vazia."),
+  pediu_para_parar: z.boolean().describe("true SOMENTE se o cliente pediu para não ser mais procurado — 'não me chame mais', 'não quero mais receber', 'me tira da lista', 'prefiro que não entrem em contato'. Dizer que não vai voltar AGORA, ou que está sem tempo, NÃO é pedir para parar."),
   motivo_saida: z.string().describe("Se o cliente DISSE por que parou ou por que não quer agora, a CHAVE do motivo de saída da lista fornecida. String vazia se ele não disse — nunca deduza pelo silêncio nem pelo tom."),
   faltam_fatos: z.array(z.string()).describe("Fatos necessários que NÃO estão no DNA e seriam precisos para responder com segurança."),
   escalar: z.boolean().describe("true se faltam fatos essenciais e a resposta deve ser escalada a um humano em vez de inventada."),
@@ -675,6 +695,36 @@ Analise e gere a melhor resposta agora.`;
   // campo é justamente poder somar. Mesma trava do `status_sugerido`.
   const motivosValidos = new Set((churnReasons as { key: string }[]).map((m) => m.key));
   if (!motivosValidos.has(object.motivo_saida)) object.motivo_saida = "";
+
+  // ⚠ O PEDIDO DE PARAR É HONRADO AQUI, NO INSTANTE EM QUE É LIDO — e não onde
+  // a mensagem é enviada, de propósito.
+  //
+  // Este ponto é comum aos DOIS caminhos: a tela que gera para uma pessoa
+  // aprovar, e a resposta automática. Gravar só no envio deixaria de fora
+  // justamente o caso em que alguém gera, lê o pedido e fecha a aba — e o fato
+  // não depende de a gente responder ou não.
+  //
+  // ⚠ NÃO SOBRESCREVE quem já está marcado: a marcação guarda a FRASE e a data
+  // do pedido original, e regravar apagaria o registro do primeiro pedido, que
+  // é o que tem valor jurídico.
+  if (object.pediu_para_parar && input.contactId) {
+    const marcador = createAdminClient();
+    // paginacao-ok: UPDATE de UMA linha, endereçada por chave primária.
+    const { error: erroParar } = await marcador
+      .from("contacts")
+      .update({
+        do_not_contact: true,
+        do_not_contact_reason: `Pediu para não ser mais procurado: "${message.slice(0, 180)}"`,
+        do_not_contact_at: new Date().toISOString(),
+      })
+      .eq("id", input.contactId)
+      .eq("tenant_id", tenant.id)
+      .eq("do_not_contact", false)
+      .select("id");
+    if (erroParar) {
+      console.error(`[optout] NAO GRAVEI o pedido de parar de ${input.contactId}: ${erroParar.message}`);
+    }
+  }
 
   // A trava tem a palavra final. O modelo pode escalar por conta própria, mas
   // NÃO pode deixar de escalar quando a biblioteca exige um fato que o DNA não

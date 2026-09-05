@@ -704,6 +704,44 @@ O token do Facebook segue válido, tipo PAGE, com `pages_messaging` concedida
 para a página — e **zero mensagens recebidas**, porque a assinatura do webhook
 da página continua pendente (é um clique, e não depende da análise).
 
+### ⚠ O ARTUR PEDIU PARA PARAR, A IA PROMETEU, E NADA FOI GRAVADO (5/set)
+
+Ele escreveu: *"Eu não moro mais nesse bairro, preferível que não chame mais"*.
+A IA respondeu — bem — *"não vamos te chamar mais por aqui"*. E
+`do_not_contact` continuou **false**.
+
+⚠ **A lista de frases não escutava a própria pergunta.** A campanha pergunta
+*"prefere que eu não te chame mais por aqui?"*; ele respondeu com o **verbo da
+pergunta**, e `lib/optout.ts` tinha "mande", "envie" e "ligue" — não tinha
+**chamar**.
+
+⚠ **E esse defeito só aparece na SEGUNDA mensagem** — a que nunca deveria ter
+saído. Até lá, tudo parece funcionando: a resposta foi educada, o cliente foi
+atendido, e a promessa ficou só no texto.
+
+**O que salvou parte dele:** `motivo_saida = mudou_endereco` **foi gravado
+sozinho** pela peça de 4/set — e é o único motivo que o manifesto marca como
+`fora_da_campanha`. Ou seja, ele já estava fora da reativação. O que faltava era
+o "não me chame mais" valendo para **tudo**, não só para uma régua.
+
+**Duas camadas agora:**
+
+1. **A lista de frases** ganhou o verbo que faltava e as variações (`não chame
+   mais`, `prefiro que não me chame`, `não entre em contato`, `não me procure`).
+   Determinística, roda no webhook, antes de qualquer IA. ⚠ E o teste guarda o
+   falso positivo caro: *"pode me chamar amanhã?"* e *"me chama quando abrir
+   vaga"* **não** param.
+2. **A IA diz se foi um pedido de parar** (`pediu_para_parar`), e a marcação
+   acontece **no momento da leitura** — comum aos dois caminhos, a tela e a
+   resposta automática. Gravar só no envio deixaria de fora quem gera, lê o
+   pedido e fecha a aba: **o fato não depende de a gente responder**.
+
+O Artur está marcado, com a frase dele e a data.
+
+⚠ **E a varredura da base não achou mais ninguém**: as seis mensagens com
+"sem interesse" de 19/ago eram **briefings digitados pela equipe**, não falas do
+cliente. O Artur é o primeiro pedido real de descadastro pelo canal.
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide

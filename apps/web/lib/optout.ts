@@ -72,6 +72,28 @@ const PEDIDOS = [
   "nao tenho interesse em receber",
   "nao me liguem mais",
   "nao me ligue mais",
+  // ⚠ ACRESCENTADAS EM 5/set, PELO CASO DO ARTUR. Ele escreveu *"eu não moro
+  // mais nesse bairro, preferível que não chame mais"* — um pedido de parar tão
+  // claro quanto qualquer outro. A IA respondeu *"não vamos te chamar mais por
+  // aqui"* e **nada foi gravado**: a lista tinha "mande", "envie", "ligue" e
+  // não tinha CHAMAR, que é justamente o verbo que a gente usou na campanha
+  // ("quer que eu te chame mais por aqui?"). A pessoa responde com o verbo da
+  // pergunta — e a lista não escutava a própria pergunta.
+  "nao chame mais",
+  "nao me chame mais",
+  "nao me chamem mais",
+  "nao chamem mais",
+  "prefiro que nao me chame",
+  "prefiro que nao chame",
+  "preferivel que nao chame",
+  "preferivel que nao me chame",
+  "nao entre em contato",
+  "nao entrem em contato",
+  "nao me procure",
+  "nao me procurem",
+  "nao me contate",
+  "nao precisa me chamar",
+  "nao precisa mais me chamar",
 ];
 
 /** Tira acento e caixa, para comparar como a pessoa realmente digita. */

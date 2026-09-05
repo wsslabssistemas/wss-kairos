@@ -95,5 +95,51 @@ verifica(
   "nao quero mais receber",
 );
 
+// ---------------------------------------------------------------------
+// O CASO DO ARTUR (5/set/2026) — a lista nao escutava a propria pergunta
+//
+// ⚠ A campanha pergunta *"prefere que eu nao te chame mais por aqui?"*. Ele
+// respondeu com o verbo da pergunta: *"nao moro mais nesse bairro, preferivel
+// que nao chame mais"*. A lista tinha "mande", "envie" e "ligue" — e nao tinha
+// CHAMAR. A IA respondeu "nao vamos te chamar mais por aqui" e nada foi
+// gravado: a promessa existia so no texto.
+//
+// ⚠ E O PIOR DESSE DEFEITO E QUE ELE SO APARECE NA SEGUNDA MENSAGEM — a que
+// nunca deveria ter saido. Ate la, tudo parece funcionando.
+// ---------------------------------------------------------------------
+
+// Esperado: a frase exata dele para.
+verifica(
+  "a frase do Artur e um pedido de parar",
+  !!pediuParaSair("Eu não moro mais nesse bairro, preferível que não chame mais"),
+  true,
+);
+
+// Esperado: as variacoes do mesmo verbo.
+verifica(
+  "as variacoes de 'chamar' param",
+  [
+    "não me chame mais",
+    "prefiro que não me chame",
+    "não entre em contato comigo",
+    "não me procurem",
+  ].map((t) => !!pediuParaSair(t)),
+  [true, true, true, true],
+);
+
+// ⚠ E ESTE E O CASO QUE A REGRA NAO PODE ESTRAGAR: "chamar" e um verbo comum,
+// e a NOSSA propria pergunta contem "te chame mais por aqui". Uma regra por
+// palavra solta silenciaria quem esta marcando horario — e silenciar um
+// interessado e o falso positivo caro.
+verifica(
+  "chamar em contexto normal NAO para",
+  [
+    "pode me chamar amanhã de manhã?",
+    "me chama quando abrir vaga",
+    "quer que eu te chame mais por aqui?",
+  ].map((t) => !!pediuParaSair(t)),
+  [false, false, false],
+);
+
 console.log(falhas === 0 ? "\noptout: tudo certo." : `\noptout: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);
