@@ -46,11 +46,28 @@ on:
     # — a regra de "nada de lógica aqui" continua valendo, e é justamente por
     # ela que dá para bater sempre sem mudar o que sai.
     #
-    # Horas 12–21 UTC = 9h–18h de Brasília, dentro da janela padrão (9h–19h).
-    # O motor confere o horário de novo com o fuso da EMPRESA (`lib/fuso.ts`):
-    # confiar no relógio do agendador foi o defeito que fez a simulação voltar
-    # vazia às 18h.
-    - cron: "7,22,37,52 12-21 * * 1-5"
+    # ⚠ 24/7 DESDE 4/set, e isso deixou de ser opcional quando a fase 2 entrou.
+    #
+    # Ele batia 12–21 UTC de segunda a sexta (9h–18h de Brasília), o que era
+    # certo enquanto ele só servia à CAMPANHA — campanha não sai fora da janela
+    # de horário de qualquer jeito.
+    #
+    # Só que hoje o tique carrega três coisas que NÃO DORMEM:
+    #   • o RETRY do que falhou por acidente. Em 4/set o crédito da API acabou
+    #     às 17h35 e voltou às 20h50: com o tique parado, a mensagem do cliente
+    #     esperaria até segunda — e a janela de 24h da Meta fecha antes;
+    #   • os ALERTAS (agendador mudo, token vencendo, decisão esperando gente);
+    #   • o VIGIA do canal.
+    #
+    # E o fundador ligou a resposta automática justamente para o fim de semana:
+    # *"pode ter mensagem no final de semana"*. A resposta é do webhook e nunca
+    # dormiu; tudo que VIGIA ela é que dormia.
+    #
+    # ⚠ BATER SEMPRE NÃO MUDA O QUE SAI. O motor confere a janela de horário com
+    # o fuso da EMPRESA (`lib/fuso.ts`), o espaçamento decide a cadência, e a
+    # reserva atômica (`motor_reservas`) impede rodada dupla. É a regra de "nada
+    # de lógica aqui" — e é justamente por ela que dá para bater sempre.
+    - cron: "7,22,37,52 * * * *"
   # Permite rodar à mão pelo site do GitHub — com a opção de simular.
   workflow_dispatch:
     inputs:

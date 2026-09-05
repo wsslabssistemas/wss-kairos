@@ -101,9 +101,19 @@ revoke all on function public.bater_no_motor() from public, anon, authenticated;
 -- ⚠ O FUSO FOI CONFERIDO: `show timezone` devolve UTC. Então 12–21 é 9h–18h de
 -- Brasília, dentro da janela padrão. Supor o fuso do agendador foi exatamente o
 -- defeito que fez a simulação voltar vazia às 18h em 20/ago.
+-- ⚠ 24/7 DESDE 4/set. Ele batia 12-21 UTC de segunda a sexta, o que bastava
+-- quando o tique so servia a campanha. Hoje ele carrega o RETRY do que falhou
+-- por acidente, os ALERTAS e o VIGIA do canal — e nenhum dos tres dorme.
+--
+-- O caso que mudou isso: em 4/set o credito da API acabou as 17h35, uma
+-- mensagem de cliente ficou sem resposta, o credito voltou as 20h50 e o tique
+-- so voltaria na segunda — com a janela de 24h da Meta fechando no sabado.
+--
+-- Bater sempre nao muda o que SAI: a janela de horario e do motor, a cadencia e
+-- do espacamento, e a reserva atomica impede rodada dupla.
 select cron.schedule(
   'motor-reserva',
-  '0,15,30,45 12-21 * * 1-5',
+  '0,15,30,45 * * * *',
   $$select public.bater_no_motor();$$
 );
 
