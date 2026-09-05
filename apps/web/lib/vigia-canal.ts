@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SONDAS, temPermissao } from "@/lib/permissoes";
 import { credencialDoCanal } from "@/lib/credenciais";
 import { estadoDoNumero, validadeDoToken, modelosAprovados } from "@/lib/perfil-canal";
 import { avaliarSaude, type Veredito } from "@/lib/saude-canal";
@@ -45,6 +46,14 @@ export type ResultadoDaVigia = {
    * nesta batida (o normal: ela acontece uma vez por hora).
    */
   modelos?: { nome: string; status: string }[];
+  /**
+   * As permissões que hoje faltam e PASSARAM a funcionar nesta leitura.
+   *
+   * ⚠ Só as liberadas entram. Avisar todo dia que uma permissão continua
+   * faltando é a metralhadora que faz a pessoa criar regra de caixa de
+   * entrada — e a partir daí nenhum alerta desta casa chega em ninguém.
+   */
+  permissoes?: { permissao: string; destrava: string }[];
 };
 
 export async function vigiarCanal(tenantId: string, agora = new Date()): Promise<ResultadoDaVigia> {
@@ -83,6 +92,15 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
     // de um modelo muda em semanas, quando muda. Falhar aqui é engolido de
     // propósito — vigiar modelo não pode impedir vigiar a saúde do número.
     const modelosLidos = await conferirModelos(admin, tenantId, cred, agora);
+
+    // ⚠ AS PERMISSÕES QUE FALTAM, MEDIDAS PELO EFEITO. O estado de uma revisão
+    // de app só é legível com token de APLICATIVO, e o segredo mora na Vercel
+    // marcado como sensível — o caminho de "perguntar o status" está fechado
+    // por construção. Então a gente TENTA a chamada que a permissão libera.
+    //
+    // Best-effort e de leitura pura: falhar aqui não pode impedir o vigia de
+    // conferir a saúde do número, que é o motivo principal desta função.
+    const permitidas = await conferirPermissoes(admin, tenantId);
 
     const r = await estadoDoNumero(cred);
 
@@ -147,6 +165,7 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
       // O estado dos modelos, quando esta batida leu. Quem chama passa para o
       // alarme — um dado, uma leitura, dois usos.
       modelos: modelosLidos,
+      permissoes: permitidas,
       veredito: avaliarSaude(r.ok ? { ok: true, ...r.estado } : { ok: false, erro: r.motivo }),
     };
   } catch (e) {
@@ -269,4 +288,66 @@ async function conferirModelos(
     console.warn(`[vigia] falha ao conferir modelos: ${e instanceof Error ? e.message : String(e)}`);
   }
   return situacaoLida;
+}
+
+/** Quantas horas entre duas conferências de permissão. */
+const PERMISSOES_INTERVALO_H = 12;
+
+/**
+ * Testa as permissões que faltam e devolve as que PASSARAM a funcionar.
+ *
+ * ⚠ DUAS VEZES POR DIA basta: aprovação de permissão leva dias, e a notícia
+ * chegar seis horas depois não muda nada. O que não pode é chegar semana que
+ * vem — que era o caso, porque não chegava nunca.
+ */
+async function conferirPermissoes(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+): Promise<{ permissao: string; destrava: string }[]> {
+  try {
+    // paginacao-ok: uma linha, chave primária.
+    const { data } = await admin
+      .from("tenant_secrets")
+      .select("facebook_page_id, facebook_token")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    const seg = data as { facebook_page_id?: string | null; facebook_token?: string | null } | null;
+    const pagina = seg?.facebook_page_id?.trim();
+    const token = seg?.facebook_token?.trim();
+    if (!pagina || !token) return [];
+
+    // ⚠ O RELÓGIO SAI DO PRÓPRIO ALERTA. `alertas_enviados` já guarda quando
+    // cada aviso saiu; usar isso como memória evita uma tabela nova para um
+    // dado que vale meio dia. Sem registro nenhum, sonda — é a primeira vez.
+    const desde = new Date(Date.now() - PERMISSOES_INTERVALO_H * 3_600_000).toISOString();
+    const { data: recente } = await admin
+      .from("alertas_enviados")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("tipo", "permissao_sonda")
+      .gte("enviado_em", desde)
+      .limit(1);
+    if ((recente ?? []).length > 0) return [];
+
+    const liberadas: { permissao: string; destrava: string }[] = [];
+    for (const s of SONDAS) {
+      const tem = await temPermissao(s.permissao, pagina, token);
+      if (tem === true) liberadas.push({ permissao: s.permissao, destrava: s.destrava });
+    }
+
+    // Marca que sondou. Linha de controle, não de alerta: `entregue` fica
+    // false e ninguém recebe nada por ela.
+    await admin.from("alertas_enviados").insert({
+      tenant_id: tenantId,
+      tipo: "permissao_sonda",
+      chave: new Date().toISOString().slice(0, 13),
+      entregue: false,
+      erro: "controle de frequência da sonda, não é alerta",
+    });
+
+    return liberadas;
+  } catch (e) {
+    console.warn(`[vigia] nao consegui sondar permissoes: ${e instanceof Error ? e.message : String(e)}`);
+    return [];
+  }
 }

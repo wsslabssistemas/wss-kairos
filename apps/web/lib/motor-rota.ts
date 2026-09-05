@@ -101,7 +101,7 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
       //
       // Best-effort como o vigia: `vigiarAlertas` engole o próprio erro.
       // Falhar em avisar não pode impedir uma mensagem de sair.
-      if (!simular) await vigiarAlertas(t.id, new Date(), vigia?.modelos);
+      if (!simular) await vigiarAlertas(t.id, new Date(), vigia?.modelos, vigia?.permissoes);
 
       // ⚠ E A SEGUNDA CHANCE DO QUE FALHOU POR ACIDENTE — fora do espaçamento,
       // como o vigia. O espaçamento governa quanta mensagem PROATIVA sai;

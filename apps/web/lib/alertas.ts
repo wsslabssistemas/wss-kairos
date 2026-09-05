@@ -53,6 +53,9 @@ const SILENCIO_H: Record<string, number> = {
   // Mudança de estado de modelo não se repete: a chave já carrega o estado, e
   // a janela larga só evita repetir a mesma notícia se algo reprocessar.
   modelo_status: 72,
+  // Liberação de permissão acontece uma vez. A janela larga é só rede de
+  // segurança contra reprocessamento.
+  permissao_liberada: 168,
 };
 
 const SILENCIO_PADRAO_H = 12;
@@ -83,6 +86,14 @@ export type EstadoParaAlerta = {
    * Vazio quando a batida não leu — a leitura acontece uma vez por hora.
    */
   modelos?: { nome: string; status: string }[];
+  /**
+   * As permissões da Meta que PASSARAM a funcionar — medidas pelo efeito.
+   *
+   * ⚠ Só entram aqui as que hoje faltam e que, quando chegarem, destravam
+   * alguma coisa. E o alerta é de LIBERAÇÃO, nunca de falta: avisar todo dia
+   * que uma permissão continua faltando é a metralhadora que desliga o alarme.
+   */
+  permissoesLiberadas?: { permissao: string; destrava: string }[];
 };
 
 /**
@@ -205,6 +216,21 @@ export function alertasDoEstado(e: EstadoParaAlerta): Alerta[] {
           `costuma ser categoria errada (marketing × utilidade) ou texto que promete algo.`,
       });
     }
+  }
+
+  // ⚠ PERMISSÃO LIBERADA — a notícia que o dono espera olhando o painel da
+  // Meta, e que chega sem aviso nenhum, às vezes de madrugada.
+  //
+  // A chave é `<permissao>:liberada`, e ela toca UMA vez na vida: uma vez
+  // concedida, a permissão não volta a ser novidade.
+  for (const p of e.permissoesLiberadas ?? []) {
+    out.push({
+      tipo: "permissao_liberada",
+      chave: `${p.permissao}:liberada`,
+      gravidade: "aviso",
+      titulo: `A Meta liberou "${p.permissao}"`,
+      corpo: `Agora dá para ${p.destrava}`,
+    });
   }
 
   return out;

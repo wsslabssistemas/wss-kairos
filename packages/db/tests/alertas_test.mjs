@@ -251,5 +251,54 @@ verifica(
   0,
 );
 
+// ---------------------------------------------------------------------
+// PERMISSAO LIBERADA (5/set/2026)
+//
+// ⚠ O fundador perguntou como saber quando as permissoes em analise forem
+// aprovadas. O estado da revisao so e legivel com token de APLICATIVO, e o
+// segredo mora na Vercel marcado como sensivel — o caminho de "perguntar o
+// status" esta fechado por construcao.
+//
+// O caminho que sobra e melhor: TENTAR a chamada que a permissao libera. Ela
+// responde a pergunta que interessa — nao "o formulario foi aprovado?", e sim
+// "o sistema consegue fazer isto?".
+//
+// ⚠ E O ALERTA E DE LIBERACAO, NUNCA DE FALTA. Avisar todo dia que uma
+// permissao continua faltando e a metralhadora que faz a pessoa criar regra de
+// caixa de entrada — e a partir dai nenhum alerta desta casa chega em ninguem.
+// ---------------------------------------------------------------------
+
+// Esperado: avisa uma vez, com o que a permissao destrava no corpo. Aviso que
+// so diz o nome da permissao nao vira trabalho: o dono precisa saber o que
+// passou a ser possivel.
+verifica(
+  "permissao liberada avisa, e o corpo diz o que destravou",
+  alertasDoEstado({
+    ...CALMO,
+    permissoesLiberadas: [{ permissao: "pages_manage_metadata", destrava: "assinar o webhook sozinho." }],
+  }).map((a) => [a.tipo, a.chave, a.corpo.includes("assinar o webhook")]),
+  [["permissao_liberada", "pages_manage_metadata:liberada", true]],
+);
+
+// Esperado: nada. Lista vazia e o estado normal — a permissao continua
+// faltando, e isso nao e noticia nenhuma.
+verifica(
+  "permissao que continua faltando nao avisa",
+  alertasDoEstado({ ...CALMO, permissoesLiberadas: [] }),
+  [],
+);
+
+// Esperado: calado na segunda vez. Uma vez concedida, a permissao nao volta a
+// ser novidade — e a sonda roda duas vezes por dia.
+verifica(
+  "a mesma liberacao nao avisa duas vezes",
+  filtrarJaAvisados(
+    alertasDoEstado({ ...CALMO, permissoesLiberadas: [{ permissao: "x", destrava: "y" }] }),
+    [{ tipo: "permissao_liberada", chave: "x:liberada", enviado_em: "2026-09-05T11:00:00.000Z" }],
+    new Date("2026-09-05T14:00:00.000Z"),
+  ).length,
+  0,
+);
+
 console.log(falhas === 0 ? "\nalertas: tudo certo." : `\nalertas: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

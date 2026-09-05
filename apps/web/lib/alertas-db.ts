@@ -32,6 +32,8 @@ export async function vigiarAlertas(
    * `vigiarCanal` roda logo antes e já tem o dado na mão.
    */
   modelos?: { nome: string; status: string }[],
+  /** Permissões que passaram a funcionar — ver `lib/permissoes.ts`. */
+  permissoesLiberadas?: { permissao: string; destrava: string }[],
 ): Promise<number> {
   try {
     const admin = createAdminClient();
@@ -94,6 +96,7 @@ export async function vigiarAlertas(
       qualidade: verificacao?.quality_rating ?? null,
       diasDoToken,
       modelos,
+      permissoesLiberadas,
     });
     if (candidatos.length === 0) return 0;
 
