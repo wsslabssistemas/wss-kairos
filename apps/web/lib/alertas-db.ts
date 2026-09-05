@@ -22,7 +22,17 @@ const IDADE_MINIMA_MIN = 15;
  * Devolve quantos alertas saíram — para o log da rodada, e para o dia em que
  * alguém perguntar se o alarme está vivo.
  */
-export async function vigiarAlertas(tenantId: string, agora = new Date()): Promise<number> {
+export async function vigiarAlertas(
+  tenantId: string,
+  agora = new Date(),
+  /**
+   * O estado dos modelos, quando a vigia do canal acabou de ler.
+   *
+   * ⚠ VEM DE FORA para não haver uma segunda chamada à Meta só para alertar —
+   * `vigiarCanal` roda logo antes e já tem o dado na mão.
+   */
+  modelos?: { nome: string; status: string }[],
+): Promise<number> {
   try {
     const admin = createAdminClient();
 
@@ -83,6 +93,7 @@ export async function vigiarAlertas(tenantId: string, agora = new Date()): Promi
       decisoesPendentes,
       qualidade: verificacao?.quality_rating ?? null,
       diasDoToken,
+      modelos,
     });
     if (candidatos.length === 0) return 0;
 

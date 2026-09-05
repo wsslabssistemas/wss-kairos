@@ -742,6 +742,41 @@ O Artur está marcado, com a frase dele e a data.
 "sem interesse" de 19/ago eram **briefings digitados pela equipe**, não falas do
 cliente. O Artur é o primeiro pedido real de descadastro pelo canal.
 
+### 📨 OS MODELOS DO CONVÊNIO ESTÃO EM ANÁLISE — e o sistema avisa sozinho
+
+`convenio_reconhecimento` e `convenio_retomada`: **PENDING** na Meta (5/set).
+
+⚠ **Ele pediu *"me avisa quando forem aprovados"* — e depender de mim estar numa
+conversa para isso é o mesmo defeito de todo o resto.** A notícia chega quando
+ninguém está olhando.
+
+Agora o **alerta por e-mail** cobre isso: a leitura dos modelos na Meta passou
+de 1×/dia para **1×/hora** (ela deixou de servir só para copiar o corpo dos
+aprovados; agora é o que descobre **mudança de estado**), e a mudança vira
+alerta com a chave `nome:estado`.
+
+⚠ **E a recusa é a notícia que ninguém descobre sozinho.** Modelo recusado não
+aparece na lista de aprovados — e **não aparecer se parece exatamente com
+continuar em análise**. O dono ficaria esperando indefinidamente por uma
+aprovação já negada. Por isso `REJECTED`, `PAUSED` e `DISABLED` são **urgentes**;
+aprovado é aviso.
+
+### ⚠ O VALDECIR — o mesmo caso do Artur, um dia antes
+
+Ele avisou *"Estamos em Brasília DF"* e a IA respondeu certo: *"não faz sentido
+eu ficar te chamando por aqui, já que a gente é em Porto Alegre"*. **E nada foi
+gravado** — a resposta foi às 13h09 de 4/set, **antes** de o registro automático
+do motivo de saída entrar no ar.
+
+⚠ **E aqui é `motivo_saida`, NÃO `do_not_contact`**, e a distinção importa: ele
+declarou um **fato** (mora longe), não fez um **pedido** (não me chame).
+`mudou_endereco` é o único motivo que o manifesto marca como fora da campanha —
+então ele sai da reativação de vez e continua podendo ser atendido se **ele**
+escrever. Marcar descadastro por um fato que ele não pediu seria decidir por ele.
+
+Corrigido na ficha. A varredura não achou mais ninguém com fala de mudança de
+cidade sem motivo registrado.
+
 ### 🔵 A FILA, EM ORDEM DE VALOR
 
 1. **A empresa se configurar sozinha** (Login do Facebook para Empresas). Decide

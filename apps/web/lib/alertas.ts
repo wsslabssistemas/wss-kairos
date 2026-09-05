@@ -50,6 +50,9 @@ const SILENCIO_H: Record<string, number> = {
   decisao_pendente: 12,
   qualidade_do_numero: 12,
   token_vencendo: 24,
+  // Mudança de estado de modelo não se repete: a chave já carrega o estado, e
+  // a janela larga só evita repetir a mesma notícia se algo reprocessar.
+  modelo_status: 72,
 };
 
 const SILENCIO_PADRAO_H = 12;
@@ -68,6 +71,18 @@ export type EstadoParaAlerta = {
   qualidade: string | null;
   /** Dias até o token do WhatsApp expirar. `null` = não expira ou não se sabe. */
   diasDoToken: number | null;
+  /**
+   * O estado de cada modelo na Meta, quando a última leitura aconteceu.
+   *
+   * ⚠ A NOTÍCIA QUE O DONO ESPERA. Ele submete um modelo e fica olhando o
+   * painel da Meta — e a aprovação chega sem aviso nenhum, às vezes de
+   * madrugada. Pior: a RECUSA também chega sem aviso, e recusa é invisível por
+   * natureza (o modelo simplesmente nunca aparece, e nunca aparecer se parece
+   * com ainda estar em análise).
+   *
+   * Vazio quando a batida não leu — a leitura acontece uma vez por hora.
+   */
+  modelos?: { nome: string; status: string }[];
 };
 
 /**
@@ -152,6 +167,44 @@ export function alertasDoEstado(e: EstadoParaAlerta): Alerta[] {
         `E a Meta não avisa — o sintoma é tudo parecer normal com nada chegando.\n\n` +
         `O caminho é gerar um token novo no painel da Meta e salvar em Automação → Canal oficial.`,
     });
+  }
+
+  // ⚠ MODELO APROVADO E MODELO RECUSADO — as duas notícias, e a segunda é a
+  // que ninguém descobre sozinho.
+  //
+  // A `chave` é `nome:status`, e é ela que faz isto tocar UMA vez por
+  // mudança: enquanto o estado não mudar, a chave é a mesma e a janela de
+  // silêncio cala. No dia em que ele virar, a chave é outra e o alerta sai.
+  for (const m of e.modelos ?? []) {
+    if (m.status === "APPROVED") {
+      out.push({
+        tipo: "modelo_status",
+        chave: `${m.nome}:APPROVED`,
+        gravidade: "aviso",
+        titulo: `O modelo "${m.nome}" foi aprovado`,
+        corpo:
+          `A Meta aprovou o modelo "${m.nome}". Ele já pode ser usado nas mensagens que saem ` +
+          `fora da janela de 24h.
+
+` +
+          `Falta ligar o nome dele no toque certo, em Automação → Por onde cada motivo sai.`,
+      });
+    }
+    if (m.status === "REJECTED" || m.status === "PAUSED" || m.status === "DISABLED") {
+      out.push({
+        tipo: "modelo_status",
+        chave: `${m.nome}:${m.status}`,
+        gravidade: "urgente",
+        titulo: `O modelo "${m.nome}" foi ${m.status === "REJECTED" ? "RECUSADO" : "suspenso"} pela Meta`,
+        corpo:
+          `A Meta marcou o modelo "${m.nome}" como ${m.status}. Ele não sai mais — e quem depende ` +
+          `dele para de falar, sem erro em lugar nenhum.
+
+` +
+          `O motivo aparece no WhatsApp Manager → Modelos de mensagem, na linha dele. Recusa ` +
+          `costuma ser categoria errada (marketing × utilidade) ou texto que promete algo.`,
+      });
+    }
   }
 
   return out;

@@ -189,5 +189,67 @@ verifica(
   [true, 24],
 );
 
+// ---------------------------------------------------------------------
+// MODELO APROVADO E MODELO RECUSADO (5/set/2026)
+//
+// ⚠ O fundador submeteu dois modelos e pediu: *"me avisa quando forem
+// aprovados"*. Depender de eu estar numa conversa para isso e o mesmo defeito
+// de todo o resto: a noticia chega quando ninguem esta olhando.
+//
+// ⚠ E A RECUSA E A NOTICIA QUE NINGUEM DESCOBRE SOZINHO. Modelo recusado nao
+// aparece na lista de aprovados — e nao aparecer se parece exatamente com
+// continuar em analise. O dono ficaria esperando indefinidamente por uma
+// aprovacao que ja foi negada.
+// ---------------------------------------------------------------------
+
+// Esperado: PENDING nao toca. Submeter nao e noticia — ele acabou de submeter.
+verifica(
+  "modelo em analise nao gera alerta",
+  alertasDoEstado({ ...CALMO, modelos: [{ nome: "convenio_retomada", status: "PENDING" }] }),
+  [],
+);
+
+// Esperado: aprovado avisa, e o corpo diz o que fazer depois — sem isso o
+// aviso e so uma boa noticia, e boa noticia sem proximo passo nao vira acao.
+verifica(
+  "modelo aprovado avisa, com a chave do estado",
+  alertasDoEstado({ ...CALMO, modelos: [{ nome: "convenio_retomada", status: "APPROVED" }] })
+    .map((a) => [a.tipo, a.chave, a.gravidade]),
+  [["modelo_status", "convenio_retomada:APPROVED", "aviso"]],
+);
+
+// Esperado: recusado e URGENTE. Quem depende dele para de falar, sem erro em
+// lugar nenhum.
+verifica(
+  "modelo recusado e urgente",
+  alertasDoEstado({ ...CALMO, modelos: [{ nome: "convenio_retomada", status: "REJECTED" }] })
+    .map((a) => a.gravidade),
+  ["urgente"],
+);
+
+// ⚠ A CHAVE CARREGA O ESTADO, e e isso que faz a mudanca furar o silencio: o
+// mesmo modelo, avisado como aprovado, avisa DE NOVO se for suspenso depois.
+verifica(
+  "aprovado antes nao cala a suspensao depois",
+  filtrarJaAvisados(
+    alertasDoEstado({ ...CALMO, modelos: [{ nome: "x", status: "PAUSED" }] }),
+    [{ tipo: "modelo_status", chave: "x:APPROVED", enviado_em: "2026-09-05T11:00:00.000Z" }],
+    new Date("2026-09-05T12:00:00.000Z"),
+  ).length,
+  1,
+);
+
+// Esperado: a mesma noticia nao se repete a cada hora. A leitura roda de hora
+// em hora; sem isto, "foi aprovado" viraria 24 e-mails por dia.
+verifica(
+  "a mesma aprovacao nao avisa duas vezes",
+  filtrarJaAvisados(
+    alertasDoEstado({ ...CALMO, modelos: [{ nome: "x", status: "APPROVED" }] }),
+    [{ tipo: "modelo_status", chave: "x:APPROVED", enviado_em: "2026-09-05T11:00:00.000Z" }],
+    new Date("2026-09-05T12:00:00.000Z"),
+  ).length,
+  0,
+);
+
 console.log(falhas === 0 ? "\nalertas: tudo certo." : `\nalertas: ${falhas} falha(s).`);
 process.exit(falhas === 0 ? 0 : 1);

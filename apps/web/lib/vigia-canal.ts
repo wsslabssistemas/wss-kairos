@@ -36,6 +36,15 @@ export type ResultadoDaVigia = {
   /** Por que não perguntou, quando não perguntou. */
   porque?: string;
   veredito?: Veredito;
+  /**
+   * O estado de cada modelo na Meta, quando esta rodada leu.
+   *
+   * ⚠ VAI JUNTO NO RETORNO, e isso evita uma segunda chamada à Meta só para
+   * alertar. Quem chama passa para `vigiarAlertas`, que roda logo depois —
+   * um dado, uma leitura, dois usos. `undefined` quando não houve leitura
+   * nesta batida (o normal: ela acontece uma vez por hora).
+   */
+  modelos?: { nome: string; status: string }[];
 };
 
 export async function vigiarCanal(tenantId: string, agora = new Date()): Promise<ResultadoDaVigia> {
@@ -73,7 +82,7 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
     // Uma vez por dia, e não a cada batida: são 40 batidas por dia e o texto
     // de um modelo muda em semanas, quando muda. Falhar aqui é engolido de
     // propósito — vigiar modelo não pode impedir vigiar a saúde do número.
-    await conferirModelos(admin, tenantId, cred, agora);
+    const modelosLidos = await conferirModelos(admin, tenantId, cred, agora);
 
     const r = await estadoDoNumero(cred);
 
@@ -135,6 +144,9 @@ export async function vigiarCanal(tenantId: string, agora = new Date()): Promise
     return {
       tenantId,
       perguntou: true,
+      // O estado dos modelos, quando esta batida leu. Quem chama passa para o
+      // alarme — um dado, uma leitura, dois usos.
+      modelos: modelosLidos,
       veredito: avaliarSaude(r.ok ? { ok: true, ...r.estado } : { ok: false, erro: r.motivo }),
     };
   } catch (e) {
@@ -165,8 +177,16 @@ export async function ultimaVerificacao(tenantId: string) {
 }
 
 
-/** Quantas horas entre duas leituras dos modelos aprovados. */
-const MODELOS_INTERVALO_H = 24;
+/**
+ * Quantas horas entre duas leituras dos modelos na Meta.
+ *
+ * ⚠ ERA 24, E VIROU 1 EM 5/set. Vinte e quatro horas bastavam quando isto só
+ * servia para copiar o CORPO dos aprovados — texto de modelo não muda sozinho.
+ * Agora a leitura também é o que descobre **mudança de estado**, e aí o atraso
+ * vira o produto: o dono submete dois modelos, eles são aprovados às 11h, e ele
+ * fica sabendo no dia seguinte. Uma chamada por hora não custa nada.
+ */
+const MODELOS_INTERVALO_H = 1;
 
 /**
  * Traz da Meta o corpo dos modelos aprovados e guarda em `modelos_canal`.
@@ -184,9 +204,10 @@ async function conferirModelos(
   tenantId: string,
   cred: Awaited<ReturnType<typeof credencialDoCanal>>,
   agora: Date,
-): Promise<void> {
+): Promise<{ nome: string; status: string }[] | undefined> {
+  let situacaoLida: { nome: string; status: string }[] | undefined;
   try {
-    if (!cred) return;
+    if (!cred) return undefined;
     // paginacao-ok: uma linha, chave primária.
     const { data: seg } = await admin
       .from("tenant_secrets")
@@ -194,7 +215,7 @@ async function conferirModelos(
       .eq("tenant_id", tenantId)
       .maybeSingle();
     const wabaId = (seg as { whatsapp_waba_id?: string | null } | null)?.whatsapp_waba_id;
-    if (!wabaId) return;
+    if (!wabaId) return undefined;
 
     // paginacao-ok: `.limit(1)` com ORDER BY — a leitura mais recente.
     const { data: ultima } = await admin
@@ -207,14 +228,15 @@ async function conferirModelos(
     const quando = (ultima as { atualizado_em?: string } | null)?.atualizado_em;
     if (quando) {
       const horas = (agora.getTime() - Date.parse(quando)) / 3_600_000;
-      if (Number.isFinite(horas) && horas >= 0 && horas < MODELOS_INTERVALO_H) return;
+      if (Number.isFinite(horas) && horas >= 0 && horas < MODELOS_INTERVALO_H) return undefined;
     }
 
     const r = await modelosAprovados(cred, wabaId);
     if (!r.ok) {
       console.warn(`[vigia] nao li os modelos aprovados: ${r.motivo}`);
-      return;
+      return undefined;
     }
+    situacaoLida = r.situacao;
     // ⚠ ATUALIZA E SÓ ENTÃO INSERE — nada de `upsert` com `onConflict`.
     //
     // A regra da casa nasceu de um estrago: `upsert` com `onConflict` sobre um
@@ -246,4 +268,5 @@ async function conferirModelos(
   } catch (e) {
     console.warn(`[vigia] falha ao conferir modelos: ${e instanceof Error ? e.message : String(e)}`);
   }
+  return situacaoLida;
 }

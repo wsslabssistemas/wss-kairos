@@ -91,7 +91,7 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
       //
       // ⚠ E ELE É BEST-EFFORT: `vigiarCanal` engole o próprio erro. Falhar em
       // vigiar não pode impedir uma mensagem de sair.
-      if (!simular) await vigiarCanal(t.id);
+      const vigia = simular ? null : await vigiarCanal(t.id);
 
       // ⚠ E O ALARME VEM LOGO DEPOIS, PELO MESMO MOTIVO. O vigia COLETA (nota
       // da Meta, validade do token); isto CHAMA alguém. Separá-los seria ter
@@ -101,7 +101,7 @@ export async function rodarTodasAsEmpresas(simular = false): Promise<RodadaDoMot
       //
       // Best-effort como o vigia: `vigiarAlertas` engole o próprio erro.
       // Falhar em avisar não pode impedir uma mensagem de sair.
-      if (!simular) await vigiarAlertas(t.id);
+      if (!simular) await vigiarAlertas(t.id, new Date(), vigia?.modelos);
 
       // ⚠ E A SEGUNDA CHANCE DO QUE FALHOU POR ACIDENTE — fora do espaçamento,
       // como o vigia. O espaçamento governa quanta mensagem PROATIVA sai;

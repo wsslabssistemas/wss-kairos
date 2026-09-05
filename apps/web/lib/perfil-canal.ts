@@ -245,7 +245,26 @@ export async function subirImagem(
 export async function modelosAprovados(
   cred: CredencialCanal,
   wabaId: string,
-): Promise<{ ok: true; modelos: { nome: string; corpo: string }[] } | { ok: false; motivo: string }> {
+): Promise<
+  | {
+      ok: true;
+      modelos: { nome: string; corpo: string }[];
+      /**
+       * TODOS os modelos com o estado em que a Meta os tem — inclusive os que
+       * NÃO estão aprovados.
+       *
+       * ⚠ Ela existe porque a lista de cima, de propósito, só traz aprovado em
+       * pt_BR: é ela que vira fala no histórico, e guardar o texto de um modelo
+       * em revisão registraria uma fala que nunca existiu. Só que **a notícia
+       * que o dono espera é justamente a mudança de estado** — "foi aprovado",
+       * e principalmente "foi recusado". Sem esta segunda lista, a recusa é
+       * invisível: o modelo simplesmente nunca aparece, e nunca aparecer se
+       * parece com ainda estar em análise.
+       */
+      situacao: { nome: string; status: string }[];
+    }
+  | { ok: false; motivo: string }
+> {
   try {
     const r = await fetch(
       `https://graph.facebook.com/${cred.versao}/${wabaId}/message_templates` +
@@ -259,7 +278,9 @@ export async function modelosAprovados(
     if (!r.ok) return { ok: false, motivo: j?.error?.message ?? `A Meta respondeu ${r.status}.` };
 
     const modelos: { nome: string; corpo: string }[] = [];
+    const situacao: { nome: string; status: string }[] = [];
     for (const t of j.data ?? []) {
+      if (t.name && t.status) situacao.push({ nome: t.name, status: t.status });
       // ⚠ SÓ APROVADO E SÓ pt_BR. Modelo em revisão ou recusado não é o que
       // sai; guardar o texto dele no histórico registraria uma fala que nunca
       // existiu. E `hello_world`, que a Meta cria sozinha, é en_US.
@@ -267,7 +288,7 @@ export async function modelosAprovados(
       const corpo = (t.components ?? []).find((c) => c.type === "BODY")?.text ?? "";
       if (t.name && corpo) modelos.push({ nome: t.name, corpo });
     }
-    return { ok: true, modelos };
+    return { ok: true, modelos, situacao };
   } catch (e) {
     return { ok: false, motivo: e instanceof Error ? e.message : String(e) };
   }
