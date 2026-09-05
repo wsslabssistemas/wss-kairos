@@ -248,6 +248,12 @@ export async function despacharToque(entrada: {
     contact_id: contactId,
     direction: "outbound",
     input_kind: "system_initiated",
+    // ⚠ O MOTIVO FICA GRAVADO, e é ele que faz o número do toque ser DO MOTIVO
+    // e não da etapa. Medido em 5/set: 72 alunos com contrato vencendo e 63
+    // deles já com toque na etapa — contando por etapa, a renovação nasceria
+    // bloqueada para 63, com a tela dizendo que falta o modelo do 3º toque para
+    // quem nunca recebeu uma mensagem de renovação.
+    motivo_fila: motivo,
     channel: "whatsapp",
     external_id: resultado.id,
     // ⚠ O QUE FOI DITO, NÃO O NOME DO QUE FOI DITO. Até 31/ago aqui ficava

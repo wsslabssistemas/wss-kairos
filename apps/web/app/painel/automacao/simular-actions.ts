@@ -3,8 +3,11 @@
 import { getActiveTenant } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { rodarMotor } from "@/lib/motor-db";
-import { ROTULO } from "@/lib/fila";
-import { lerModelos, modeloDoToque } from "@/lib/roteamento";
+import { ROTULO, type MotivoDaFila } from "@/lib/fila";
+import { lerModelos, modeloDoToque, MOTIVOS } from "@/lib/roteamento";
+import { carregarFila } from "@/lib/fila-db";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { tarifaVigente } from "@/lib/custo_mensagem";
 import { primeiroNome } from "@/lib/modelo";
 import { paraE164BR } from "@/lib/phone";
 import { revalidatePath } from "next/cache";
@@ -239,4 +242,98 @@ export async function naoContatar(
   revalidatePath("/painel/fila");
   revalidatePath(`/painel/contatos/${contactId}`);
   return { ok: true };
+}
+
+/**
+ * O QUE MUDA SE ESTE MOTIVO PASSAR A SAIR PELO SISTEMA.
+ *
+ * ⚠ POR QUE ISTO EXISTE. As seis caixas de "por onde cada motivo sai" pedem uma
+ * decisão com consequência — a pessoa passa a receber de outro número, e a Meta
+ * passa a cobrar — e a tela não dizia **quantas pessoas** nem **quanto**.
+ * Marcar era decisão no escuro, e decisão no escuro num produto que gasta
+ * dinheiro sozinho é a definição de armadilha.
+ *
+ * ⚠ E É SOB DEMANDA, NÃO NO CARREGAMENTO DA PÁGINA. Montar a fila lê a base
+ * inteira (contatos e interações, paginados) — a mesma leitura da tela de Fila.
+ * Pendurar isso em toda abertura da Automação seria somar mais uma tela lenta a
+ * um produto onde a lentidão já foi reclamada e medida. Quem quer o número
+ * pede o número.
+ *
+ * ⚠ E O NÚMERO É A FILA DE HOJE, não uma projeção. "Quantas pessoas estão
+ * esperando este motivo agora" é verificável; "quantas por semana" seria
+ * estimativa — e estimativa com cara de medida é o que faz alguém decidir
+ * errado com confiança.
+ */
+export async function efeitoDoRoteamento(): Promise<
+  | {
+      ok: true;
+      linhas: {
+        motivo: MotivoDaFila;
+        pessoas: number;
+        /** Quantas dessas o motor conseguiria mandar HOJE (tem modelo do toque). */
+        comModelo: number;
+        /** Centavos que a Meta cobraria se todas saíssem pelo número do sistema. */
+        custoCents: number;
+      }[];
+    }
+  | { ok: false; erro: string }
+> {
+  const membership = await getActiveTenant();
+  const tenant = membership?.tenant;
+  if (!tenant) return { ok: false, erro: "Sem empresa vinculada." };
+  if (!["owner", "admin"].includes(membership!.role)) {
+    return { ok: false, erro: "Só dono ou administrador pode ver isto." };
+  }
+
+  try {
+    const admin = createAdminClient();
+    const carga = await carregarFila({
+      supabase: admin,
+      tenantId: tenant.id,
+      skillKey: tenant.skill_key,
+      ownerId: null,
+    });
+
+    const modelos = lerModelos(carga.settings);
+    const tarifa = tarifaVigente();
+
+    const linhas = MOTIVOS.map((m) => {
+      const daFila = carga.fila.filter((f) => f.motivo === m);
+      // ⚠ QUANTAS TÊM TEXTO PRÓPRIO PARA O TOQUE DELAS. É a diferença entre
+      // "isto alcança 72 pessoas" e "isto alcança 72 e manda para 9" — e é
+      // exatamente a diferença que quase me fez ligar a renovação travada.
+      const comModelo = daFila.filter((f) => {
+        const toque = toquesDoMotivo(carga.interacoes, f.contactId, m) + 1;
+        return modeloDoToque(modelos, m, toque) !== null;
+      }).length;
+      return {
+        motivo: m,
+        pessoas: daFila.length,
+        comModelo,
+        // Modelo aprovado fora da janela de 24h é cobrado como MARKETING — a
+        // categoria mais cara, e a única honesta para um toque proativo.
+        custoCents: Math.round((comModelo * tarifa.marketing) / 10_000),
+      };
+    });
+
+    return { ok: true, linhas };
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Quantos toques DESTE motivo esta pessoa já recebeu. Ver `lib/motor-db.ts`. */
+function toquesDoMotivo(
+  ix: { contact_id: string | null; direction: string; motivo_fila?: string | null }[],
+  contactId: string,
+  motivo: string,
+): number {
+  let n = 0;
+  for (const i of ix) {
+    if (i.contact_id !== contactId) continue;
+    if (i.direction !== "outbound") continue;
+    if (i.motivo_fila !== motivo) continue;
+    n++;
+  }
+  return n;
 }

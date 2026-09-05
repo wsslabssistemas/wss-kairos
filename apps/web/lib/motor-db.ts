@@ -163,12 +163,17 @@ export async function rodarMotor(entrada: {
   const candidatos: Candidato[] = doCanal.map((f) => ({
     contactId: f.contactId,
     motivo: f.motivo,
-    // O toque de HOJE é o seguinte ao último dado nesta etapa. `carga.toques`
-    // conta só o que SAIU, e só depois da entrada na etapa — é o mesmo número
-    // com que a cadência do manifesto escolhe o passo.
-    toque: (carga.toques[f.contactId] ?? 0) + 1,
+    // ⚠ O TOQUE É DO MOTIVO, e não da etapa — ver `toqueDoMotivo`. A cadência
+    // do manifesto continua contando por etapa (é dela que sai QUAL passo da
+    // régua vence); o que conta por motivo é a escolha do TEXTO, que é outra
+    // pergunta: "quantas mensagens deste assunto esta pessoa já recebeu?".
+    toque: toqueDoMotivo(carga.interacoes, f.contactId, f.motivo),
     textoProprio:
-      modeloDoToque(modelos, f.motivo as MotivoDaFila, (carga.toques[f.contactId] ?? 0) + 1) !== null,
+      modeloDoToque(
+        modelos,
+        f.motivo as MotivoDaFila,
+        toqueDoMotivo(carga.interacoes, f.contactId, f.motivo),
+      ) !== null,
     diasNaEtapa: diasDesde(entrouNaEtapa.get(f.contactId), agora),
     contratoAte: vigenciaDe.get(f.contactId) ? String(vigenciaDe.get(f.contactId)).slice(0, 10) : null,
     motivoSaida: saidaDe.get(f.contactId) ?? null,
@@ -301,7 +306,7 @@ export async function rodarMotor(entrada: {
   const toquePorContato: Record<string, number> = {};
   for (const f of doCanal) {
     motivoPorContato[f.contactId] = f.motivo;
-    toquePorContato[f.contactId] = (carga.toques[f.contactId] ?? 0) + 1;
+    toquePorContato[f.contactId] = toqueDoMotivo(carga.interacoes, f.contactId, f.motivo);
   }
 
   if (plano.simulado || !plano.ativo) {
@@ -347,7 +352,7 @@ export async function rodarMotor(entrada: {
       // O motor já contou o toque para decidir se ele podia sair — passar o
       // número evita uma consulta por envio, e garante que a decisão e o
       // envio usem o MESMO toque.
-      toque: (carga.toques[contactId] ?? 0) + 1,
+      toque: toqueDoMotivo(carga.interacoes, contactId, item.motivo),
     });
 
     if (r.ok) enviadas++;
@@ -368,6 +373,7 @@ type Ix = {
   direction: string;
   external_id?: string | null;
   input_kind?: string | null;
+  motivo_fila?: string | null;
 };
 
 /** Dias inteiros desde uma data. `null` quando não há data — ver `Candidato`. */
@@ -399,6 +405,36 @@ function ultimaEntradaDele(ix: Ix[], contactId: string): string | null {
  * recebeu duas mensagens hoje está em conversa; quem recebeu duas e nunca
  * respondeu está sendo perseguido. O mesmo número, situações opostas.
  */
+/**
+ * QUAL toque deste MOTIVO é o de agora. 1 = o primeiro.
+ *
+ * ⚠ POR QUE NÃO É `carga.toques`, que conta por ETAPA. Os dois números
+ * coincidem exatamente onde eu os conheci — na reativação, porque a etapa de
+ * ex-cliente recebe esse motivo e mais nenhum — e eu generalizei de lá. Para um
+ * cliente ativo a etapa acumula boas-vindas, acompanhamento e recompra, e nada
+ * disso é renovação.
+ *
+ * ⚠ MEDIDO ANTES DE QUEBRAR: 72 alunos com contrato vencendo em 60 dias, 63
+ * deles já com toque na etapa. Contando por etapa, ligar a renovação recusaria
+ * 63 por "falta o modelo do 3º toque" — para quem nunca recebeu uma mensagem de
+ * renovação na vida. A trava certa, aplicada ao número errado, é uma trava que
+ * cala a operação e parece rigor.
+ *
+ * ⚠ HISTÓRICO SEM MOTIVO CONTA ZERO, de propósito. O passado que dá para provar
+ * foi marcado na `0087` (as reativações, pelo texto do modelo aprovado); o
+ * resto é resposta e registro manual, que não são toque de motivo nenhum.
+ */
+function toqueDoMotivo(ix: Ix[], contactId: string, motivo: string): number {
+  let n = 0;
+  for (const i of ix) {
+    if (i.contact_id !== contactId) continue;
+    if (i.direction !== "outbound") continue;
+    if (i.motivo_fila !== motivo) continue;
+    n++;
+  }
+  return n + 1;
+}
+
 function semRespostaDele(ix: Ix[], contactId: string): number {
   const desde = ultimaEntradaDele(ix, contactId);
   let n = 0;

@@ -104,6 +104,15 @@ export type InteracaoDaCarga = {
    * campanha, justamente no dia em que ela funcionava.**
    */
   input_kind: string | null;
+  /**
+   * O motivo da fila que originou este toque, quando ele foi proativo.
+   *
+   * ⚠ É O QUE FAZ O TOQUE SER DO MOTIVO. Contar por ETAPA só funciona onde os
+   * dois números coincidem — na reativação, porque a etapa de ex-cliente
+   * recebe esse motivo e mais nenhum. Para um cliente ativo a etapa acumula
+   * boas-vindas, acompanhamento e recompra, e nada disso é renovação.
+   */
+  motivo_fila: string | null;
 };
 
 export type CargaDaFila = {
@@ -215,7 +224,7 @@ export async function carregarFila(entrada: {
     lerTudo<InteracaoDaCarga>(
       (de, ate) => supabase
         .from("interactions")
-        .select("contact_id, occurred_at, direction, created_by, external_id, input_kind")
+        .select("contact_id, occurred_at, direction, created_by, external_id, input_kind, motivo_fila")
         .eq("tenant_id", tenantId)
         .order("occurred_at", { ascending: false })
         .range(de, ate),

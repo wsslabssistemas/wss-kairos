@@ -1,6 +1,7 @@
 import { ROTULO, type MotivoDaFila } from "@/lib/fila";
 import { MOTIVOS, type RoteamentoPorMotivo, type ModelosPorMotivo } from "@/lib/roteamento";
 import { salvarRoteamento } from "./actions";
+import { EfeitoDoRoteamento } from "./EfeitoDoRoteamento";
 
 /**
  * POR QUAL NÚMERO CADA MOTIVO SAI.
@@ -62,6 +63,14 @@ export function Roteamento({
         dele. O número do sistema existe para falar com quem não tem essa conversa —
         e para aguentar volume que um celular pessoal não aguenta.
       </p>
+
+      {/* ⚠ O NÚMERO ANTES DA DECISÃO. Marcar uma caixa aqui faz uma pessoa real
+          receber de outro número e a Meta passar a cobrar — e até 5/set a tela
+          não dizia quantas pessoas nem quanto. Decisão no escuro num produto
+          que gasta dinheiro sozinho é armadilha, não simplicidade.
+          É sob demanda porque montar a fila lê a base inteira: quem quer o
+          número pede o número. */}
+      <EfeitoDoRoteamento roteamento={roteamento} />
 
       {!temCredencial && (
         <p className="badge badge-warn" style={{ whiteSpace: "normal", textAlign: "left" }}>
