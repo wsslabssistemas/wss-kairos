@@ -167,12 +167,16 @@ export async function rodarMotor(entrada: {
     // do manifesto continua contando por etapa (é dela que sai QUAL passo da
     // régua vence); o que conta por motivo é a escolha do TEXTO, que é outra
     // pergunta: "quantas mensagens deste assunto esta pessoa já recebeu?".
-    toque: toqueDoMotivo(carga.interacoes, f.contactId, f.motivo),
+    // ⚠ A ORIGEM TEM PREFERÊNCIA SOBRE A CONTAGEM. A renovação declara o toque
+    // pela JANELA do vencimento (60/30/7); a reativação não declara nada e o
+    // número sai de quantas já saíram. Contar onde a data manda faria a
+    // conversa de resultado chegar a 5 dias do contrato vencer.
+    toque: f.toque ?? toqueDoMotivo(carga.interacoes, f.contactId, f.motivo),
     textoProprio:
       modeloDoToque(
         modelos,
         f.motivo as MotivoDaFila,
-        toqueDoMotivo(carga.interacoes, f.contactId, f.motivo),
+        f.toque ?? toqueDoMotivo(carga.interacoes, f.contactId, f.motivo),
       ) !== null,
     diasNaEtapa: diasDesde(entrouNaEtapa.get(f.contactId), agora),
     contratoAte: vigenciaDe.get(f.contactId) ? String(vigenciaDe.get(f.contactId)).slice(0, 10) : null,
@@ -306,7 +310,7 @@ export async function rodarMotor(entrada: {
   const toquePorContato: Record<string, number> = {};
   for (const f of doCanal) {
     motivoPorContato[f.contactId] = f.motivo;
-    toquePorContato[f.contactId] = toqueDoMotivo(carga.interacoes, f.contactId, f.motivo);
+    toquePorContato[f.contactId] = f.toque ?? toqueDoMotivo(carga.interacoes, f.contactId, f.motivo);
   }
 
   if (plano.simulado || !plano.ativo) {
@@ -352,7 +356,7 @@ export async function rodarMotor(entrada: {
       // O motor já contou o toque para decidir se ele podia sair — passar o
       // número evita uma consulta por envio, e garante que a decisão e o
       // envio usem o MESMO toque.
-      toque: toqueDoMotivo(carga.interacoes, contactId, item.motivo),
+      toque: item.toque ?? toqueDoMotivo(carga.interacoes, contactId, item.motivo),
     });
 
     if (r.ok) enviadas++;

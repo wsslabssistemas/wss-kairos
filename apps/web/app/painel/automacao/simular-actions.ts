@@ -303,7 +303,7 @@ export async function efeitoDoRoteamento(): Promise<
       // "isto alcança 72 pessoas" e "isto alcança 72 e manda para 9" — e é
       // exatamente a diferença que quase me fez ligar a renovação travada.
       const comModelo = daFila.filter((f) => {
-        const toque = toquesDoMotivo(carga.interacoes, f.contactId, m) + 1;
+        const toque = f.toque ?? toquesDoMotivo(carga.interacoes, f.contactId, m) + 1;
         return modeloDoToque(modelos, m, toque) !== null;
       }).length;
       return {

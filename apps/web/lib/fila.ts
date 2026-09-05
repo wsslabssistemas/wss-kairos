@@ -112,6 +112,24 @@ export type ItemDaFila = {
    * anotação de procedência desconhecida — nunca como o motivo do contato.
    */
   observacao?: string;
+  /**
+   * QUAL toque este item é, quando a ORIGEM sabe melhor que a contagem.
+   *
+   * ⚠ ELE EXISTE PORQUE RENOVAÇÃO NÃO SE CONTA, SE DATA. A reativação é uma
+   * sequência: o 1º toque, depois o 2º, e o número sai de quantos já saíram. A
+   * renovação não — ela tem TRÊS conversas diferentes presas ao vencimento (60,
+   * 30 e 7 dias), e o manifesto diz que a de 60 dias **não pode nem mencionar
+   * renovação**, enquanto a de 7 tem que trazer data, valor e forma de
+   * pagamento.
+   *
+   * Se o texto fosse escolhido pela CONTAGEM, quem só recebesse o primeiro
+   * toque a 5 dias do vencimento receberia a pergunta sobre resultado — e o
+   * contrato venceria enquanto a gente conversava sobre outra coisa.
+   *
+   * `undefined` = quem lê conta os toques daquele motivo, que é o certo para
+   * as origens que são sequência.
+   */
+  toque?: number;
 };
 
 /**
@@ -326,6 +344,11 @@ export function construirFila(params: {
       contactId: r.contactId, name: r.name, phone: r.phone, ownerId: c.owner_id,
       motivo: "renovacao", intencao: r.intencao,
       atraso: r.vencido ? Math.abs(r.diasParaVencer) : 0,
+      // ⚠ O TOQUE VEM DA JANELA, não da contagem — ver `toque` em `ItemDaFila`.
+      // A ordem é a da conversa (resultado → continuidade → condição), e o
+      // vencido usa a mesma da condição: quem já venceu precisa de data, valor
+      // e forma de pagamento, não de uma pergunta sobre resultado.
+      toque: r.janela === "resultado" ? 1 : r.janela === "continuidade" ? 2 : 3,
       // O AVISO VAI JUNTO ATÉ A TELA. Vencimento não confirmado é o caso em
       // que o motor sabe menos do que parece saber, e quem vai escrever
       // precisa ver isso antes de clicar em "preparar mensagem".
@@ -441,7 +464,7 @@ export type DepsDaFila = {
   stagesForaDeJogo: (s: EtapaDaFila[]) => Set<string>;
   stagesWithoutRecurrence: (s: EtapaDaFila[]) => Set<string>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  computeRenovacoes: (c: any, fora: Set<string>, hoje?: Date, renewal?: any) => { contactId: string; name: string; phone: string | null; intencao: string; diasParaVencer: number; vencido: boolean; vencimentoConfirmado?: boolean; janelaAbriuEm?: string }[];
+  computeRenovacoes: (c: any, fora: Set<string>, hoje?: Date, renewal?: any) => { contactId: string; name: string; phone: string | null; intencao: string; diasParaVencer: number; vencido: boolean; vencimentoConfirmado?: boolean; janelaAbriuEm?: string; janela?: string }[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   computeDueTouches: (c: any, ultimo: Record<string, string>, s: any, cad: any, toques?: Record<string, number>) => { contactId: string; name: string; phone: string | null; ownerId: string | null; intent: string; stepNumber: number; totalSteps: number; overdueDays: number; daysSince: number; semCadencia: boolean }[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

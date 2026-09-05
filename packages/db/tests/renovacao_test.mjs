@@ -163,5 +163,61 @@ verifica("anual a 45 dias do fim continua entrando", rodar([mensal(-320, 45)]).l
 // o mesmo principio do recorte e do `paraE164BR`: falhar nao pode virar barrar.
 verifica("sem data de inicio, a regra nao barra", rodar([c("s", 20)]).length, 1);
 
+
+// ---------------------------------------------------------------------
+// O TOQUE DA RENOVACAO VEM DA JANELA, NAO DA CONTAGEM (5/set/2026)
+//
+// ⚠ O fundador perguntou: "mas nao seria o mesmo que renovacao_vencimento?".
+// Fui conferir no manifesto e nao e — as tres janelas tem trabalhos OPOSTOS:
+//
+//   60 dias  "NAO mencione renovacao. Pergunte o que ele ja consegue fazer e
+//             nao conseguia quando comecou."
+//   30 dias  "Retome com as palavras dele o ganho que ele contou e projete o
+//             proximo ciclo."
+//    7 dias  "Data, valor e forma de pagamento."
+//
+// E `renovacao_vencimento` diz "seu plano vence em X, quer deixar a renovacao
+// encaminhada" — que e exatamente o que a janela de 60 dias PROIBE.
+//
+// ⚠ E POR ISSO O TEXTO NAO PODE SAIR DA CONTAGEM. Reativacao e sequencia: o 1o
+// toque, depois o 2o. Renovacao e DATA: quem so recebe o primeiro toque a 5
+// dias do vencimento precisa da condicao concreta, nao da pergunta sobre
+// resultado — e o contrato venceria enquanto a gente conversava sobre outra
+// coisa.
+// ---------------------------------------------------------------------
+
+// Esperado: a janela decide o toque — 60 dias e o 1, 30 e o 2, 7 e o 3.
+verifica(
+  "cada janela declara o proprio numero de toque",
+  [70, 45, 20, 5].map((d) => {
+    const hoje = new Date("2026-09-05T12:00:00Z");
+    const vence = new Date(hoje.getTime() + d * 86400000).toISOString().slice(0, 10);
+    const r = computeRenovacoes(
+      [{ id: "c1", name: "X", phone: "51999999999", journey_stage: "convertido", contract_end: vence, contract_start: "2026-01-01" }],
+      new Set(),
+      hoje,
+    );
+    return r.length ? r[0].janela : null;
+  }),
+  [null, "resultado", "continuidade", "condicao"],
+);
+
+// ⚠ E O VENCIDO USA A JANELA DA CONDICAO. Quem ja venceu precisa de data, valor
+// e forma de pagamento — perguntar sobre resultado a quem esta sem plano ha uma
+// semana e conversar sobre outra coisa enquanto a conta some.
+verifica(
+  "vencido cai na janela da condicao",
+  (() => {
+    const hoje = new Date("2026-09-05T12:00:00Z");
+    const r = computeRenovacoes(
+      [{ id: "c1", name: "X", phone: "51999999999", journey_stage: "convertido", contract_end: "2026-08-20", contract_start: "2026-01-01", contrato_conferido_em: "2026-09-01" }],
+      new Set(),
+      hoje,
+    );
+    return r.length ? [r[0].janela, r[0].vencido] : null;
+  })(),
+  ["condicao", true],
+);
+
 console.log(falhas ? `\n✗ FALHOU — ${falhas} caso(s)` : "\n✓ PASSOU — 17/17");
 process.exit(falhas ? 1 : 0);
