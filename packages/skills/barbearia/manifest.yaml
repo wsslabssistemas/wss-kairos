@@ -186,6 +186,55 @@ lead_sources:
   - facebook
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE PAROU DE VIR
+#
+# Lista fechada, do MANIFESTO. Ela some quando alguém encerra o atendimento e é
+# o que permite SOMAR: "41 pararam por preço" decide a campanha seguinte; "41
+# motivos diferentes" não decide nada.
+#
+# ⚠ E ELA NÃO É SÓ RELATÓRIO. `fora_da_campanha` tira a pessoa da reativação
+# automática — não da vida —, e `abordagem` é o texto que chega em quem redige
+# quando a conversa voltar. Sem essas duas chaves, `o_que_fazer` é conselho para
+# alguém ler, não regra que a máquina cumpre.
+#
+# ⚠ AQUI O CLIENTE SEGUE A PESSOA, NÃO A CASA. Numa barbearia o vínculo é com o
+# barbeiro: quando ele sai, o cliente vai junto — e nenhuma condição de preço
+# desfaz isso. É o motivo mais comum e o menos falado.
+churn_reasons:
+  - key: mudou_endereco
+    label: "Mudou de endereço ou trabalha longe"
+    o_que_fazer: "Fora do alcance. Corte é serviço de conveniência: ninguém atravessa a cidade por um corte, por melhor que seja."
+    fora_da_campanha: true
+  - key: foi_com_o_barbeiro
+    label: "Seguiu o barbeiro que saiu daqui"
+    o_que_fazer: "Não ofereça desconto: ele não saiu por preço, saiu com uma pessoa. O que traz de volta é OUTRO profissional que sirva — ofereça conhecer quem entrou, sem comparar com quem saiu. E anote quem era: se o barbeiro voltar, esta lista é a campanha."
+  - key: outro_lugar
+    label: "Está cortando em outro lugar"
+    o_que_fazer: "Descubra o que a outra tem — horário, preço, localização. Volta quando aquilo falhar, e a anotação é o que avisa. Não dê desconto para brigar com conveniência."
+  - key: preco
+    label: "Preço"
+    o_que_fazer: "É o único motivo em que condição resolve. Em barbearia o caminho é PACOTE ou assinatura mensal, não desconto avulso — desconto uma vez vira o preço novo."
+  - key: mudou_o_visual
+    label: "Raspou, deixou crescer ou mudou o estilo"
+    o_que_fazer: "Não é perda, é pausa. Cabelo volta a crescer: pergunte quando pretende retomar e marque a data. Insistir agora é falar de um serviço que ele não precisa."
+    pausa_dias: 60
+    abordagem: "Depois de 60 dias, procure com naturalidade, sem cobrar a ausência: 'e aí, já está na hora de dar um trato?'. Uma frase, sem oferta junto."
+  - key: insatisfeito
+    label: "Não gostou do corte ou do atendimento"
+    o_que_fazer: "NÃO venda nada nesta conversa. Escute o que aconteceu, peça desculpa sem justificar, e ofereça refazer com outro profissional. Cliente insatisfeito que é bem ouvido volta mais que cliente satisfeito comum — e o que não pode é ele contar a história para outros sem ter contado para você."
+    pausa_dias: 15
+    abordagem: "Depois de 15 dias, procure para SABER, não para vender: 'fiquei pensando no que você me falou — queria entender melhor o que não ficou bom'. Sem oferta na mesma mensagem."
+  - key: saude
+    label: "Motivo de saúde"
+    o_que_fazer: "Não venda. Pergunte quando melhora e marque a data — insistir aqui constrange e não converte."
+    fora_da_campanha: true
+    pausa_dias: 30
+    abordagem: "Depois de 30 dias, procure para saber dela, citando o que ela disse sem detalhar. Se quiser voltar, ela mesma traz o assunto."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado, e só o primeiro já teve a chance."
+
 dna_sections:
   - key: pricing
     label: "Tabela de serviços"

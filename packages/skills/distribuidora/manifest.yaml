@@ -170,6 +170,48 @@ lead_sources:
   - campanha
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE PAROU DE COMPRAR
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI QUASE NINGUÉM AVISA QUE SAIU. O cliente B2B não cancela: ele só para de
+# comprar, e o pedido que não veio é indistinguível de um mês fraco. Por isso o
+# motivo mais comum desta lista é o que ninguém registra — e o valor de perguntar
+# é maior que o de qualquer campanha.
+churn_reasons:
+  - key: outro_fornecedor
+    label: "Está comprando de outro fornecedor"
+    o_que_fazer: "Descubra O QUE mudou: preço, prazo de entrega, condição de pagamento ou disponibilidade. Em atacado o que mais rouba cliente não é preço — é o outro ter quando você não teve."
+  - key: comprou_do_fabricante
+    label: "Passou a comprar direto do fabricante"
+    o_que_fazer: "Não brigue por preço, você perde. O que a distribuidora tem e o fabricante não tem é PRONTA ENTREGA, lote pequeno e mix — venda isso, ou reconheça que naquele volume ele está certo."
+  - key: falha_de_entrega
+    label: "Atraso ou problema na entrega"
+    o_que_fazer: "NÃO ofereça desconto. Diga o que aconteceu, o que mudou para não repetir, e proponha um pedido pequeno de reteste. Em B2B a confiança de fornecimento vale mais que qualquer condição — quem falhou uma vez precisa provar duas."
+    pausa_dias: 20
+    abordagem: "Depois de 20 dias, procure com o que MUDOU, não com desculpa: 'trocamos a transportadora da sua região — queria te propor um pedido pequeno para você ver'."
+  - key: preco
+    label: "Preço ou condição de pagamento"
+    o_que_fazer: "É o único motivo em que condição resolve. O caminho é volume, prazo ou mix — e vale perguntar o preço que ele está pagando, porque em atacado essa pergunta é normal e a resposta costuma vir."
+  - key: sem_demanda
+    label: "A demanda dele caiu, está com estoque"
+    o_que_fazer: "Não é perda, é ciclo. Pergunte quando ele costuma recompor e REGISTRE essa data — insistir com estoque cheio queima o contato para quando ele precisar de verdade."
+    pausa_dias: 45
+    abordagem: "Na data que ele mesmo indicou, retome pelo que ele comprava: 'você tinha comentado que giraria o estoque por volta de [mês] — como ficou?'."
+  - key: credito
+    label: "Limite de crédito ou pendência financeira"
+    o_que_fazer: "Isto é assunto do financeiro, não de venda. Não ofereça produto antes de resolver a pendência — oferta em cima de dívida constrange e trava a conversa que resolveria as duas coisas."
+    fora_da_campanha: true
+  - key: fechou_ou_mudou_de_ramo
+    label: "Fechou ou mudou de ramo"
+    o_que_fazer: "Fora do alcance. Confirme antes de arquivar: empresa que mudou de ramo às vezes continua comprando outra linha."
+    fora_da_campanha: true
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: linhas
     label: "Linhas e catálogo"

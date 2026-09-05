@@ -204,6 +204,53 @@ lead_sources:
   - facebook
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O PACIENTE PAROU DE VIR
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI TEM UMA ARMADILHA QUE NÃO EXISTE NOS OUTROS RAMOS: **alta não é
+# perda.** Quem terminou o tratamento sumiu da agenda porque deu certo — tratar
+# isso como churn faz a clínica falar com ele como se algo tivesse falhado, e o
+# que ele precisa ouvir é sobre manutenção e prevenção.
+#
+# ⚠ E NENHUMA MENSAGEM AQUI PODE MENCIONAR DIAGNÓSTICO, PROCEDIMENTO OU
+# CONDIÇÃO DE SAÚDE. Dado de saúde é sensível na LGPD, e o WhatsApp é lido no
+# ônibus, na frente dos outros. Fale de RETORNO e de AGENDA, nunca do que ele
+# tem.
+churn_reasons:
+  - key: concluiu_tratamento
+    label: "Concluiu o tratamento (alta)"
+    o_que_fazer: "Não é perda, é sucesso. A conversa é de MANUTENÇÃO e retorno periódico, no intervalo que a clínica recomenda — nunca 'você sumiu'. Quem teve alta é o público que mais indica."
+  - key: mudou_endereco
+    label: "Mudou de endereço"
+    o_que_fazer: "Fora do alcance para atendimento presencial. Se a clínica fizer teleconsulta e o caso permitir, ofereça — senão, encerre bem."
+    fora_da_campanha: true
+  - key: passou_a_usar_convenio
+    label: "Passou a usar plano ou convênio"
+    o_que_fazer: "Não é insatisfação nem preço: é cobertura. Descubra qual convênio — se a clínica atender, o caminho é dizer isso; se não atender, ofereça o que o convênio dele não cobre, sem criticar o plano."
+  - key: preco
+    label: "Preço ou orçamento acima do esperado"
+    o_que_fazer: "É o único motivo em que condição resolve. Em clínica o caminho é PARCELAMENTO ou fatiar o plano de tratamento em etapas — não desconto, que desvaloriza o procedimento seguinte."
+  - key: medo_ou_desconforto
+    label: "Medo, ansiedade ou desconforto no atendimento"
+    o_que_fazer: "NÃO venda. Este é o motivo que mais some sem falar e o que mais volta quando bem tratado. Ofereça uma conversa sem procedimento, ou atendimento com outro profissional. Nunca minimize o medo dele."
+    pausa_dias: 30
+    abordagem: "Depois de 30 dias, procure para SABER, sem falar de procedimento nem de valor: 'queria saber como você está, e se dá para eu te ajudar de algum jeito'. O convite é para conversar, não para marcar."
+  - key: outro_profissional
+    label: "Está se tratando em outro lugar"
+    o_que_fazer: "Descubra o que pesou — horário, localização, indicação de alguém. Não critique o outro profissional em nenhuma hipótese: isso derruba a confiança em quem fala, não em quem é falado."
+  - key: orientacao_medica
+    label: "Motivo de saúde ou orientação médica"
+    o_que_fazer: "Não venda e não pergunte detalhe nenhum. Pergunte apenas quando ele quer que a clínica retome o contato, e marque a data."
+    fora_da_campanha: true
+    pausa_dias: 60
+    abordagem: "Depois de 60 dias, procure para saber dele, SEM citar condição, procedimento ou diagnóstico — o WhatsApp é lido em público. Uma pergunta aberta basta."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: pricing
     label: "Valores e formas de pagamento"

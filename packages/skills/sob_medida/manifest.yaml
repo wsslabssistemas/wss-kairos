@@ -179,6 +179,44 @@ lead_sources:
   - campanha
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE NÃO FECHOU
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI O CLIENTE NÃO COMPRA O PRODUTO, COMPRA UMA OBRA — e obra tem
+# calendário próprio, quase sempre atrasado. O motivo mais comum de "sumir" não
+# é preço nem concorrente: é a obra dele ter parado. Tratar isso como perda faz
+# a empresa desistir de um pedido que só estava esperando o piso ficar pronto.
+churn_reasons:
+  - key: obra_atrasada
+    label: "A obra dele atrasou ou parou"
+    o_que_fazer: "Não é perda, é calendário. Pergunte para quando ficou e REGISTRE a data — quem está com a obra parada não decide móvel nenhum, e insistir agora vira ruído. Voltar na data certa é a diferença entre o pedido e o silêncio."
+    pausa_dias: 60
+    abordagem: "Na data que ele indicou, retome pelo ponto da obra: 'você tinha me falado que o piso ficaria pronto por volta de [mês] — como está por aí?'. O projeto entra depois."
+  - key: orcamento_acima
+    label: "Orçamento acima do que ele esperava"
+    o_que_fazer: "É o único motivo em que condição resolve, e o caminho é ESCOPO, não desconto: fazer por ambientes, começar pelo que trava a mudança (cozinha, armário do quarto) e deixar o resto para depois. Cortar preço mantendo o projeto inteiro desvaloriza o próximo orçamento."
+  - key: outro_fornecedor
+    label: "Fechou com outro"
+    o_que_fazer: "Descubra o que pesou — prazo, projeto, acabamento, condição. Em sob medida o PRAZO decide mais que o preço: quem se muda em março não espera entrega em maio. E anote: obra tem ambientes que ficam para depois, e o segundo ambiente pode ser seu."
+    pausa_dias: 120
+    abordagem: "Depois de quatro meses, procure sem cobrar a escolha: 'lembrei do seu projeto — ficou algum ambiente para uma segunda etapa?'."
+  - key: mudou_o_projeto
+    label: "Mudou o projeto ou a ideia"
+    o_que_fazer: "Peça para entender o que mudou e ofereça refazer a proposta — projeto que muda é sinal de cliente ativo, não de cliente perdido. Só não refaça sem perguntar: proposta nova em cima de ideia velha volta errada."
+  - key: desistiu_do_imovel
+    label: "Desistiu do imóvel ou da mudança"
+    o_que_fazer: "Fora do alcance para este projeto. Pergunte se a mudança foi adiada ou cancelada — as duas palavras parecem iguais e significam coisas opostas."
+    fora_da_campanha: true
+  - key: sem_retorno
+    label: "Sumiu depois do orçamento, sem dizer o motivo"
+    o_que_fazer: "O mais comum do ramo. Faça UMA pergunta fechada e fácil: 'só para eu não te incomodar à toa — o projeto ficou para mais adiante, ou vocês seguiram com outra empresa?'. Escolher entre duas opções custa menos que confessar."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: catalog
     label: "O que você faz"

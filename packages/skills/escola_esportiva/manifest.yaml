@@ -163,6 +163,48 @@ lead_sources:
   - facebook
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O ALUNO SAIU
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI QUEM DECIDE E QUEM PRATICA SÃO PESSOAS DIFERENTES. Quem paga e responde
+# no WhatsApp é o responsável; quem larga é a criança. Falar com o pai sobre
+# "seu retorno" é falar com a pessoa errada sobre a coisa errada — a conversa é
+# sempre sobre a CRIANÇA, pelo nome dela.
+churn_reasons:
+  - key: perdeu_interesse
+    label: "A criança perdeu o interesse"
+    o_que_fazer: "Não empurre o mesmo esporte de novo. Pergunte ao responsável o que ela anda gostando — e ofereça uma modalidade diferente, ou uma aula experimental em outra turma. Criança troca de interesse; a escola só perde se tiver uma modalidade só."
+  - key: mudou_de_esporte
+    label: "Foi praticar outro esporte"
+    o_que_fazer: "Se a escola tem a modalidade nova, essa é a conversa. Se não tem, anote qual é: três anotações iguais são um pedido de turma nova, e essa informação vale mais que a matrícula perdida."
+  - key: mudou_endereco
+    label: "Mudou de endereço ou de escola"
+    o_que_fazer: "Fora do alcance. Rotina de criança é montada em volta da escola e da casa — sem proximidade, não há horário que feche."
+    fora_da_campanha: true
+  - key: horario
+    label: "O horário não fecha com a rotina da família"
+    o_que_fazer: "É o motivo mais recuperável de todos, e quase nunca é falado espontaneamente. Pergunte QUAL horário funcionaria e confira contra as turmas — muitas vezes existe uma turma que o responsável não sabia que existia."
+  - key: preco
+    label: "Preço ou aperto no orçamento da família"
+    o_que_fazer: "É o único motivo em que condição resolve. O caminho é plano de maior compromisso com mensalidade menor, ou desconto de irmãos, se existir no DNA — nunca desconto avulso."
+  - key: lesao
+    label: "Lesão ou orientação médica"
+    o_que_fazer: "Não venda. Pergunte quando a criança é liberada e marque a data — insistir aqui preocupa o responsável em vez de convencer."
+    fora_da_campanha: true
+    pausa_dias: 45
+    abordagem: "Depois de 45 dias, procure para saber da CRIANÇA, pelo nome, sem falar de plano nem de turma: 'como está a Manu?'. Se estiver liberada, o responsável mesmo traz o assunto."
+  - key: desentendimento
+    label: "Problema com professor, turma ou colegas"
+    o_que_fazer: "NÃO venda. Escute inteiro — em escola infantil isso é sobre segurança e acolhimento, não sobre serviço. Ofereça outra turma ou outro professor, e diga o que foi feito a respeito."
+    pausa_dias: 20
+    abordagem: "Depois de 20 dias, procure para SABER, sem oferta junto. O responsável precisa sentir que a escola levou a sério antes de considerar voltar."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: modalidades
     label: "Modalidades e turmas"

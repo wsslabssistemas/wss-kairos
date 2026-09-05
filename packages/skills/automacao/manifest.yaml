@@ -153,6 +153,50 @@ lead_sources:
 # ---------------------------------------------------------------------
 # SEÇÕES DE DNA — os fatos que o motor pode afirmar sobre a empresa.
 # ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE NÃO FECHOU (OU NÃO RENOVOU)
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI EXISTEM DOIS NEGÓCIOS DENTRO DE UM: a INSTALAÇÃO, que acontece uma vez
+# e segue o calendário da obra, e a MANUTENÇÃO, que é receita recorrente e é a
+# que quase sempre se perde em silêncio. Sistema instalado e sem contrato de
+# manutenção não avisa que parou de ser cliente — ele só liga no dia em que
+# quebra, e aí a conversa é urgência, não venda.
+churn_reasons:
+  - key: obra_parada
+    label: "A obra parou ou atrasou"
+    o_que_fazer: "Não é perda, é calendário. Pergunte para quando ficou e REGISTRE a data — insistir com obra parada é ruído, e quem some por isso costuma voltar quando o prédio anda."
+    pausa_dias: 60
+    abordagem: "Na data que ele indicou, retome pelo ponto da obra, não pela proposta: 'você tinha comentado que a parte elétrica ficaria pronta por volta de [mês] — como está?'."
+  - key: instalou_com_outro
+    label: "Instalou com outra empresa"
+    o_que_fazer: "O sistema já é de outro, mas a MANUTENÇÃO não tem dono. Ofereça assistência, ampliação e adequação — e anote a marca instalada, porque é ela que diz o que vai falhar primeiro."
+    pausa_dias: 180
+    abordagem: "Depois de seis meses, ofereça manutenção sem criticar quem instalou: 'faço manutenção nesse tipo de sistema — se precisar de alguém por perto, é só chamar'."
+  - key: orcamento
+    label: "Orçamento acima do previsto"
+    o_que_fazer: "É o único motivo em que condição resolve, e o caminho é ESCOPO por etapas — começar pelo que dá segurança ou pelo que a obra exige agora, deixando o resto para a fase seguinte."
+  - key: sem_manutencao
+    label: "Não renovou o contrato de manutenção"
+    o_que_fazer: "Este é o churn silencioso do ramo: ninguém cancela manutenção, só deixa vencer. Pergunte se houve problema no atendimento ou se foi custo — e ofereça um plano menor antes de perder a conta inteira. Sistema sem manutenção volta como emergência, e emergência é a conversa mais cara para os dois lados."
+  - key: falha_no_servico
+    label: "Problema no serviço ou no atendimento"
+    o_que_fazer: "NÃO ofereça desconto. Diga o que aconteceu, o que mudou, e proponha uma visita técnica de reteste. Em serviço predial a confiança é sobre o prédio funcionar — quem falhou uma vez precisa provar duas."
+    pausa_dias: 20
+    abordagem: "Depois de 20 dias, procure com o que MUDOU, não com desculpa."
+  - key: trocou_de_responsavel
+    label: "Mudou o síndico, o gestor ou o responsável"
+    o_que_fazer: "O contrato não caiu por mérito: caiu porque quem defendia saiu. Descubra quem entrou e ofereça uma apresentação do zero — para a pessoa nova, o contrato é herança de outro, não escolha dela."
+  - key: imovel_vendido
+    label: "Vendeu o imóvel ou saiu da administração"
+    o_que_fazer: "Fora do alcance neste endereço. Pergunte quem assumiu — o novo responsável é um lead, e ninguém mais tem essa informação."
+    fora_da_campanha: true
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: solucoes
     label: "Soluções e produtos"

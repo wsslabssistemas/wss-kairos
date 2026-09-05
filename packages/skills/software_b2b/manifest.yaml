@@ -247,6 +247,50 @@ lead_sources:
   - campanha
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE CANCELOU (OU PAROU DE USAR)
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI O CANCELAMENTO É O FIM DE UMA HISTÓRIA QUE COMEÇOU MESES ANTES, e o
+# começo dela é sempre o mesmo: **ele parou de usar.** Ninguém cancela um sistema
+# que usa todo dia. Registrar "preço" quando a causa foi baixa adoção é guardar
+# o sintoma e perder a doença — e a próxima campanha vai brigar por desconto
+# onde faltava treinamento.
+churn_reasons:
+  - key: nao_usava
+    label: "Baixa adoção — a equipe não usava"
+    o_que_fazer: "Este é o motivo raiz da maioria dos cancelamentos, mesmo quando o cliente diz outro. Descubra QUEM não usava e por quê: faltou treino, mudou de responsável, ou o processo dele não cabia no sistema. A volta é por implantação acompanhada, nunca por desconto."
+  - key: foi_para_concorrente
+    label: "Foi para um concorrente"
+    o_que_fazer: "Descubra o que o outro entregou que faltava aqui — e escute sem defender. Cliente que troca costuma voltar quando a promessa do concorrente não se cumpre: anote a data da troca, porque o momento de reabrir é entre seis meses e um ano."
+    pausa_dias: 180
+    abordagem: "Depois de seis meses, procure sem cobrar a escolha dele: 'faz um tempo que você trocou — queria saber como ficou, e se tem algo que a gente possa ajudar hoje'. Sem comparar produtos."
+  - key: corte_de_custo
+    label: "Corte de custo na empresa"
+    o_que_fazer: "Não é sobre o seu preço, é sobre o orçamento dele. Ofereça plano menor ou congelamento em vez de perder a conta inteira — e registre quando o orçamento dele vira, porque essa data é a campanha."
+    pausa_dias: 120
+    abordagem: "Perto da virada de orçamento que ele indicou, retome com o plano de menor porte, não com o que ele tinha."
+  - key: faltou_recurso
+    label: "Faltou um recurso que ele precisava"
+    o_que_fazer: "Registre QUAL recurso, com as palavras dele. Três registros iguais são a próxima entrega do produto — e o dia em que ela existir, esta lista é a campanha de retorno com um motivo verdadeiro."
+    pausa_dias: 90
+    abordagem: "Só volte quando o recurso EXISTIR. Aí a mensagem é uma frase: 'aquilo que você precisava e a gente não tinha agora existe — quer ver?'. Voltar sem ele é lembrar do motivo pelo qual ele saiu."
+  - key: troca_de_gestao
+    label: "Mudou o responsável ou a gestão"
+    o_que_fazer: "O contrato não caiu por mérito do produto: caiu porque o defensor dele saiu. Descubra quem entrou e ofereça uma apresentação do zero — para a pessoa nova, o sistema é herança de outro, não escolha dela."
+  - key: empresa_fechou
+    label: "A empresa fechou ou foi vendida"
+    o_que_fazer: "Fora do alcance. Se foi vendida, vale perguntar para quem — o comprador é um lead, e ninguém mais tem essa informação."
+    fora_da_campanha: true
+  - key: preco
+    label: "Preço"
+    o_que_fazer: "Cuidado: em software, preço é a resposta educada mais comum. Antes de aceitar, confira o uso — se ele usava pouco, o motivo real é adoção, e desconto só adia o cancelamento em três meses."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: produto
     label: "O produto"

@@ -289,6 +289,49 @@ lead_sources:
   - facebook
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O ALUNO PAROU
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI, COMO NA CLÍNICA, **concluir não é perder.** Quem terminou o curso saiu
+# da lista porque deu certo — e é justamente ele o melhor candidato ao curso
+# seguinte e a maior fonte de indicação. Tratar conclusão como churn faz a
+# escola falar com o formado como se ele tivesse desistido.
+churn_reasons:
+  - key: concluiu
+    label: "Concluiu o curso"
+    o_que_fazer: "Não é perda, é resultado. A conversa é sobre o PRÓXIMO passo — curso avançado, especialização, certificação — e sobre indicação. Nunca 'você sumiu'."
+  - key: trancou_sem_tempo
+    label: "Trancou por falta de tempo"
+    o_que_fazer: "O que resolve é REDUZIR O TAMANHO DO PEDIDO, não argumentar. Ofereça turma em outro horário, formato gravado, ou retomar de onde parou sem recomeçar. Quem parou por tempo não precisa de mais motivo, precisa de um compromisso menor."
+  - key: preco
+    label: "Preço ou aperto financeiro"
+    o_que_fazer: "É o único motivo em que condição resolve. O caminho é parcelamento ou módulo avulso — e vale perguntar se a empresa dele paga capacitação, que é a resposta mais comum que ninguém pergunta."
+  - key: nao_era_o_esperado
+    label: "O conteúdo não era o que ele esperava"
+    o_que_fazer: "NÃO venda outro curso na mesma conversa. Descubra o que ele esperava — essa frase é material de produto, não objeção. Se existir turma ou trilha que sirva, apresente depois; se não existir, agradeça e anote."
+    pausa_dias: 30
+    abordagem: "Depois de 30 dias, volte com o que MUDOU, se mudou: material novo, módulo novo, professor novo. Sem novidade concreta, não volte."
+  - key: mudou_de_objetivo
+    label: "Mudou de área ou de objetivo"
+    o_que_fazer: "Pergunte para onde ele foi. Se a escola tem curso naquela direção, é a conversa; se não tem, três respostas iguais são um pedido de curso novo."
+  - key: dificuldade
+    label: "Achou difícil demais ou ficou para trás"
+    o_que_fazer: "Este é o que mais some calado e o que mais volta com ajuda. Ofereça monitoria, turma de base, ou retomar do ponto em que travou. Nunca sugira que faltou esforço."
+    pausa_dias: 30
+    abordagem: "Depois de 30 dias, procure oferecendo APOIO, não matrícula: 'lembrei de você — se quiser retomar, dá para começar pelo ponto em que você parou, com acompanhamento'."
+  - key: pessoal_ou_saude
+    label: "Motivo pessoal ou de saúde"
+    o_que_fazer: "Não venda. Pergunte quando ele quer ser procurado e marque a data."
+    fora_da_campanha: true
+    pausa_dias: 60
+    abordagem: "Depois de 60 dias, procure para saber dele, sem detalhar o que ele contou e sem falar de matrícula."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: cursos
     label: "Cursos e turmas"

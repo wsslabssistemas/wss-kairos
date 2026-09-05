@@ -308,6 +308,53 @@ lead_sources:
 # As CHAVES são contrato com `required_facts`. Traduza label e help,
 # nunca a chave.
 # ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE NÃO FECHOU
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI SE VENDE UMA VEZ NA VIDA, E O CICLO É LONGO. Quem instalou não compra
+# de novo, e quem não fechou passa meses decidindo — insistir toda semana com
+# quem está juntando dinheiro é o jeito mais rápido de sair da lista dele.
+#
+# ⚠ E TEM DOIS MOTIVOS QUE SÃO IMPEDIMENTO FÍSICO, não objeção: telhado que não
+# comporta e imóvel alugado. Argumentar contra fato não convence ninguém, e
+# mostra que o vendedor não entendeu o que foi dito.
+churn_reasons:
+  - key: instalou_com_outro
+    label: "Já instalou com outra empresa"
+    o_que_fazer: "Fora do alcance para o sistema principal. O que sobra é serviço: limpeza, manutenção, monitoramento e ampliação — e ampliação é conversa real, porque quase todo sistema fica pequeno quando o consumo cresce."
+    fora_da_campanha: true
+  - key: imovel_alugado
+    label: "Mora de aluguel ou não é o dono"
+    o_que_fazer: "Impedimento, não objeção. Ele não pode instalar no que não é dele. Pergunte se tem outro imóvel próprio, ou se conhece o proprietário — e encerre bem."
+    fora_da_campanha: true
+  - key: telhado_inviavel
+    label: "Telhado ou local não comporta"
+    o_que_fazer: "Impedimento técnico. Diga com clareza e ofereça a alternativa que existir (solo, outro imóvel, geração compartilhada) — se não existir nenhuma, seja honesto: insistir aqui queima a indicação dele."
+    fora_da_campanha: true
+  - key: preco_ou_financiamento
+    label: "Valor alto ou financiamento negado"
+    o_que_fazer: "É o único motivo em que condição resolve. O caminho é o SISTEMA MENOR que já reduz a conta, e o financiamento em outro banco — quase ninguém tenta o segundo banco sozinho. Não corte preço mantendo o mesmo projeto."
+    pausa_dias: 90
+    abordagem: "Depois de 90 dias, volte com FATO NOVO, nunca repetindo a proposta: linha de crédito nova, condição diferente, ou o quanto a conta de luz subiu desde então."
+  - key: duvida_no_retorno
+    label: "Não se convenceu do retorno do investimento"
+    o_que_fazer: "Não repita a mesma simulação — foi ela que não convenceu. Traga um caso REAL parecido com o dele (consumo, telhado, cidade) e o número medido, não projetado. E se não houver caso parecido, diga que vai buscar em vez de estimar."
+  - key: adiou
+    label: "Adiou a decisão"
+    o_que_fazer: "Pergunte PARA QUANDO e registre a data — é o contato mais valioso desta lista, e o único em que a pessoa mesma marcou o próximo passo. Voltar antes dela é o que faz virar bloqueio."
+    pausa_dias: 60
+    abordagem: "Na data que ELE indicou, retome citando o que ele disse: 'você tinha me falado que veria isso em [mês]'. Nunca antes, mesmo com promoção."
+  - key: vendeu_o_imovel
+    label: "Vendeu ou vai vender o imóvel"
+    o_que_fazer: "Fora do alcance neste endereço. Pergunte para onde vai — se comprar outro imóvel, a conversa recomeça lá, e ninguém mais vai saber disso."
+    fora_da_campanha: true
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: oferta
     label: "O que você instala"

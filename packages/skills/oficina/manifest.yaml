@@ -205,6 +205,50 @@ lead_sources:
   - campanha
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE NÃO VOLTOU
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI O CLIENTE NÃO É A PESSOA, É O PAR PESSOA + VEÍCULO. Quem vendeu o
+# carro não tem o que fazer numa oficina que só conhece aquele carro — e
+# mandar "está na hora da revisão do seu Gol" para quem vendeu o Gol é o aviso
+# de que ninguém aqui presta atenção.
+churn_reasons:
+  - key: vendeu_o_veiculo
+    label: "Vendeu ou trocou o veículo"
+    o_que_fazer: "O serviço era do carro, não dele. Se trocou de carro, a conversa recomeça pelo veículo NOVO — pergunte qual é, e a partir daí a revisão faz sentido de novo. Se vendeu e não comprou outro, encerre bem."
+    fora_da_campanha: true
+  - key: mudou_endereco
+    label: "Mudou de endereço"
+    o_que_fazer: "Fora do alcance. Oficina é escolha de proximidade: ninguém deixa o carro do outro lado da cidade."
+    fora_da_campanha: true
+  - key: concessionaria_ou_garantia
+    label: "Está fazendo na concessionária (garantia)"
+    o_que_fazer: "Não brigue com a garantia — enquanto ela vale, a concessionária ganha. Anote quando a garantia termina: essa data É a campanha, e ninguém mais vai lembrar dela por ele."
+    pausa_dias: 180
+    abordagem: "Perto do fim da garantia, procure com o fato na mão: 'a garantia do seu carro termina em [mês] — quando quiser, a gente cuida da revisão a partir dali'. Sem falar mal da concessionária."
+  - key: orcamento_alto
+    label: "Achou o orçamento caro"
+    o_que_fazer: "É o único motivo em que condição resolve. Em oficina o caminho é PRIORIZAR: separar o que é segurança do que pode esperar, e fazer por etapas. Orçamento grande assusta; orçamento fatiado se aprova."
+  - key: outra_oficina
+    label: "Levou em outra oficina"
+    o_que_fazer: "Descubra o que pesou — prazo, preço, o carro ficar pronto no dia. Em oficina o que mais decide é PRAZO, não valor: quem precisa do carro na segunda não espera até quarta."
+  - key: retrabalho
+    label: "O problema voltou depois do serviço"
+    o_que_fazer: "NÃO venda nada. Traga o carro de volta e resolva — retrabalho não discutido vira a história que ele conta para todo mundo. Perder uma peça é barato; perder a indicação de um bairro inteiro não é."
+    pausa_dias: 10
+    abordagem: "Depois de 10 dias, procure para SABER se o problema persiste, sem oferta junto: 'queria saber se aquilo que você falou continua acontecendo'."
+  - key: veiculo_parado
+    label: "O veículo está parado ou sem uso"
+    o_que_fazer: "Não é perda, é pausa. Carro parado também precisa de cuidado (bateria, pneu, fluido) — mas isso é assunto de UMA mensagem, não de campanha. Pergunte quando ele pretende voltar a usar."
+    pausa_dias: 90
+    abordagem: "Depois de 90 dias, uma pergunta simples: 'o carro já voltou a rodar?'. Se voltou, aí sim a revisão entra na conversa."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: catalog
     label: "O que a oficina faz"

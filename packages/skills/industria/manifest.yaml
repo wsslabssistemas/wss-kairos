@@ -259,6 +259,50 @@ lead_sources:
 # As CHAVES são contrato com `required_facts` da biblioteca. Traduzir
 # label e help é livre; trocar a chave quebra a trava anti-invenção.
 # ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE PAROU DE COMPRAR
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI O CICLO É LONGO E QUEM DECIDE MUDA. Um cliente de indústria não some
+# de um mês para o outro: ele fica sem projeto, troca de comprador, ou passa a
+# comprar de um fornecedor homologado por engenharia. Chamar isso de "perdemos
+# o cliente" faz a empresa dar desconto onde o problema é cadastro.
+churn_reasons:
+  - key: projeto_concluido
+    label: "O projeto ou o lote acabou"
+    o_que_fazer: "Não é perda: é fim de ciclo. Pergunte quando começa o PRÓXIMO projeto e registre a data — em indústria a compra volta com o projeto, e quem sabe a data ganha o pedido antes de existir concorrência."
+  - key: orcamento_congelado
+    label: "Investimento congelado ou verba cortada"
+    o_que_fazer: "Não é sobre o seu preço. Pergunte quando o orçamento vira e registre — voltar antes disso gasta o contato, voltar na data certa é a única forma de estar lá quando a verba abrir."
+    pausa_dias: 120
+    abordagem: "Perto da virada de orçamento que ele indicou, retome com o que mudou de lá para cá: prazo menor, condição nova, item que ele pediu e não existia."
+  - key: concorrente
+    label: "Comprou de um concorrente"
+    o_que_fazer: "Descubra o que decidiu: preço, prazo, assistência ou a especificação. Em indústria PRAZO e ASSISTÊNCIA pesam mais que preço unitário — linha parada custa mais que a peça."
+  - key: nao_homologado
+    label: "Não somos fornecedor homologado"
+    o_que_fazer: "Isto é processo, não venda: descubra o que falta na homologação (certificado, auditoria, cadastro) e trate como projeto interno. Nenhum desconto resolve, e quase todo comprador ajuda quem pergunta direito."
+  - key: especificacao_mudou
+    label: "A especificação técnica mudou"
+    o_que_fazer: "Peça a especificação nova. Se a empresa atende, é a conversa; se não atende hoje, três registros iguais são um pedido de linha nova — e essa informação vale mais que o pedido perdido."
+  - key: qualidade_ou_prazo
+    label: "Problema de qualidade ou de prazo"
+    o_que_fazer: "NÃO ofereça desconto. Traga a ação corretiva por escrito e proponha um lote de reteste. Em indústria a reclamação vira registro no cadastro do fornecedor — resolver mal fecha a porta por anos."
+    pausa_dias: 30
+    abordagem: "Depois de 30 dias, procure com a correção FEITA, não prometida — e proponha um lote pequeno para reconstruir o histórico."
+  - key: trocou_de_comprador
+    label: "Mudou o comprador ou a engenharia"
+    o_que_fazer: "O fornecimento não caiu por mérito: caiu porque quem conhecia a empresa saiu. Descubra quem entrou e apresente-se do zero, com o histórico do que já foi fornecido."
+  - key: fechou_ou_mudou
+    label: "Fechou, foi vendida ou mudou de ramo"
+    o_que_fazer: "Fora do alcance. Se foi vendida, pergunte para quem — o comprador é um lead, e ninguém mais tem essa informação."
+    fora_da_campanha: true
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: produto
     label: "Produto e especificação"

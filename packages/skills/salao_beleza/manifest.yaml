@@ -196,6 +196,49 @@ lead_sources:
   - campanha
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE A CLIENTE PAROU DE VIR
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática (não da vida), e `abordagem` é o texto que chega em
+# quem redige quando a conversa voltar.
+#
+# ⚠ AQUI O VÍNCULO É COM A PROFISSIONAL, e a segunda coisa mais forte é o
+# RESULTADO. Química que não deu certo não é reclamação de serviço: é uma
+# pessoa que saiu daqui com o cabelo diferente do que queria, e contou para as
+# amigas antes de contar para você.
+churn_reasons:
+  - key: mudou_endereco
+    label: "Mudou de endereço"
+    o_que_fazer: "Fora do alcance. Cliente de salão volta por conveniência e confiança — sem a primeira, a segunda não sustenta."
+    fora_da_campanha: true
+  - key: foi_com_a_profissional
+    label: "Seguiu a profissional que saiu daqui"
+    o_que_fazer: "Não ofereça desconto: ela não saiu por preço. O caminho é apresentar OUTRA profissional com o mesmo tipo de trabalho, sem comparar com quem saiu — e anotar quem era, porque se a profissional voltar esta lista é a campanha."
+  - key: outro_salao
+    label: "Está se atendendo em outro salão"
+    o_que_fazer: "Descubra o que a outra tem: horário, agenda mais livre, preço. Volta quando aquilo falhar — e a anotação é o que avisa."
+  - key: preco
+    label: "Preço"
+    o_que_fazer: "É o único motivo em que condição resolve. O caminho é PACOTE (manutenção a cada X semanas) ou serviço de menor porte, nunca desconto avulso — desconto uma vez vira o preço novo."
+  - key: resultado_ruim
+    label: "Não ficou satisfeita com o resultado"
+    o_que_fazer: "NÃO venda nada nesta conversa. Escute o que aconteceu, peça desculpa sem justificar, e ofereça correção com a profissional mais indicada — sem custo, se for erro nosso. Química malfeita é reputação, não é atendimento: quem sai calada conta para as amigas."
+    pausa_dias: 15
+    abordagem: "Depois de 15 dias, procure para SABER: 'fiquei pensando no que aconteceu e queria entender melhor o que não ficou como você esperava'. Sem oferta na mesma mensagem."
+  - key: mudou_o_cabelo
+    label: "Assumiu o natural ou parou a química"
+    o_que_fazer: "Não é perda, é mudança de serviço. Ela continua precisando de corte, hidratação e cuidado — ofereça o que serve ao cabelo de HOJE, nunca tentar trazer de volta o que ela decidiu parar."
+  - key: gravidez_ou_saude
+    label: "Gravidez, saúde ou orientação médica"
+    o_que_fazer: "Não venda. Boa parte dos procedimentos é contraindicada — insistir aqui é constrangedor e mostra que ninguém ouviu."
+    fora_da_campanha: true
+    pausa_dias: 90
+    abordagem: "Depois de 90 dias, procure para saber dela, citando o que ela disse sem detalhar. Ofereça o que É seguro no momento dela, se ela levantar o assunto."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: catalog
     label: "Serviços do salão"

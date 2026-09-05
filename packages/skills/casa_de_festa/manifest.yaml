@@ -208,6 +208,44 @@ lead_sources:
   - campanha
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O CLIENTE NÃO FECHOU (OU NÃO VOLTOU)
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI A COMPRA É DE UMA VEZ SÓ, E A DATA É O PRODUTO. Ninguém faz aniversário
+# de novo no mês seguinte — o ciclo é anual, e o motivo mais caro de perder é a
+# AGENDA: quem procurou e não tinha a data disponível não é objeção, é receita
+# que a casa recusou. Somar esses é o que decide abrir turno, sala ou horário.
+churn_reasons:
+  - key: data_indisponivel
+    label: "A data que ele queria não estava livre"
+    o_que_fazer: "Não é perda comercial, é falta de capacidade — e é o número mais importante desta lista. Ofereça as datas próximas ANTES de encerrar, e registre a data pedida: dez registros no mesmo fim de semana são a decisão de abrir outro turno."
+  - key: escolheu_outro_local
+    label: "Fechou em outro lugar"
+    o_que_fazer: "Descubra o que pesou: preço, tamanho, estacionamento, o que estava incluso. Em festa a decisão quase nunca é só preço — é o que o cliente imaginou e não conseguiu ver aqui."
+  - key: orcamento
+    label: "Orçamento acima do que podia"
+    o_que_fazer: "É o único motivo em que condição resolve. O caminho é reduzir ESCOPO com honestidade — menos horas, menos convidados, pacote enxuto — nunca cortar preço mantendo tudo, que desvaloriza o pacote cheio para o próximo cliente."
+  - key: adiou_o_evento
+    label: "Adiou o evento"
+    o_que_fazer: "Não é perda, é data movida. Pergunte para quando adiou e REGISTRE essa data — ela é o próximo contato, e ninguém mais vai lembrar dela por ele."
+    pausa_dias: 60
+    abordagem: "Perto da data nova, retome citando o que já tinha sido conversado: 'você tinha me falado de [mês] — a agenda daquele período está abrindo agora'."
+  - key: evento_cancelado
+    label: "O evento foi cancelado"
+    o_que_fazer: "Pergunte com cuidado antes de qualquer oferta: cancelamento de festa às vezes é notícia ruim de família. Se for logística, ofereça remarcar; se for pessoal, encerre bem e não insista."
+    fora_da_campanha: true
+    pausa_dias: 90
+    abordagem: "Depois de 90 dias, uma mensagem curta e sem oferta, só se ninguém tiver dito para não procurar mais."
+  - key: evento_realizado
+    label: "Já fez o evento aqui"
+    o_que_fazer: "Não é perda: é cliente satisfeito fora de ciclo. O contato certo é ANUAL, perto da data do ano anterior, e o assunto mais forte não é a festa dele — é INDICAÇÃO: quem fez uma festa boa conhece quem vai fazer a próxima."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: catalog
     label: "Pacotes e espaço"

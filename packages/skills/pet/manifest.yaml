@@ -209,6 +209,49 @@ lead_sources:
   - campanha
   - outro
 
+# ---------------------------------------------------------------------
+# POR QUE O TUTOR PAROU DE TRAZER
+#
+# Lista fechada, do MANIFESTO — é o que permite SOMAR. `fora_da_campanha` tira
+# da reativação automática, e `abordagem` é o texto que chega em quem redige.
+#
+# ⚠ AQUI EXISTE O MOTIVO MAIS GRAVE DE TODO O PRODUTO: o animal morreu. Uma
+# mensagem de "senti sua falta, que tal marcar o banho?" para quem acabou de
+# perder o pet é o pior erro que este sistema pode cometer — e ninguém reclama:
+# a pessoa apaga o número e conta para todo mundo.
+churn_reasons:
+  - key: pet_faleceu
+    label: "O animal faleceu"
+    o_que_fazer: "NUNCA mais oferecer serviço para este animal. Se houver outro pet na casa, a conversa é sobre ele — e só se o tutor trouxer o assunto. Este é o motivo em que errar custa mais que todos os outros somados."
+    fora_da_campanha: true
+  - key: mudou_endereco
+    label: "Mudou de endereço"
+    o_que_fazer: "Fora do alcance. Banho e tosa é serviço de bairro: ninguém atravessa a cidade com o animal no colo."
+    fora_da_campanha: true
+  - key: outro_petshop
+    label: "Está levando em outro lugar"
+    o_que_fazer: "Descubra o que a outra tem — leva e traz, horário, preço, jeito com o animal. Em pet o que costuma decidir não é preço: é o animal voltar calmo."
+  - key: preco
+    label: "Preço"
+    o_que_fazer: "É o único motivo em que condição resolve. O caminho é PACOTE mensal de banhos, que baixa o valor por visita sem baixar o preço do serviço."
+  - key: faz_em_casa
+    label: "Passou a fazer em casa"
+    o_que_fazer: "Não brigue com isso. Ofereça o que não dá para fazer em casa: tosa higiênica, tosa da raça, hidratação, corte de unha em animal difícil. Quem faz em casa costuma voltar para o que exige mão treinada."
+  - key: pet_idoso_ou_doente
+    label: "O animal está idoso ou doente"
+    o_que_fazer: "Não venda banho comum. Pergunte como ele está e ofereça o atendimento adaptado, se existir — e se não existir, diga. Insistir com serviço normal para um animal debilitado assusta o tutor."
+    fora_da_campanha: true
+    pausa_dias: 45
+    abordagem: "Depois de 45 dias, procure para saber do ANIMAL, pelo nome, sem oferecer nada: 'como está o Thor?'. Se o tutor abrir espaço, aí sim fale do que dá para fazer com cuidado."
+  - key: insatisfeito
+    label: "Não gostou do serviço ou do cuidado com o animal"
+    o_que_fazer: "NÃO venda nada nesta conversa. Escute inteiro — reclamação sobre o trato com o animal é sobre confiança, não sobre serviço. Peça desculpa sem justificar e ofereça acompanhar o próximo banho de perto."
+    pausa_dias: 20
+    abordagem: "Depois de 20 dias, procure para SABER o que aconteceu, sem oferta junto. Confiança se reconstrói sendo ouvido, nunca com desconto."
+  - key: nao_disse
+    label: "Não quis dizer"
+    o_que_fazer: "Registre assim mesmo: quem não contou é diferente de quem nunca foi perguntado."
+
 dna_sections:
   - key: catalog
     label: "Serviços e estrutura"
